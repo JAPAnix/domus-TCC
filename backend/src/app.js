@@ -1,12 +1,12 @@
-import express from "express";
+import express from 'express';
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/user.js';
 
 const app = express();
-app.use(express.json());
-const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-  res.send('nosso tcc vai ser o melhor de todos');
-});
+app.use(express.json());
+app.use('/auth', authRoutes);
+app.use('/user', userRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em: http://localhost:${PORT}`);

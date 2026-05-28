@@ -1,13 +1,9 @@
 import express from 'express';
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/user.js';
+import router from './routes/index.js';
 
 const app = express();
 
 app.use(express.json());
-app.use('/auth', authRoutes);
-app.use('/user', userRoutes);
+app.use('/api', router);
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em: http://localhost:${PORT}`);
-});
+app.listen(3000, () => console.log('Servidor rodando na porta 3000'));

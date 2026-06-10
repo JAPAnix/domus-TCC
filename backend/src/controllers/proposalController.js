@@ -1,229 +1,210 @@
-import { prisma } from "../config/prisma.js";
-import { uuidToBuffer, bufferToUuid, generateUuid } from "../utils/uuid.js";
+import { prisma } from '../config/prisma.js';
+import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 
 export const createProposal = async (req, res) => {
   const { uuid: serviceUuid } = req.params;
   const { proposed_price, cover_letter, delivery_time_days } = req.body;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const service = await prisma.services.findFirst({
-      where: { uuid: uuidToBuffer(serviceUuid), deleted_at: null },
+    const service = await prisma.service.findFirst({
+      where: { uuid: uuidToBuffer(serviceUuid), deletedAt: null }
     });
 
     if (!service) {
-      return res.status(404).json({ message: "Serviço não encontrado" });
+      return res.status(404).json({ message: 'Serviço não encontrado' });
     }
 
-    if (service.status !== "open") {
-      return res
-        .status(400)
-        .json({ message: "Serviço não está aceitando propostas" });
+    if (service.status !== 'open') {
+      return res.status(400).json({ message: 'Serviço não está aceitando propostas' });
     }
 
-    // Profissional não pode propor no próprio serviço
-    if (service.client_id === userId) {
-      return res.status(400).json({
-        message: "Você não pode enviar proposta no seu próprio serviço",
-      });
+    if (service.clientId === userId) {
+      return res.status(400).json({ message: 'Você não pode enviar proposta no seu próprio serviço' });
     }
 
-    const proposal = await prisma.proposals.create({
+    const proposal = await prisma.proposal.create({
       data: {
         uuid: generateUuid(),
-        service_id: service.id,
-        professional_id: userId,
-        proposed_price,
-        cover_letter,
-        delivery_time_days,
-        status: "pending",
-      },
+        serviceId: service.id,
+        professionalId: userId,
+        proposedPrice: proposed_price,
+        coverLetter: cover_letter,
+        deliveryTimeDays: delivery_time_days,
+        status: 'pending'
+      }
     });
 
-    res.status(201).json({
-      ...proposal,
-      uuid: bufferToUuid(proposal.uuid),
-    });
+    res.status(201).json({ ...proposal, uuid: bufferToUuid(proposal.uuid) });
   } catch (err) {
-    // Unique constraint: profissional já enviou proposta para esse serviço
-    if (err.code === "P2002") {
-      return res
-        .status(409)
-        .json({ message: "Você já enviou uma proposta para esse serviço" });
+    console.error(err);
+    if (err.code === 'P2002') {
+      return res.status(409).json({ message: 'Você já enviou uma proposta para esse serviço' });
     }
-    res.status(500).json({ message: "Erro interno do servidor" });
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const listProposals = async (req, res) => {
   const { uuid: serviceUuid } = req.params;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const service = await prisma.services.findFirst({
-      where: { uuid: uuidToBuffer(serviceUuid), deleted_at: null },
+    const service = await prisma.service.findFirst({
+      where: { uuid: uuidToBuffer(serviceUuid), deletedAt: null }
     });
 
     if (!service) {
-      return res.status(404).json({ message: "Serviço não encontrado" });
+      return res.status(404).json({ message: 'Serviço não encontrado' });
     }
 
-    // Apenas o dono do serviço pode ver as propostas
-    if (service.client_id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+    if (service.clientId !== userId) {
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    const proposals = await prisma.proposals.findMany({
-      where: { service_id: service.id },
+    const proposals = await prisma.proposal.findMany({
+      where: { serviceId: service.id },
       include: {
-        professional_profiles: {
+        professional: {
           include: {
-            users: {
+            user: {
               select: {
                 uuid: true,
-                first_name: true,
-                last_name: true,
-                profile_picture_url: true,
-              },
-            },
-          },
-        },
+                firstName: true,
+                lastName: true,
+                profilePictureUrl: true
+              }
+            }
+          }
+        }
       },
-      orderBy: { created_at: "desc" },
+      orderBy: { createdAt: 'desc' }
     });
 
     res.json(
-      proposals.map((p) => ({
+      proposals.map(p => ({
         ...p,
         uuid: bufferToUuid(p.uuid),
-        professional_profiles: {
-          ...p.professional_profiles,
-          users: {
-            ...p.professional_profiles.users,
-            uuid: bufferToUuid(p.professional_profiles.users.uuid),
-          },
-        },
-      })),
+        professional: {
+          ...p.professional,
+          user: {
+            ...p.professional.user,
+            uuid: bufferToUuid(p.professional.user.uuid)
+          }
+        }
+      }))
     );
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const getProposal = async (req, res) => {
   const { uuid } = req.params;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const proposal = await prisma.proposals.findFirst({
+    const proposal = await prisma.proposal.findFirst({
       where: { uuid: uuidToBuffer(uuid) },
       include: {
-        services: true,
-        professional_profiles: {
+        service: true,
+        professional: {
           include: {
-            users: {
+            user: {
               select: {
                 uuid: true,
-                first_name: true,
-                last_name: true,
-                profile_picture_url: true,
-              },
-            },
-          },
-        },
-      },
+                firstName: true,
+                lastName: true,
+                profilePictureUrl: true
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!proposal) {
-      return res.status(404).json({ message: "Proposta não encontrada" });
+      return res.status(404).json({ message: 'Proposta não encontrada' });
     }
 
-    // Apenas o dono do serviço ou o profissional podem ver a proposta
-    const isClient = proposal.services.client_id === userId;
-    const isProfessional = proposal.professional_id === userId;
+    const isClient = proposal.service.clientId === userId;
+    const isProfessional = proposal.professionalId === userId;
 
     if (!isClient && !isProfessional) {
-      return res.status(403).json({ message: "Acesso negado" });
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
     res.json({
       ...proposal,
       uuid: bufferToUuid(proposal.uuid),
-      professional_profiles: {
-        ...proposal.professional_profiles,
-        users: {
-          ...proposal.professional_profiles.users,
-          uuid: bufferToUuid(proposal.professional_profiles.users.uuid),
-        },
-      },
+      professional: {
+        ...proposal.professional,
+        user: {
+          ...proposal.professional.user,
+          uuid: bufferToUuid(proposal.professional.user.uuid)
+        }
+      }
     });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const updateProposalStatus = async (req, res) => {
   const { uuid } = req.params;
   const { status } = req.body;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const proposal = await prisma.proposals.findFirst({
+    const proposal = await prisma.proposal.findFirst({
       where: { uuid: uuidToBuffer(uuid) },
-      include: { services: true },
+      include: { service: true }
     });
 
     if (!proposal) {
-      return res.status(404).json({ message: "Proposta não encontrada" });
+      return res.status(404).json({ message: 'Proposta não encontrada' });
     }
 
-    if (proposal.status !== "pending") {
-      return res
-        .status(400)
-        .json({ message: "Apenas propostas pendentes podem ser alteradas" });
+    if (proposal.status !== 'pending') {
+      return res.status(400).json({ message: 'Apenas propostas pendentes podem ser alteradas' });
     }
 
-    const isClient = proposal.services.client_id === userId;
-    const isProfessional = proposal.professional_id === userId;
-
-    // Cliente pode aceitar ou rejeitar
-    if (isClient && !["accepted", "rejected"].includes(status)) {
-      return res
-        .status(400)
-        .json({ message: "Cliente pode apenas aceitar ou rejeitar propostas" });
-    }
-
-    // Profissional pode apenas retirar
-    if (isProfessional && status !== "withdrawn") {
-      return res.status(400).json({
-        message: "Profissional pode apenas retirar a própria proposta",
-      });
-    }
+    const isClient = proposal.service.clientId === userId;
+    const isProfessional = proposal.professionalId === userId;
 
     if (!isClient && !isProfessional) {
-      return res.status(403).json({ message: "Acesso negado" });
+      return res.status(403).json({ message: 'Acesso negado' });
+    }
+
+    if (isClient && !['accepted', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Cliente pode apenas aceitar ou rejeitar propostas' });
+    }
+
+    if (isProfessional && status !== 'withdrawn') {
+      return res.status(400).json({ message: 'Profissional pode apenas retirar a própria proposta' });
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const updatedProposal = await tx.proposals.update({
+      const updatedProposal = await tx.proposal.update({
         where: { id: proposal.id },
-        data: { status },
+        data: { status }
       });
 
-      // Ao aceitar, muda o serviço para in_progress e rejeita as demais propostas
-      if (status === "accepted") {
-        await tx.services.update({
-          where: { id: proposal.service_id },
-          data: { status: "in_progress" },
+      if (status === 'accepted') {
+        await tx.service.update({
+          where: { id: proposal.serviceId },
+          data: { status: 'in_progress' }
         });
 
-        await tx.proposals.updateMany({
+        await tx.proposal.updateMany({
           where: {
-            service_id: proposal.service_id,
+            serviceId: proposal.serviceId,
             id: { not: proposal.id },
-            status: "pending",
+            status: 'pending'
           },
-          data: { status: "rejected" },
+          data: { status: 'rejected' }
         });
       }
 
@@ -232,6 +213,7 @@ export const updateProposalStatus = async (req, res) => {
 
     res.json({ status: updated.status });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

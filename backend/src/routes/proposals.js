@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import {
-  createProposal, listProposals,
-  getProposal, updateProposalStatus
+  createProposal,
+  listProposals,
+  getProposal,
+  updateProposalStatus
 } from '../controllers/proposalController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import roleMiddleware from '../middleware/roleMiddleware.js';
@@ -10,9 +12,9 @@ import { createProposalSchema, updateProposalStatusSchema } from '../validators/
 
 const router = Router();
 
-router.post('/services/:uuid/proposals', authMiddleware, roleMiddleware('professional'), validate(createProposalSchema), createProposal);
-router.get('/services/:uuid/proposals', authMiddleware, roleMiddleware('client'), listProposals);
-router.get('/proposals/:uuid', authMiddleware, getProposal);
-router.patch('/proposals/:uuid/status', authMiddleware, validate(updateProposalStatusSchema), updateProposalStatus);
+router.post('/:uuid/proposals', authMiddleware, roleMiddleware('professional'), validate(createProposalSchema), createProposal);
+router.get('/:uuid/proposals', authMiddleware, roleMiddleware('client'), listProposals);
+router.get('/:uuid', authMiddleware, getProposal);
+router.patch('/:uuid/status', authMiddleware, validate(updateProposalStatusSchema), updateProposalStatus);
 
 export default router;

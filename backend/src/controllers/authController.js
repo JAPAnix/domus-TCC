@@ -1,41 +1,42 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { prisma } from "../config/prisma.js";
-import { generateUuid, bufferToUuid } from "../utils/uuid.js";
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../config/prisma.js';
+import { generateUuid, bufferToUuid } from '../utils/uuid.js';
 
 export const register = async (req, res) => {
   const { first_name, last_name, email, password, phone_number } = req.body;
 
   try {
-    const userExists = await prisma.users.findUnique({
-      where: { email },
+    const userExists = await prisma.user.findUnique({
+      where: { email }
     });
 
     if (userExists) {
-      return res.status(409).json({ message: "E-mail já cadastrado" });
+      return res.status(409).json({ message: 'E-mail já cadastrado' });
     }
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await prisma.users.create({
+    const user = await prisma.user.create({
       data: {
         uuid: generateUuid(),
-        first_name,
-        last_name,
+        firstName: first_name,
+        lastName: last_name,
         email,
-        password_hash,
-        phone_number,
-      },
+        passwordHash,
+        phoneNumber: phone_number
+      }
     });
 
     res.status(201).json({
       uuid: bufferToUuid(user.uuid),
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email
     });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
@@ -43,86 +44,88 @@ export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await prisma.users.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email },
       include: {
-        user_roles: {
+        roles: {
           include: {
-            roles: true,
-          },
-        },
-      },
+            role: true
+          }
+        }
+      }
     });
 
-    if (!user || !user.password_hash) {
-      return res.status(401).json({ message: "Credenciais inválidas" });
+    if (!user || !user.passwordHash) {
+      return res.status(401).json({ message: 'Credenciais inválidas' });
     }
 
-    if (user.deleted_at) {
-      return res.status(401).json({ message: "Credenciais inválidas" });
+    if (user.deletedAt) {
+      return res.status(401).json({ message: 'Credenciais inválidas' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return res.status(401).json({ message: "Credenciais inválidas" });
+      return res.status(401).json({ message: 'Credenciais inválidas' });
     }
 
-    const roles = user.user_roles.map((ur) => ur.roles.name);
+    const roles = user.roles.map(ur => ur.role.name);
 
     const token = jwt.sign(
       {
-        id: user.id,
+        id: user.id.toString(),
         uuid: bufferToUuid(user.uuid),
         email: user.email,
-        roles,
+        roles
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" },
+      { expiresIn: '1d' }
     );
 
     res.json({
       token,
       user: {
         uuid: bufferToUuid(user.uuid),
-        first_name: user.first_name,
-        last_name: user.last_name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
-        roles,
-      },
+        roles
+      }
     });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const me = async (req, res) => {
   try {
-    const user = await prisma.users.findUnique({
-      where: { id: req.user.id },
+    const user = await prisma.user.findUnique({
+      where: { id: BigInt(req.user.id) },
       include: {
-        user_roles: {
-          include: { roles: true },
+        roles: {
+          include: { role: true }
         },
-        professional_profiles: true,
-      },
+        professionalProfile: true
+      }
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
     res.json({
       uuid: bufferToUuid(user.uuid),
-      first_name: user.first_name,
-      last_name: user.last_name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
-      phone_number: user.phone_number,
-      profile_picture_url: user.profile_picture_url,
-      is_email_verified: user.is_email_verified,
-      roles: user.user_roles.map((ur) => ur.roles.name),
-      has_professional_profile: !!user.professional_profiles,
+      phoneNumber: user.phoneNumber,
+      profilePictureUrl: user.profilePictureUrl,
+      isEmailVerified: user.isEmailVerified,
+      roles: user.roles.map(ur => ur.role.name),
+      hasProfessionalProfile: !!user.professionalProfile
     });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

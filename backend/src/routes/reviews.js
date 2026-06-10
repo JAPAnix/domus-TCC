@@ -6,10 +6,12 @@ import {
 } from '../controllers/reviewController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 
-const router = Router();
+const userReviewRouter = Router();
+const serviceReviewRouter = Router();
 
-router.post('/services/:uuid/reviews', authMiddleware, createReview);
-router.get('/users/:uuid/reviews', listReviewsByUser);
-router.get('/services/:uuid/reviews', listReviewsByService);
+userReviewRouter.get('/:uuid/reviews', listReviewsByUser);
 
-export default router;
+serviceReviewRouter.post('/:uuid/reviews', authMiddleware, createReview);
+serviceReviewRouter.get('/:uuid/reviews', listReviewsByService);
+
+export { userReviewRouter, serviceReviewRouter };

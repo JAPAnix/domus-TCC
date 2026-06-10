@@ -1,112 +1,112 @@
-import { prisma } from "../config/prisma.js";
-import { uuidToBuffer, bufferToUuid } from "../utils/uuid.js";
+import { prisma } from '../config/prisma.js';
+import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 
 export const getUser = async (req, res) => {
   const { uuid } = req.params;
 
   try {
-    const user = await prisma.users.findFirst({
-      where: { uuid: uuidToBuffer(uuid), deleted_at: null },
+    const user = await prisma.user.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null },
       select: {
         uuid: true,
-        first_name: true,
-        last_name: true,
-        profile_picture_url: true,
-        created_at: true,
-        professional_profiles: {
+        firstName: true,
+        lastName: true,
+        profilePictureUrl: true,
+        createdAt: true,
+        professionalProfile: {
           select: {
             headline: true,
-            average_rating: true,
-            total_reviews: true,
-            availability_status: true,
-            is_verified: true,
-          },
-        },
-      },
+            averageRating: true,
+            totalReviews: true,
+            availabilityStatus: true,
+            isVerified: true
+          }
+        }
+      }
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    res.json({
-      ...user,
-      uuid: bufferToUuid(user.uuid),
-    });
+    res.json({ ...user, uuid: bufferToUuid(user.uuid) });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const updateUser = async (req, res) => {
   const { uuid } = req.params;
   const { first_name, last_name, phone_number, profile_picture_url } = req.body;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const user = await prisma.users.findFirst({
-      where: { uuid: uuidToBuffer(uuid), deleted_at: null },
+    const user = await prisma.user.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
     if (user.id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    const updated = await prisma.users.update({
+    const updated = await prisma.user.update({
       where: { id: userId },
-      data: { first_name, last_name, phone_number, profile_picture_url },
+      data: {
+        firstName: first_name,
+        lastName: last_name,
+        phoneNumber: phone_number,
+        profilePictureUrl: profile_picture_url
+      },
       select: {
         uuid: true,
-        first_name: true,
-        last_name: true,
+        firstName: true,
+        lastName: true,
         email: true,
-        phone_number: true,
-        profile_picture_url: true,
-      },
+        phoneNumber: true,
+        profilePictureUrl: true
+      }
     });
 
-    res.json({
-      ...updated,
-      uuid: bufferToUuid(updated.uuid),
-    });
+    res.json({ ...updated, uuid: bufferToUuid(updated.uuid) });
   } catch (err) {
-    if (err.code === "P2002") {
-      return res
-        .status(409)
-        .json({ message: "Número de telefone já cadastrado" });
+    console.error(err);
+    if (err.code === 'P2002') {
+      return res.status(409).json({ message: 'Número de telefone já cadastrado' });
     }
-    res.status(500).json({ message: "Erro interno do servidor" });
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const deleteUser = async (req, res) => {
   const { uuid } = req.params;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const user = await prisma.users.findFirst({
-      where: { uuid: uuidToBuffer(uuid), deleted_at: null },
+    const user = await prisma.user.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
     if (user.id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    await prisma.users.update({
+    await prisma.user.update({
       where: { id: userId },
-      data: { deleted_at: new Date() },
+      data: { deletedAt: new Date() }
     });
 
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

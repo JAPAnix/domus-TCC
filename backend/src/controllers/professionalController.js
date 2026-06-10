@@ -1,65 +1,65 @@
-import { prisma } from "../config/prisma.js";
-import { uuidToBuffer, bufferToUuid, generateUuid } from "../utils/uuid.js";
+import { prisma } from '../config/prisma.js';
+import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 
 export const createProfile = async (req, res) => {
   const { headline, bio, hourly_rate, skills } = req.body;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    // Verifica se já existe perfil profissional
-    const existing = await prisma.professional_profiles.findUnique({
-      where: { user_id: userId },
+    const existing = await prisma.professionalProfile.findUnique({
+      where: { userId }
     });
 
     if (existing) {
-      return res.status(409).json({ message: "Perfil profissional já existe" });
+      return res.status(409).json({ message: 'Perfil profissional já existe' });
     }
 
-    const profile = await prisma.professional_profiles.create({
+    const profile = await prisma.professionalProfile.create({
       data: {
-        user_id: userId,
+        userId,
         headline,
         bio,
-        hourly_rate,
-        // Cria as skills do perfil se fornecidas
-        profile_skills: skills?.length
+        hourlyRate: hourly_rate,
+        skills: skills?.length
           ? {
-              create: skills.map((skillId) => ({
-                skill_id: skillId,
-                proficiency_level: "intermediate",
-              })),
+              create: skills.map(s => ({
+                skillId: s.skill_id,
+                proficiencyLevel: s.proficiency_level ?? 'intermediate'
+              }))
             }
-          : undefined,
+          : undefined
       },
       include: {
-        profile_skills: {
-          include: { skill: true },
-        },
-      },
+        skills: {
+          include: { skill: true }
+        }
+      }
     });
 
-    // Adiciona role 'professional' ao usuário
-    const professionalRole = await prisma.roles.findUnique({
-      where: { name: "professional" },
+    const professionalRole = await prisma.role.findUnique({
+      where: { name: 'professional' }
     });
 
-    await prisma.user_roles.upsert({
-      where: {
-        user_id_role_id: {
-          user_id: userId,
-          role_id: professionalRole.id,
+    if (professionalRole) {
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId,
+            roleId: professionalRole.id
+          }
         },
-      },
-      update: {},
-      create: {
-        user_id: userId,
-        role_id: professionalRole.id,
-      },
-    });
+        update: {},
+        create: {
+          userId,
+          roleId: professionalRole.id
+        }
+      });
+    }
 
     res.status(201).json(profile);
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
@@ -67,114 +67,106 @@ export const getProfile = async (req, res) => {
   const { uuid } = req.params;
 
   try {
-    const user = await prisma.users.findUnique({
-      where: { uuid: uuidToBuffer(uuid) },
+    const user = await prisma.user.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null },
       select: {
         uuid: true,
-        first_name: true,
-        last_name: true,
-        profile_picture_url: true,
-        professional_profiles: {
+        firstName: true,
+        lastName: true,
+        profilePictureUrl: true,
+        professionalProfile: {
           include: {
-            profile_skills: {
-              include: { skill: true },
-            },
-          },
-        },
-      },
+            skills: {
+              include: { skill: true }
+            }
+          }
+        }
+      }
     });
 
-    if (!user || !user.professional_profiles) {
-      return res
-        .status(404)
-        .json({ message: "Perfil profissional não encontrado" });
+    if (!user || !user.professionalProfile) {
+      return res.status(404).json({ message: 'Perfil profissional não encontrado' });
     }
 
     res.json({
       uuid: bufferToUuid(user.uuid),
-      first_name: user.first_name,
-      last_name: user.last_name,
-      profile_picture_url: user.profile_picture_url,
-      ...user.professional_profiles,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      profilePictureUrl: user.profilePictureUrl,
+      ...user.professionalProfile
     });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const updateProfile = async (req, res) => {
   const { uuid } = req.params;
   const { headline, bio, hourly_rate, skills } = req.body;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const user = await prisma.users.findUnique({
-      where: { uuid: uuidToBuffer(uuid) },
+    const user = await prisma.user.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
     });
 
     if (!user || user.id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    const profile = await prisma.professional_profiles.update({
-      where: { user_id: userId },
+    const profile = await prisma.professionalProfile.update({
+      where: { userId },
       data: {
         headline,
         bio,
-        hourly_rate,
-        // Substitui todas as skills se fornecidas
+        hourlyRate: hourly_rate,
         ...(skills && {
-          profile_skills: {
+          skills: {
             deleteMany: {},
-            create: skills.map(({ skill_id, proficiency_level }) => ({
-              skill_id,
-              proficiency_level,
-            })),
-          },
-        }),
+            create: skills.map(s => ({
+              skillId: s.skill_id,
+              proficiencyLevel: s.proficiency_level ?? 'intermediate'
+            }))
+          }
+        })
       },
       include: {
-        profile_skills: {
-          include: { skill: true },
-        },
-      },
+        skills: {
+          include: { skill: true }
+        }
+      }
     });
 
     res.json(profile);
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const updateAvailability = async (req, res) => {
   const { uuid } = req.params;
   const { availability_status } = req.body;
-  const userId = req.user.id;
-
-  const validStatuses = ["available", "busy", "offline"];
+  const userId = BigInt(req.user.id);
 
   try {
-    if (!validStatuses.includes(availability_status)) {
-      return res.status(400).json({
-        message: `Status inválido. Use: ${validStatuses.join(", ")}`,
-      });
-    }
-
-    const user = await prisma.users.findUnique({
-      where: { uuid: uuidToBuffer(uuid) },
+    const user = await prisma.user.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
     });
 
     if (!user || user.id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    const profile = await prisma.professional_profiles.update({
-      where: { user_id: userId },
-      data: { availability_status },
+    const profile = await prisma.professionalProfile.update({
+      where: { userId },
+      data: { availabilityStatus: availability_status }
     });
 
-    res.json({ availability_status: profile.availability_status });
+    res.json({ availabilityStatus: profile.availabilityStatus });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

@@ -1,87 +1,76 @@
-import { prisma } from "../config/prisma.js";
-import { uuidToBuffer, bufferToUuid, generateUuid } from "../utils/uuid.js";
+import { prisma } from '../config/prisma.js';
+import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 
-// Ciclo de vida válido por status atual
 const STATUS_TRANSITIONS = {
-  draft: ["open", "cancelled"],
-  open: ["in_progress", "cancelled"],
-  in_progress: ["completed", "cancelled"],
-  completed: [],
-  cancelled: [],
+  draft:       ['open', 'cancelled'],
+  open:        ['in_progress', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed:   [],
+  cancelled:   []
 };
 
 export const createService = async (req, res) => {
-  const { title, description, category_id, budget_min, budget_max, deadline } =
-    req.body;
-  const userId = req.user.id;
+  const { title, description, category_id, budget_min, budget_max, deadline } = req.body;
+  const userId = BigInt(req.user.id);
 
   try {
-    const service = await prisma.services.create({
+    const service = await prisma.service.create({
       data: {
-        uuid: uuidToBuffer(crypto.randomUUID()),
-        client_id: userId,
-        category_id,
+        uuid: generateUuid(),
+        clientId: userId,
+        categoryId: category_id,
         title,
         description,
-        budget_min,
-        budget_max,
+        budgetMin: budget_min,
+        budgetMax: budget_max,
         deadline,
-        status: "draft",
+        status: 'draft'
       },
-      include: {
-        categories: true,
-      },
+      include: { category: true }
     });
 
-    res.status(201).json({
-      ...service,
-      uuid: bufferToUuid(service.uuid),
-    });
+    res.status(201).json({ ...service, uuid: bufferToUuid(service.uuid) });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const listServices = async (req, res) => {
-  const {
-    category_id,
-    budget_min,
-    budget_max,
-    page = 1,
-    limit = 20,
-  } = req.query;
+  const { category_id, budget_min, budget_max, page = 1, limit = 20 } = req.query;
 
   try {
     const where = {
-      status: "open",
-      deleted_at: null,
-      ...(category_id && { category_id: Number(category_id) }),
-      ...(budget_min && { budget_max: { gte: Number(budget_min) } }),
-      ...(budget_max && { budget_min: { lte: Number(budget_max) } }),
+      status: 'open',
+      deletedAt: null,
+      ...(category_id && { categoryId: Number(category_id) }),
+      ...(budget_min && { budgetMax: { gte: Number(budget_min) } }),
+      ...(budget_max && { budgetMin: { lte: Number(budget_max) } })
     };
 
     const [services, total] = await prisma.$transaction([
-      prisma.services.findMany({
+      prisma.service.findMany({
         where,
-        include: { categories: true },
-        orderBy: { created_at: "desc" },
+        include: { category: true },
+        orderBy: { createdAt: 'desc' },
         skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
+        take: Number(limit)
       }),
-      prisma.services.count({ where }),
+      prisma.service.count({ where })
     ]);
 
     res.json({
-      data: services.map((s) => ({ ...s, uuid: bufferToUuid(s.uuid) })),
+      data: services.map(s => ({ ...s, uuid: bufferToUuid(s.uuid) })),
       meta: {
         total,
         page: Number(page),
         limit: Number(limit),
-        pages: Math.ceil(total / Number(limit)),
-      },
+        pages: Math.ceil(total / Number(limit))
+      }
     });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
@@ -89,151 +78,147 @@ export const getService = async (req, res) => {
   const { uuid } = req.params;
 
   try {
-    const service = await prisma.services.findFirst({
-      where: {
-        uuid: uuidToBuffer(uuid),
-        deleted_at: null,
-      },
+    const service = await prisma.service.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null },
       include: {
-        categories: true,
-        users: {
+        category: true,
+        client: {
           select: {
             uuid: true,
-            first_name: true,
-            last_name: true,
-            profile_picture_url: true,
-          },
-        },
-      },
+            firstName: true,
+            lastName: true,
+            profilePictureUrl: true
+          }
+        }
+      }
     });
 
     if (!service) {
-      return res.status(404).json({ message: "Serviço não encontrado" });
+      return res.status(404).json({ message: 'Serviço não encontrado' });
     }
 
     res.json({
       ...service,
       uuid: bufferToUuid(service.uuid),
-      users: {
-        ...service.users,
-        uuid: bufferToUuid(service.users.uuid),
-      },
+      client: {
+        ...service.client,
+        uuid: bufferToUuid(service.client.uuid)
+      }
     });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const updateService = async (req, res) => {
   const { uuid } = req.params;
-  const { title, description, category_id, budget_min, budget_max, deadline } =
-    req.body;
-  const userId = req.user.id;
+  const { title, description, category_id, budget_min, budget_max, deadline } = req.body;
+  const userId = BigInt(req.user.id);
 
   try {
-    const service = await prisma.services.findFirst({
-      where: { uuid: uuidToBuffer(uuid), deleted_at: null },
+    const service = await prisma.service.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
     });
 
     if (!service) {
-      return res.status(404).json({ message: "Serviço não encontrado" });
+      return res.status(404).json({ message: 'Serviço não encontrado' });
     }
 
-    if (service.client_id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+    if (service.clientId !== userId) {
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    if (service.status !== "draft") {
-      return res
-        .status(400)
-        .json({ message: "Apenas serviços em rascunho podem ser editados" });
+    if (service.status !== 'draft') {
+      return res.status(400).json({ message: 'Apenas serviços em rascunho podem ser editados' });
     }
 
-    const updated = await prisma.services.update({
+    const updated = await prisma.service.update({
       where: { id: service.id },
       data: {
         title,
         description,
-        category_id,
-        budget_min,
-        budget_max,
-        deadline,
+        categoryId: category_id,
+        budgetMin: budget_min,
+        budgetMax: budget_max,
+        deadline
       },
-      include: { categories: true },
+      include: { category: true }
     });
 
     res.json({ ...updated, uuid: bufferToUuid(updated.uuid) });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const updateStatus = async (req, res) => {
   const { uuid } = req.params;
   const { status } = req.body;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const service = await prisma.services.findFirst({
-      where: { uuid: uuidToBuffer(uuid), deleted_at: null },
+    const service = await prisma.service.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
     });
 
     if (!service) {
-      return res.status(404).json({ message: "Serviço não encontrado" });
+      return res.status(404).json({ message: 'Serviço não encontrado' });
     }
 
-    if (service.client_id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+    if (service.clientId !== userId) {
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
     const allowed = STATUS_TRANSITIONS[service.status];
     if (!allowed.includes(status)) {
       return res.status(400).json({
-        message: `Transição inválida: ${service.status} → ${status}. Permitido: ${allowed.join(", ") || "nenhuma"}`,
+        message: `Transição inválida: ${service.status} → ${status}. Permitido: ${allowed.join(', ') || 'nenhuma'}`
       });
     }
 
-    const updated = await prisma.services.update({
+    const updated = await prisma.service.update({
       where: { id: service.id },
-      data: { status },
+      data: { status }
     });
 
     res.json({ status: updated.status });
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const deleteService = async (req, res) => {
   const { uuid } = req.params;
-  const userId = req.user.id;
+  const userId = BigInt(req.user.id);
 
   try {
-    const service = await prisma.services.findFirst({
-      where: { uuid: uuidToBuffer(uuid), deleted_at: null },
+    const service = await prisma.service.findFirst({
+      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
     });
 
     if (!service) {
-      return res.status(404).json({ message: "Serviço não encontrado" });
+      return res.status(404).json({ message: 'Serviço não encontrado' });
     }
 
-    if (service.client_id !== userId) {
-      return res.status(403).json({ message: "Acesso negado" });
+    if (service.clientId !== userId) {
+      return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    if (service.status === "in_progress") {
-      return res
-        .status(400)
-        .json({ message: "Não é possível deletar um serviço em andamento" });
+    if (service.status === 'in_progress') {
+      return res.status(400).json({ message: 'Não é possível deletar um serviço em andamento' });
     }
 
-    await prisma.services.update({
+    await prisma.service.update({
       where: { id: service.id },
-      data: { deleted_at: new Date() },
+      data: { deletedAt: new Date() }
     });
 
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ message: "Erro interno do servidor" });
+    console.error(err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

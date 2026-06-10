@@ -5,7 +5,7 @@ export const uuidToBuffer = (uuid) => {
 };
 
 export const bufferToUuid = (buffer) => {
-  const hex = buffer.toString('hex');
+  const hex = Buffer.from(buffer).toString('hex');
   return [
     hex.slice(0, 8),
     hex.slice(8, 12),
@@ -14,6 +14,7 @@ export const bufferToUuid = (buffer) => {
     hex.slice(20)
   ].join('-');
 };
+
 
 export const generateUuid = () => {
   return uuidToBuffer(randomUUID());

@@ -13,9 +13,9 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/professionals', professionalRoutes);
+router.use('/proposals', proposalRoutes);
 router.use('/services', serviceRoutes);
 router.use('/services', proposalRoutes);
-router.use('/proposals', proposalRoutes);
 router.use('/services', serviceReviewRouter);
 router.use('/users', userReviewRouter);
 

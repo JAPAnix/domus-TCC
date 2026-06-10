@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
+import { logger } from '../utils/logger.js';
 
 export const createProposal = async (req, res) => {
   const { uuid: serviceUuid } = req.params;
@@ -37,7 +38,7 @@ export const createProposal = async (req, res) => {
 
     res.status(201).json({ ...proposal, uuid: bufferToUuid(proposal.uuid) });
   } catch (err) {
-    console.error(err);
+    logger.error('createProposal', err);
     if (err.code === 'P2002') {
       return res.status(409).json({ message: 'Você já enviou uma proposta para esse serviço' });
     }
@@ -95,7 +96,7 @@ export const listProposals = async (req, res) => {
       }))
     );
   } catch (err) {
-    console.error(err);
+    logger.error('listProposals', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -147,7 +148,7 @@ export const getProposal = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    logger.error('getProposal', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -156,6 +157,8 @@ export const updateProposalStatus = async (req, res) => {
   const { uuid } = req.params;
   const { status } = req.body;
   const userId = BigInt(req.user.id);
+
+
 
   try {
     const proposal = await prisma.proposal.findFirst({
@@ -213,7 +216,7 @@ export const updateProposalStatus = async (req, res) => {
 
     res.json({ status: updated.status });
   } catch (err) {
-    console.error(err);
+    logger.error('updateProposalStatus', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

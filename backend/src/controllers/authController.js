@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { logger } from '../utils/logger.js';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
 import { generateUuid, bufferToUuid } from '../utils/uuid.js';
@@ -35,7 +36,7 @@ export const register = async (req, res) => {
       email: user.email
     });
   } catch (err) {
-    console.error(err);
+    logger.error('register', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -92,7 +93,7 @@ export const login = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    logger.error('login', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -125,7 +126,7 @@ export const me = async (req, res) => {
       hasProfessionalProfile: !!user.professionalProfile
     });
   } catch (err) {
-    console.error(err);
+    logger.error('me', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

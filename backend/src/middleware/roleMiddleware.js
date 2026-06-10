@@ -32,7 +32,7 @@ const roleMiddleware = (...allowedRoles) => {
       req.roles = userRoles;
       next();
     } catch (err) {
-      console.error(err);
+      logger.error('roleMiddleware', err);
       res.status(500).json({ message: 'Erro interno do servidor' });
     }
   };

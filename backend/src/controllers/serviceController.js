@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
+import { logger } from '../utils/logger.js';
 
 const STATUS_TRANSITIONS = {
   draft:       ['open', 'cancelled'],
@@ -31,7 +32,7 @@ export const createService = async (req, res) => {
 
     res.status(201).json({ ...service, uuid: bufferToUuid(service.uuid) });
   } catch (err) {
-    console.error(err);
+    logger.error('nome_da_função', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -69,14 +70,15 @@ export const listServices = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    logger.error('nome_da_função', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const getService = async (req, res) => {
   const { uuid } = req.params;
-
+  console.log('uuid recebido:', uuid);
+  console.log('buffer:', uuidToBuffer(uuid));
   try {
     const service = await prisma.service.findFirst({
       where: { uuid: uuidToBuffer(uuid), deletedAt: null },
@@ -92,7 +94,7 @@ export const getService = async (req, res) => {
         }
       }
     });
-
+    console.log('service:', service);
     if (!service) {
       return res.status(404).json({ message: 'Serviço não encontrado' });
     }
@@ -106,7 +108,7 @@ export const getService = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    logger.error('nome_da_função', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -148,7 +150,7 @@ export const updateService = async (req, res) => {
 
     res.json({ ...updated, uuid: bufferToUuid(updated.uuid) });
   } catch (err) {
-    console.error(err);
+    logger.error('nome_da_função', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -185,7 +187,7 @@ export const updateStatus = async (req, res) => {
 
     res.json({ status: updated.status });
   } catch (err) {
-    console.error(err);
+    logger.error('nome_da_função', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -218,7 +220,7 @@ export const deleteService = async (req, res) => {
 
     res.status(204).send();
   } catch (err) {
-    console.error(err);
+    logger.error('nome_da_função', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

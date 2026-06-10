@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
+import { logger } from '../utils/logger.js';
 
 export const getUser = async (req, res) => {
   const { uuid } = req.params;
@@ -31,7 +32,7 @@ export const getUser = async (req, res) => {
 
     res.json({ ...user, uuid: bufferToUuid(user.uuid) });
   } catch (err) {
-    console.error(err);
+    logger.error('getUser', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -74,7 +75,7 @@ export const updateUser = async (req, res) => {
 
     res.json({ ...updated, uuid: bufferToUuid(updated.uuid) });
   } catch (err) {
-    console.error(err);
+    logger.error('updateUser', err);
     if (err.code === 'P2002') {
       return res.status(409).json({ message: 'Número de telefone já cadastrado' });
     }
@@ -106,7 +107,7 @@ export const deleteUser = async (req, res) => {
 
     res.status(204).send();
   } catch (err) {
-    console.error(err);
+    logger.error('deleteUser', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

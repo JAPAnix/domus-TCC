@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
+import { logger } from '../utils/logger.js';
 
 export const createReview = async (req, res) => {
   const { uuid: serviceUuid } = req.params;
@@ -87,7 +88,7 @@ export const createReview = async (req, res) => {
 
     res.status(201).json(review);
   } catch (err) {
-    console.error(err);
+    logger.error('createReview', err);
     if (err.code === 'P2002') {
       return res.status(409).json({ message: 'Você já avaliou esse usuário nesse serviço' });
     }
@@ -146,7 +147,7 @@ export const listReviewsByUser = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    logger.error('listReviewsByUser', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -194,7 +195,7 @@ export const listReviewsByService = async (req, res) => {
       }))
     );
   } catch (err) {
-    console.error(err);
+    logger.error('listReviewsByService', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

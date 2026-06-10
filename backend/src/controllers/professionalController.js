@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
+import { logger } from '../utils/logger.js';
 
 export const createProfile = async (req, res) => {
   const { headline, bio, hourly_rate, skills } = req.body;
@@ -58,7 +59,7 @@ export const createProfile = async (req, res) => {
 
     res.status(201).json(profile);
   } catch (err) {
-    console.error(err);
+    logger.error('createProfile', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -96,7 +97,7 @@ export const getProfile = async (req, res) => {
       ...user.professionalProfile
     });
   } catch (err) {
-    console.error(err);
+    logger.error('getProfile', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -140,7 +141,7 @@ export const updateProfile = async (req, res) => {
 
     res.json(profile);
   } catch (err) {
-    console.error(err);
+    logger.error('updateProfile', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -166,7 +167,7 @@ export const updateAvailability = async (req, res) => {
 
     res.json({ availabilityStatus: profile.availabilityStatus });
   } catch (err) {
-    console.error(err);
+    logger.error('updateAvailability', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

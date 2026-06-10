@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma.js';
+import { logger } from '../utils/logger.js';
 
 export const listCategories = async (req, res) => {
   try {
@@ -10,7 +11,7 @@ export const listCategories = async (req, res) => {
 
     res.json(categories);
   } catch (err) {
-    console.error(err);
+    logger.error('listCategories', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

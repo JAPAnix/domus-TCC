@@ -5,6 +5,7 @@ import professionalRoutes from './professionals.js';
 import serviceRoutes from './services.js';
 import proposalRoutes from './proposals.js';
 import categoryRoutes from './categories.js';
+import skillRoutes from './skills.js';
 import { userReviewRouter, serviceReviewRouter } from './reviews.js';
 
 const router = Router();
@@ -12,6 +13,7 @@ const router = Router();
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/categories', categoryRoutes);
+router.use('/skills', skillRoutes);
 router.use('/professionals', professionalRoutes);
 router.use('/proposals', proposalRoutes);
 router.use('/services', serviceRoutes);

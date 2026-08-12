@@ -39,7 +39,7 @@ export const getUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { uuid } = req.params;
-  const { first_name, last_name, phone_number, profile_picture_url } = req.body;
+  const { first_name, last_name, phone_number, profile_picture_url, zip_code, street, number, complement, neighborhood, city, state } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -56,22 +56,36 @@ export const updateUser = async (req, res) => {
     }
 
     const updated = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        firstName: first_name,
-        lastName: last_name,
-        phoneNumber: phone_number,
-        profilePictureUrl: profile_picture_url
-      },
-      select: {
-        uuid: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phoneNumber: true,
-        profilePictureUrl: true
-      }
-    });
+  where: { id: userId },
+  data: {
+    firstName: first_name,
+    lastName: last_name,
+    phoneNumber: phone_number,
+    profilePictureUrl: profile_picture_url,
+    zipCode: zip_code,
+    street,
+    number,
+    complement,
+    neighborhood,
+    city,
+    state
+  },
+  select: {
+    uuid: true,
+    firstName: true,
+    lastName: true,
+    email: true,
+    phoneNumber: true,
+    profilePictureUrl: true,
+    zipCode: true,
+    street: true,
+    number: true,
+    complement: true,
+    neighborhood: true,
+    city: true,
+    state: true
+  }
+});
 
     res.json({ ...updated, uuid: bufferToUuid(updated.uuid) });
   } catch (err) {

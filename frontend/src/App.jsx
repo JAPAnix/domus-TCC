@@ -14,6 +14,7 @@ import SendProposal from './pages/SendProposal';
 import CreateReview from './pages/CreateReview';
 import ProfessionalProfile from './pages/ProfessionalProfile';
 import Navbar from './components/Navbar';
+import Onboarding from './pages/OnBoarding';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="/profissionais/:uuid" element={<ProfessionalProfile />} />
 
           {/* Autenticadas */}
+          <Route path="/bem-vindo" element={<Onboarding />} />
           <Route path="/perfil" element={<Profile />} />
           <Route path="/perfil/profissional" element={<CreateProfessionalProfile />} />
           <Route path="/servicos/novo" element={<CreateService />} />

@@ -71,6 +71,15 @@ model User {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
 
+  // Endereço
+  zipCode     String?   @map("zip_code") @db.VarChar(9)
+  street      String?   @map("street") @db.VarChar(255)
+  number      String?   @map("number") @db.VarChar(20)
+  complement  String?   @map("complement") @db.VarChar(100)
+  neighborhood String?  @map("neighborhood") @db.VarChar(100)
+  city        String?   @map("city") @db.VarChar(100)
+  state       String?   @map("state") @db.VarChar(2)
+
   // Relations
   roles               UserRole[]
   professionalProfile ProfessionalProfile?

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     first_name: '',
@@ -24,8 +26,17 @@ const Register = () => {
     setLoading(true);
 
     try {
+      // Cadastra o usuário
       await api.post('/auth/register', form);
-      navigate('/login');
+
+      // Faz login automático
+      const { data } = await api.post('/auth/login', {
+        email: form.email,
+        password: form.password
+      });
+
+      login(data.token, data.user);
+      navigate('/bem-vindo');
     } catch (err) {
       setError(err.response?.data?.message || 'Erro ao criar conta');
     } finally {
@@ -37,13 +48,11 @@ const Register = () => {
     <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
 
-        {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#7C3AED]">domus</h1>
           <p className="text-[#6B7280] mt-2">Conectamos talentos com oportunidades</p>
         </div>
 
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-8">
           <h2 className="text-xl font-semibold text-[#111827] mb-6">Criar conta</h2>
 
@@ -56,9 +65,7 @@ const Register = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[#111827] mb-1">
-                  Nome
-                </label>
+                <label className="block text-sm font-medium text-[#111827] mb-1">Nome</label>
                 <input
                   type="text"
                   name="first_name"
@@ -70,9 +77,7 @@ const Register = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#111827] mb-1">
-                  Sobrenome
-                </label>
+                <label className="block text-sm font-medium text-[#111827] mb-1">Sobrenome</label>
                 <input
                   type="text"
                   name="last_name"
@@ -86,9 +91,7 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                E-mail
-              </label>
+              <label className="block text-sm font-medium text-[#111827] mb-1">E-mail</label>
               <input
                 type="email"
                 name="email"
@@ -101,9 +104,7 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Senha
-              </label>
+              <label className="block text-sm font-medium text-[#111827] mb-1">Senha</label>
               <input
                 type="password"
                 name="password"

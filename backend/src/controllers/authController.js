@@ -115,16 +115,23 @@ export const me = async (req, res) => {
     }
 
     res.json({
-      uuid: bufferToUuid(user.uuid),
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      profilePictureUrl: user.profilePictureUrl,
-      isEmailVerified: user.isEmailVerified,
-      roles: user.roles.map(ur => ur.role.name),
-      hasProfessionalProfile: !!user.professionalProfile
-    });
+  uuid: bufferToUuid(user.uuid),
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  phoneNumber: user.phoneNumber,
+  profilePictureUrl: user.profilePictureUrl,
+  isEmailVerified: user.isEmailVerified,
+  roles: user.roles.map(ur => ur.role.name),
+  hasProfessionalProfile: !!user.professionalProfile,
+  zipCode: user.zipCode,
+  street: user.street,
+  number: user.number,
+  complement: user.complement,
+  neighborhood: user.neighborhood,
+  city: user.city,
+  state: user.state
+});
   } catch (err) {
     logger.error('me', err);
     res.status(500).json({ message: 'Erro interno do servidor' });

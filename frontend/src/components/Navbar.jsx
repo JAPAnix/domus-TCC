@@ -27,9 +27,9 @@ export default function Navbar() {
 
           {/* Desktop menu */}
           <div className="hidden sm:flex items-center gap-6">
-            <Link to="/" className="text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
+            <Link to="/servicos" className="text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
               Serviços
-            </Link>
+            </Link> 
 
             {isClient && (
               <>
@@ -89,7 +89,7 @@ export default function Navbar() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="sm:hidden border-t border-[#E5E7EB] py-4 space-y-3">
-            <Link to="/" onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">
+            <Link to="/servicos" onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">
               Serviços
             </Link>
 

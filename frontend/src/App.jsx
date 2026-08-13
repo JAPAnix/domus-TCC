@@ -15,6 +15,7 @@ import CreateReview from './pages/CreateReview';
 import ProfessionalProfile from './pages/ProfessionalProfile';
 import Navbar from './components/Navbar';
 import Onboarding from './pages/OnBoarding';
+import Landing from './pages/Landing';
 
 function App() {
   return (
@@ -23,7 +24,8 @@ function App() {
         <Navbar />
         <Routes>
           {/* Públicas */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/servicos" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Register />} />
           <Route path="/servicos/:uuid" element={<ServiceDetail />} />

@@ -6,6 +6,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSearchField, setActiveSearchField] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -13,66 +14,85 @@ export default function Navbar() {
   };
 
   const isClient = user?.roles?.includes('client');
-  const isProfessional = user?.roles?.includes('professional');
+
+  const handleSearch = () => {
+    navigate('/servicos');
+    setActiveSearchField(null);
+  };
+
+  const handleSearchFieldClick = (field) => {
+    setActiveSearchField(field);
+  };
+
+  const professionalPath = user ? '/perfil/profissional' : '/cadastro';
 
   return (
     <nav className="bg-white border-b border-[#E5E7EB] sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-4 min-h-20">
 
           {/* Logo */}
-          <Link to="/" className="text-xl font-bold text-[#7C3AED]">
-            domus
+          <Link to="/" className="text-xl font-bold tracking-tight text-[#7C3AED] flex-shrink-0">
+            domus<span className="text-[#111827]">.</span>
           </Link>
 
-          {/* Desktop menu */}
-          <div className="hidden sm:flex items-center gap-6">
-            <Link to="/servicos" className="text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
-              Serviços
-            </Link> 
+          {/* Search */}
+          <div className="hidden md:flex items-center flex-1 max-w-xl mx-auto">
+            <div className="flex items-center w-full h-14 rounded-full border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow bg-white">
+              <button type="button" onClick={() => handleSearchFieldClick('location')} aria-pressed={activeSearchField === 'location'} className={`flex-1 min-w-0 px-5 text-left rounded-l-full transition-colors ${activeSearchField === 'location' ? 'bg-[#F9FAFB]' : 'hover:bg-[#F9FAFB]'}`}>
+                <span className="block text-[11px] font-semibold text-[#111827]">Qualquer lugar</span>
+                <span className="block text-xs text-[#6B7280] mt-0.5 truncate">Onde você precisa?</span>
+              </button>
+              <span className="h-8 border-l border-[#E5E7EB]" aria-hidden="true" />
+              <button type="button" onClick={() => handleSearchFieldClick('date')} aria-pressed={activeSearchField === 'date'} className={`flex-1 min-w-0 px-5 text-left transition-colors ${activeSearchField === 'date' ? 'bg-[#F9FAFB]' : 'hover:bg-[#F9FAFB]'}`}>
+                <span className="block text-[11px] font-semibold text-[#111827]">Qualquer dia</span>
+                <span className="block text-xs text-[#6B7280] mt-0.5 truncate">Escolha uma data</span>
+              </button>
+              <span className="h-8 border-l border-[#E5E7EB]" aria-hidden="true" />
+              <button type="button" onClick={() => handleSearchFieldClick('service')} aria-pressed={activeSearchField === 'service'} className={`flex-1 min-w-0 px-5 text-left transition-colors ${activeSearchField === 'service' ? 'bg-[#F9FAFB]' : 'hover:bg-[#F9FAFB]'}`}>
+                <span className="block text-[11px] font-semibold text-[#111827]">Tipo de serviço</span>
+                <span className="block text-xs text-[#6B7280] mt-0.5 truncate">O que você procura?</span>
+              </button>
+              <button type="button" onClick={handleSearch} aria-label="Pesquisar serviços" className="flex-shrink-0 w-10 h-10 mr-2 rounded-full bg-[#7C3AED] text-white flex items-center justify-center hover:bg-[#6D28D9] transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
-            {isClient && (
-              <>
-                <Link to="/servicos/novo" className="text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
-                  Publicar serviço
-                </Link>
-                <Link to="/meus-servicos" className="text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
-                  Meus serviços
-                </Link>
-              </>
-            )}
-
+          {/* Desktop actions */}
+          <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+            <Link to={professionalPath} className="text-sm font-medium text-[#374151] hover:text-[#7C3AED] transition-colors whitespace-nowrap">
+              Ofereça seus serviços
+            </Link>
             {user ? (
-              <div className="flex items-center gap-3">
-                <Link to="/perfil" className="flex items-center gap-2 text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7C3AED] font-bold text-xs">
-                    {user.firstName?.[0]?.toUpperCase() ?? '?'}
-                  </div>
-                  {user.firstName}
+              <div className="flex items-center gap-2">
+                <Link to="/perfil" aria-label="Abrir perfil" className="w-9 h-9 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7C3AED] font-bold text-xs hover:ring-2 hover:ring-[#C4B5FD] transition-all">
+                  {user.firstName?.[0]?.toUpperCase() ?? '?'}
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm border border-[#E5E7EB] text-[#6B7280] hover:border-[#7C3AED] hover:text-[#7C3AED] rounded-lg px-3 py-1.5 transition-colors"
-                >
+                <button onClick={handleLogout} className="text-xs text-[#6B7280] hover:text-[#7C3AED] transition-colors" type="button">
                   Sair
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <Link to="/login" className="text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
-                  Entrar
-                </Link>
-                <Link to="/cadastro" className="text-sm bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg px-4 py-1.5 transition-colors">
-                  Cadastrar
-                </Link>
-              </div>
+              <Link to="/login" className="text-sm font-medium text-[#374151] hover:text-[#7C3AED] transition-colors whitespace-nowrap">
+                Entrar
+              </Link>
             )}
+            <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menu" aria-expanded={menuOpen} className="w-10 h-10 rounded-full border border-[#E5E7EB] flex items-center justify-center text-[#374151] hover:shadow-sm transition-shadow">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
           </div>
 
           {/* Mobile menu button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="sm:hidden p-2 rounded-lg text-[#6B7280] hover:bg-[#F9FAFB] transition-colors"
+            aria-label="Abrir menu"
+            aria-expanded={menuOpen}
+            className="md:hidden w-10 h-10 rounded-full border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-[#F9FAFB] transition-colors"
           >
             {menuOpen ? (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -86,11 +106,28 @@ export default function Navbar() {
           </button>
         </div>
 
+        <div className="md:hidden pb-3">
+          <div className="flex items-center h-11 rounded-full border border-[#E5E7EB] shadow-sm pl-4 pr-1 bg-white">
+            <button type="button" onClick={() => handleSearchFieldClick('service')} className="flex-1 min-w-0 text-left text-sm text-[#6B7280] truncate">
+              Qualquer lugar · Qualquer dia · Tipo de serviço
+            </button>
+            <button type="button" onClick={handleSearch} aria-label="Pesquisar serviços" className="w-9 h-9 rounded-full bg-[#7C3AED] text-white flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="sm:hidden border-t border-[#E5E7EB] py-4 space-y-3">
+          <div className="md:hidden border-t border-[#E5E7EB] py-4 space-y-3">
             <Link to="/servicos" onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">
               Serviços
+            </Link>
+
+            <Link to={professionalPath} onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">
+              Ofereça seus serviços
             </Link>
 
             {isClient && (

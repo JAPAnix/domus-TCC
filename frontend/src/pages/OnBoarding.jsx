@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import BrandLogo from '../components/BrandLogo';
 
 const steps = ['Contato', 'Endereço'];
 
@@ -99,7 +100,7 @@ const Onboarding = () => {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#7C3AED]">domus</h1>
+          <h1><BrandLogo className="mx-auto" /></h1>
           <p className="text-[#6B7280] mt-2">Olá, {user?.firstName}! Vamos completar seu cadastro.</p>
         </div>
 

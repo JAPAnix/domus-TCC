@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
-  const { user, login, token } = useAuth();
+  const { user, login, token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -17,8 +17,13 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const hasSession = Boolean(token && user);
 
   useEffect(() => {
+    if (authLoading || !hasSession) {
+      return;
+    }
+
     const fetchMe = async () => {
       try {
         const { data } = await api.get('/auth/me');
@@ -36,7 +41,7 @@ const Profile = () => {
     };
 
     fetchMe();
-  }, []);
+  }, [authLoading, hasSession]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -49,7 +54,14 @@ const Profile = () => {
     setSaving(true);
 
     try {
-      const { data } = await api.patch(`/users/${user.uuid}`, form);
+      const { profile_picture_url, ...profileFields } = form;
+      const profilePictureUrl = profile_picture_url.trim();
+      const payload = {
+        ...profileFields,
+        ...(profilePictureUrl ? { profile_picture_url: profilePictureUrl } : {})
+      };
+
+      const { data } = await api.patch(`/users/${user.uuid}`, payload);
       login(token, { ...user, ...data });
       setSuccess('Perfil atualizado com sucesso!');
     } catch (err) {
@@ -58,6 +70,18 @@ const Profile = () => {
       setSaving(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+        <p className="text-[#6B7280]">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!hasSession) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (loading) {
     return (

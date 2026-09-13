@@ -114,9 +114,26 @@ model Category {
   parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children    Category[] @relation("CategoryTree")
   services    Service[]
+  catalogItems ServiceCatalogItem[]
 
   @@index([parentId])
   @@map("categories")
+}
+
+model ServiceCatalogItem {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  categoryId Int      @map("category_id") @db.UnsignedInt
+  name       String   @db.VarChar(150)
+  slug       String   @db.VarChar(180)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([categoryId, slug])
+  @@index([active])
+  @@map("service_catalog_items")
 }
 
 model Skill {

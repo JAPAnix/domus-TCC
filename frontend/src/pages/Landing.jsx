@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BrandLogo from '../components/BrandLogo';
 
 const stats = [
   { value: '+500', label: 'Profissionais ativos' },
@@ -227,7 +228,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-[#E5E7EB] px-4 py-8 text-center">
-        <p className="text-[#7C3AED] font-bold text-xl mb-2">domus</p>
+        <BrandLogo className="mx-auto mb-2" />
         <p className="text-xs text-[#6B7280]">© 2026 domus. Todos os direitos reservados.</p>
       </footer>
 

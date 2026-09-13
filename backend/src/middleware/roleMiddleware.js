@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma.js';
+import { logger } from '../utils/logger.js';
 
 const roleMiddleware = (...allowedRoles) => {
   return async (req, res, next) => {

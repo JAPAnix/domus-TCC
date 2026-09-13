@@ -38,12 +38,12 @@ export const createService = async (req, res) => {
 };
 
 export const listServices = async (req, res) => {
-  const { category_id, budget_min, budget_max, page = 1, limit = 20 } = req.query;
+  const { category_id, budget_min, budget_max, page = 1, limit = 20, all } = req.query;
 
   try {
     const where = {
-      status: 'open',
       deletedAt: null,
+      ...(all === 'true' ? {} : { status: 'open' }),
       ...(category_id && { categoryId: Number(category_id) }),
       ...(budget_min && { budgetMax: { gte: Number(budget_min) } }),
       ...(budget_max && { budgetMin: { lte: Number(budget_max) } })
@@ -52,7 +52,17 @@ export const listServices = async (req, res) => {
     const [services, total] = await prisma.$transaction([
       prisma.service.findMany({
         where,
-        include: { category: true },
+        include: {
+          category: true,
+          client: {
+            select: {
+              uuid: true,
+              firstName: true,
+              lastName: true,
+              profilePictureUrl: true
+            }
+          }
+        },
         orderBy: { createdAt: 'desc' },
         skip: (Number(page) - 1) * Number(limit),
         take: Number(limit)
@@ -61,7 +71,14 @@ export const listServices = async (req, res) => {
     ]);
 
     res.json({
-      data: services.map(s => ({ ...s, uuid: bufferToUuid(s.uuid) })),
+      data: services.map(s => ({
+        ...s,
+        uuid: bufferToUuid(s.uuid),
+        client: {
+          ...s.client,
+          uuid: bufferToUuid(s.client.uuid)
+        }
+      })),
       meta: {
         total,
         page: Number(page),

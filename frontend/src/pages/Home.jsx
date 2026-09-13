@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import api from "../services/api";
+import SearchBar from "../components/SearchBar";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -92,6 +93,7 @@ function ServiceCard({ service }) {
 }
 
 export default function Home() {
+  const location = useLocation();
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +103,7 @@ export default function Home() {
   const [budgetMin, setBudgetMin] = useState('');
   const [budgetMax, setBudgetMax] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const preparedSearch = location.state?.search;
 
   const hasFilters = !!(categoryId || budgetMin || budgetMax || search);
 
@@ -108,27 +111,41 @@ export default function Home() {
     api.get('/categories').then((res) => setCategories(res.data)).catch(() => {});
   }, []);
 
-  const fetchServices = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = {};
-      if (categoryId) params.category_id = categoryId;
-      if (budgetMin) params.budget_min = budgetMin;
-      if (budgetMax) params.budget_max = budgetMax;
-
-      const { data } = await api.get('/services', { params });
-      setServices(data.data ?? []);
-    } catch (err) {
-      setError(err.response?.data?.message || "Erro ao carregar serviços.");
-    } finally {
-      setLoading(false);
-    }
-  }, [categoryId, budgetMin, budgetMax]);
-
   useEffect(() => {
+    let active = true;
+
+    async function fetchServices() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = {};
+        if (categoryId) params.category_id = categoryId;
+        if (budgetMin) params.budget_min = budgetMin;
+        if (budgetMax) params.budget_max = budgetMax;
+
+        const { data } = await api.get('/services', { params });
+
+        if (active) {
+          setServices(data.data ?? []);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err.response?.data?.message || "Erro ao carregar serviços.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
     fetchServices();
-  }, [fetchServices]);
+
+    return () => {
+      active = false;
+    };
+  }, [categoryId, budgetMin, budgetMax]);
 
   function clearFilters() {
     setCategoryId('');
@@ -137,10 +154,22 @@ export default function Home() {
     setSearch('');
   }
 
-  const filtered = services.filter(s =>
-    search === '' ||
-    s.title.toLowerCase().includes(search.toLowerCase()) ||
-    s.description?.toLowerCase().includes(search.toLowerCase())
+  function formatPreparedDate(dateKey) {
+    if (!dateKey) {
+      return '';
+    }
+
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long' }).format(new Date(year, month - 1, day));
+  }
+
+  const activeSearch = (preparedSearch?.service || search).trim().toLowerCase();
+
+  const filtered = services.filter((service) =>
+    activeSearch === '' ||
+    service.title.toLowerCase().includes(activeSearch) ||
+    service.description?.toLowerCase().includes(activeSearch) ||
+    service.category?.name?.toLowerCase().includes(activeSearch)
   );
 
   return (
@@ -148,7 +177,7 @@ export default function Home() {
 
       {/* Hero com busca */}
       <section className="bg-gradient-to-br from-[#7C3AED] to-[#4F46E5] px-4 py-16">
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             Encontre o profissional certo
           </h1>
@@ -156,47 +185,20 @@ export default function Home() {
             Mais de 500 profissionais prontos para o seu projeto
           </p>
 
-          {/* Barra de busca */}
-          <div className="bg-white rounded-2xl p-2 flex gap-2 shadow-xl">
-            <div className="flex-1 flex items-center gap-3 px-3">
-              <svg className="w-5 h-5 text-[#6B7280] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar serviços, habilidades ou profissionais..."
-                className="flex-1 text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none py-2"
-              />
-            </div>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="hidden sm:block border-l border-[#E5E7EB] pl-3 pr-8 text-sm text-[#6B7280] focus:outline-none bg-transparent"
-            >
-              <option value="">Categoria</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            <button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-xl px-6 py-2.5 text-sm transition-colors flex-shrink-0">
-              Buscar
-            </button>
+          <div className="mx-auto max-w-5xl text-left">
+            <SearchBar />
           </div>
 
-          {/* Tags populares */}
-          <div className="flex flex-wrap gap-2 justify-center mt-5">
-            {['Desenvolvimento Web', 'Design', 'Marketing', 'Redação'].map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setSearch(tag)}
-                className="bg-white/20 hover:bg-white/30 text-white text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
+          {preparedSearch && (
+            <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm text-white/90">
+              <span className="font-semibold">Busca preparada:</span>
+              <span>{preparedSearch.location}</span>
+              <span>•</span>
+              <span>{formatPreparedDate(preparedSearch.date)}</span>
+              <span>•</span>
+              <span>{preparedSearch.service}</span>
+            </div>
+          )}
         </div>
       </section>
 

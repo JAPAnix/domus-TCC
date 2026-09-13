@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BrandLogo from './BrandLogo';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSearchField, setActiveSearchField] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -15,54 +15,20 @@ export default function Navbar() {
 
   const isClient = user?.roles?.includes('client');
 
-  const handleSearch = () => {
-    navigate('/servicos');
-    setActiveSearchField(null);
-  };
-
-  const handleSearchFieldClick = (field) => {
-    setActiveSearchField(field);
-  };
-
   const professionalPath = user ? '/perfil/profissional' : '/cadastro';
 
   return (
     <nav className="bg-white border-b border-[#E5E7EB] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-4 min-h-20">
+        <div className="flex flex-wrap items-center gap-4 py-4 md:flex-nowrap md:gap-6">
 
           {/* Logo */}
-          <Link to="/" className="text-xl font-bold tracking-tight text-[#7C3AED] flex-shrink-0">
-            domus<span className="text-[#111827]">.</span>
+          <Link to="/" aria-label="Página inicial" className="flex-shrink-0">
+            <BrandLogo />
           </Link>
 
-          {/* Search */}
-          <div className="hidden md:flex items-center flex-1 max-w-xl mx-auto">
-            <div className="flex items-center w-full h-14 rounded-full border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow bg-white">
-              <button type="button" onClick={() => handleSearchFieldClick('location')} aria-pressed={activeSearchField === 'location'} className={`flex-1 min-w-0 px-5 text-left rounded-l-full transition-colors ${activeSearchField === 'location' ? 'bg-[#F9FAFB]' : 'hover:bg-[#F9FAFB]'}`}>
-                <span className="block text-[11px] font-semibold text-[#111827]">Qualquer lugar</span>
-                <span className="block text-xs text-[#6B7280] mt-0.5 truncate">Onde você precisa?</span>
-              </button>
-              <span className="h-8 border-l border-[#E5E7EB]" aria-hidden="true" />
-              <button type="button" onClick={() => handleSearchFieldClick('date')} aria-pressed={activeSearchField === 'date'} className={`flex-1 min-w-0 px-5 text-left transition-colors ${activeSearchField === 'date' ? 'bg-[#F9FAFB]' : 'hover:bg-[#F9FAFB]'}`}>
-                <span className="block text-[11px] font-semibold text-[#111827]">Qualquer dia</span>
-                <span className="block text-xs text-[#6B7280] mt-0.5 truncate">Escolha uma data</span>
-              </button>
-              <span className="h-8 border-l border-[#E5E7EB]" aria-hidden="true" />
-              <button type="button" onClick={() => handleSearchFieldClick('service')} aria-pressed={activeSearchField === 'service'} className={`flex-1 min-w-0 px-5 text-left transition-colors ${activeSearchField === 'service' ? 'bg-[#F9FAFB]' : 'hover:bg-[#F9FAFB]'}`}>
-                <span className="block text-[11px] font-semibold text-[#111827]">Tipo de serviço</span>
-                <span className="block text-xs text-[#6B7280] mt-0.5 truncate">O que você procura?</span>
-              </button>
-              <button type="button" onClick={handleSearch} aria-label="Pesquisar serviços" className="flex-shrink-0 w-10 h-10 mr-2 rounded-full bg-[#7C3AED] text-white flex items-center justify-center hover:bg-[#6D28D9] transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
           {/* Desktop actions */}
-          <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+          <div className="hidden md:flex items-center gap-4 flex-shrink-0 ml-auto">
             <Link to={professionalPath} className="text-sm font-medium text-[#374151] hover:text-[#7C3AED] transition-colors whitespace-nowrap">
               Ofereça seus serviços
             </Link>
@@ -80,11 +46,44 @@ export default function Navbar() {
                 Entrar
               </Link>
             )}
-            <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menu" aria-expanded={menuOpen} className="w-10 h-10 rounded-full border border-[#E5E7EB] flex items-center justify-center text-[#374151] hover:shadow-sm transition-shadow">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            </button>
+            <div className="relative">
+              <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menu" aria-expanded={menuOpen} className="w-10 h-10 rounded-full border border-[#E5E7EB] flex items-center justify-center text-[#374151] hover:shadow-sm transition-shadow">
+                {menuOpen ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 7h16M4 12h16M4 17h16" />
+                  </svg>
+                )}
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-3 w-60 rounded-2xl border border-[#E5E7EB] bg-white p-2 shadow-[0_16px_45px_rgba(17,24,39,0.16)]">
+                  <Link to="/servicos" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Serviços</Link>
+                  <Link to={professionalPath} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Ofereça seus serviços</Link>
+                  {isClient && (
+                    <>
+                      <Link to="/servicos/novo" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Publicar serviço</Link>
+                      <Link to="/meus-servicos" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Meus serviços</Link>
+                    </>
+                  )}
+                  <div className="my-1 border-t border-[#E5E7EB]" />
+                  {user ? (
+                    <>
+                      <Link to="/perfil" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Meu perfil</Link>
+                      <button type="button" onClick={() => { handleLogout(); setMenuOpen(false); }} className="block w-full rounded-xl px-3 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50">Sair</button>
+                    </>
+                  ) : (
+                    <>
+                      <Link to="/login" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Entrar</Link>
+                      <Link to="/cadastro" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-[#7C3AED] transition-colors hover:bg-[#F5F3FF]">Cadastrar</Link>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -92,7 +91,7 @@ export default function Navbar() {
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Abrir menu"
             aria-expanded={menuOpen}
-            className="md:hidden w-10 h-10 rounded-full border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-[#F9FAFB] transition-colors"
+            className="md:hidden w-10 h-10 rounded-full border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-[#F9FAFB] transition-colors ml-auto"
           >
             {menuOpen ? (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,19 +103,6 @@ export default function Navbar() {
               </svg>
             )}
           </button>
-        </div>
-
-        <div className="md:hidden pb-3">
-          <div className="flex items-center h-11 rounded-full border border-[#E5E7EB] shadow-sm pl-4 pr-1 bg-white">
-            <button type="button" onClick={() => handleSearchFieldClick('service')} className="flex-1 min-w-0 text-left text-sm text-[#6B7280] truncate">
-              Qualquer lugar · Qualquer dia · Tipo de serviço
-            </button>
-            <button type="button" onClick={handleSearch} aria-label="Pesquisar serviços" className="w-9 h-9 rounded-full bg-[#7C3AED] text-white flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
-              </svg>
-            </button>
-          </div>
         </div>
 
         {/* Mobile menu */}

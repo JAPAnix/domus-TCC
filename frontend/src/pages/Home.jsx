@@ -202,7 +202,16 @@ export default function Home() {
         </div>
       </section>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <section className="bg-white px-4 py-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div><h2 className="text-2xl font-bold text-[#111827]">Serviços disponíveis</h2><p className="mt-1 text-sm text-[#6B7280]">Veja projetos recentes publicados por clientes.</p></div>
+          </div>
+          {loading ? <LoadingGrid /> : services.length === 0 ? <p className="rounded-2xl border border-dashed border-[#E5E7EB] px-6 py-12 text-center text-sm text-[#6B7280]">Ainda não há serviços publicados.</p> : <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">{services.map((service) => <ServiceCard key={service.uuid} service={service} />)}</div>}
+        </div>
+      </section>
+
+      <main className="hidden max-w-6xl mx-auto px-4 sm:px-6 py-10">
 
         {/* Barra de filtros e resultados */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">

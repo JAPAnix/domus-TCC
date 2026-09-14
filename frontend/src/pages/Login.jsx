@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from '../components/BrandLogo';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -31,6 +32,20 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  const handleGoogleCredential = useCallback(async (credential) => {
+    setError('');
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/google', { credential });
+      login(data.token, data.user);
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Não foi possível entrar com o Google.');
+    } finally {
+      setLoading(false);
+    }
+  }, [login, navigate]);
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center px-4">
@@ -90,6 +105,10 @@ const Login = () => {
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
+            <Link to="/forgot-password" className="block text-right text-sm text-[#7C3AED] hover:underline">Esqueceu sua senha?</Link>
+
+            <div className="flex items-center gap-3 py-1 text-xs text-[#9CA3AF]"><span className="h-px flex-1 bg-[#E5E7EB]" />ou<span className="h-px flex-1 bg-[#E5E7EB]" /></div>
+            <GoogleSignInButton onCredential={handleGoogleCredential} disabled={loading} />
           </form>
 
           <p className="text-center text-sm text-[#6B7280] mt-6">

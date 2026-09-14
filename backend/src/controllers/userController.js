@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
+import { normalizeBrazilianPhone, normalizeCity, normalizeOptionalText, normalizeState } from '../utils/userData.js';
 
 export const getUser = async (req, res) => {
   const { uuid } = req.params;
@@ -55,21 +56,23 @@ export const updateUser = async (req, res) => {
       return res.status(403).json({ message: 'Acesso negado' });
     }
 
+    const data = {
+      ...(first_name !== undefined && { firstName: first_name.trim() }),
+      ...(last_name !== undefined && { lastName: last_name.trim() }),
+      ...(phone_number !== undefined && { phoneNumber: normalizeBrazilianPhone(phone_number) }),
+      ...(profile_picture_url !== undefined && { profilePictureUrl: normalizeOptionalText(profile_picture_url) }),
+      ...(zip_code !== undefined && { zipCode: normalizeOptionalText(zip_code) }),
+      ...(street !== undefined && { street: normalizeOptionalText(street) }),
+      ...(number !== undefined && { number: normalizeOptionalText(number) }),
+      ...(complement !== undefined && { complement: normalizeOptionalText(complement) }),
+      ...(neighborhood !== undefined && { neighborhood: normalizeOptionalText(neighborhood) }),
+      ...(city !== undefined && { city: normalizeCity(city) }),
+      ...(state !== undefined && { state: normalizeState(state) })
+    };
+
     const updated = await prisma.user.update({
   where: { id: userId },
-  data: {
-    firstName: first_name,
-    lastName: last_name,
-    phoneNumber: phone_number,
-    profilePictureUrl: profile_picture_url,
-    zipCode: zip_code,
-    street,
-    number,
-    complement,
-    neighborhood,
-    city,
-    state
-  },
+  data,
   select: {
     uuid: true,
     firstName: true,
@@ -89,6 +92,7 @@ export const updateUser = async (req, res) => {
 
     res.json({ ...updated, uuid: bufferToUuid(updated.uuid) });
   } catch (err) {
+    if (err.message?.startsWith('Telefone inválido')) return res.status(400).json({ message: err.message });
     logger.error('updateUser', err);
     if (err.code === 'P2002') {
       return res.status(409).json({ message: 'Número de telefone já cadastrado' });

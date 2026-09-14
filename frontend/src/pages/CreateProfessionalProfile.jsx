@@ -17,14 +17,17 @@ const CreateProfessionalProfile = () => {
   const [form, setForm] = useState({
     headline: '',
     bio: '',
-    hourly_rate: ''
+    hourly_rate: '', daily_rate: '', city: '', state: '', catalog_service_ids: [], availability_dates: []
   });
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [availabilityDate, setAvailabilityDate] = useState('');
   const [skills, setSkills] = useState([]);
   const [availableSkills, setAvailableSkills] = useState([]);
   const [selectedSkill, setSelectedSkill] = useState('');
   const [selectedProficiency, setSelectedProficiency] = useState('intermediate');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const fetchSkills = async () => {
@@ -37,6 +40,26 @@ const CreateProfessionalProfile = () => {
     };
     fetchSkills();
   }, []);
+
+  useEffect(() => { api.get('/service-catalog').then(({ data }) => setCatalogItems(data)).catch(() => setError('Não foi possível carregar o catálogo de serviços.')); }, []);
+
+  useEffect(() => {
+    if (!user?.uuid) return;
+    let active = true;
+    async function loadExistingProfile() {
+      try {
+        const { data } = await api.get(`/professionals/${user.uuid}`);
+        if (!active) return;
+        setIsEditing(true);
+        setForm({ headline: data.headline ?? '', bio: data.bio ?? '', hourly_rate: data.hourlyRate ?? '', daily_rate: data.dailyRate ?? '', city: data.city ?? '', state: data.state ?? '', catalog_service_ids: (data.catalogServices ?? []).map((item) => item.catalogItemId), availability_dates: (data.availabilityEntries ?? []).map((item) => String(item.date).slice(0, 10)) });
+        setSkills((data.skills ?? []).map((item) => ({ skill_id: item.skillId, proficiency_level: item.proficiencyLevel, name: item.skill?.name })));
+      } catch (err) {
+        if (err.response?.status !== 404 && active) setError('Não foi possível carregar seu perfil profissional.');
+      }
+    }
+    loadExistingProfile();
+    return () => { active = false; };
+  }, [user?.uuid]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -68,11 +91,15 @@ const CreateProfessionalProfile = () => {
     setLoading(true);
 
     try {
-      await api.post('/professionals', {
+      const payload = {
         ...form,
         hourly_rate: Number(form.hourly_rate),
+        daily_rate: form.daily_rate === '' ? null : Number(form.daily_rate),
+        publish: true,
         skills: skills.map(({ skill_id, proficiency_level }) => ({ skill_id, proficiency_level }))
-      });
+      };
+      if (isEditing) await api.patch(`/professionals/${user.uuid}`, payload);
+      else await api.post('/professionals', payload);
 
       login(token, { ...user, hasProfessionalProfile: true });
       navigate('/perfil');
@@ -89,8 +116,8 @@ const CreateProfessionalProfile = () => {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#111827]">Criar Perfil Profissional</h1>
-          <p className="text-[#6B7280] mt-1">Configure seu perfil para receber propostas</p>
+          <h1 className="text-2xl font-bold text-[#111827]">{isEditing ? 'Editar perfil profissional' : 'Criar perfil profissional'}</h1>
+          <p className="text-[#6B7280] mt-1">Configure seu perfil para aparecer nas buscas.</p>
         </div>
 
         {/* Card */}
@@ -116,6 +143,18 @@ const CreateProfessionalProfile = () => {
                 className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block text-sm font-medium text-[#111827]">Valor por diária (R$)<input type="number" name="daily_rate" value={form.daily_rate} onChange={handleChange} min="0" step="0.01" className="mt-1 w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm" /></label>
+              <label className="block text-sm font-medium text-[#111827]">UF<input type="text" name="state" value={form.state} onChange={handleChange} maxLength={2} required className="mt-1 w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm uppercase" /></label>
+            </div>
+            <label className="block text-sm font-medium text-[#111827]">Cidade de atendimento<input type="text" name="city" value={form.city} onChange={handleChange} required className="mt-1 w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm" /></label>
+            <label className="block text-sm font-medium text-[#111827]">Serviços oferecidos
+              <select multiple required value={form.catalog_service_ids} onChange={(event) => setForm({ ...form, catalog_service_ids: Array.from(event.target.selectedOptions, (option) => Number(option.value)) })} className="mt-1 h-36 w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm">
+                {catalogItems.map((item) => <option key={item.id} value={item.id}>{item.category.name} — {item.name}</option>)}
+              </select><span className="mt-1 block text-xs text-[#6B7280]">Use Ctrl/Cmd para selecionar mais de um serviço.</span>
+            </label>
+            <div><label className="block text-sm font-medium text-[#111827]">Datas disponíveis</label><div className="mt-1 flex gap-2"><input type="date" value={availabilityDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setAvailabilityDate(event.target.value)} className="flex-1 border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-sm" /><button type="button" onClick={() => { if (availabilityDate && !form.availability_dates.includes(availabilityDate)) setForm({ ...form, availability_dates: [...form.availability_dates, availabilityDate] }); setAvailabilityDate(''); }} className="rounded-lg bg-[#EDE9FE] px-3 text-sm font-semibold text-[#7C3AED]">Adicionar</button></div>{form.availability_dates.map((date) => <button type="button" key={date} onClick={() => setForm({ ...form, availability_dates: form.availability_dates.filter((item) => item !== date) })} className="mt-2 mr-2 rounded-full bg-[#EDE9FE] px-3 py-1 text-xs text-[#7C3AED]">{date} ×</button>)}</div>
 
             <div>
               <label className="block text-sm font-medium text-[#111827] mb-1">
@@ -218,7 +257,7 @@ const CreateProfessionalProfile = () => {
                 disabled={loading}
                 className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Criando...' : 'Criar perfil'}
+                {loading ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Criar perfil'}
               </button>
             </div>
           </form>

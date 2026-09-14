@@ -86,6 +86,7 @@ model User {
   services            Service[]
   reviewsWritten      Review[]             @relation("ReviewerRelation")
   reviewsReceived     Review[]             @relation("ReviewedRelation")
+  passwordResetTokens PasswordResetToken[]
 
   @@index([email])
   @@index([googleId])
@@ -120,6 +121,20 @@ model Category {
   @@map("categories")
 }
 
+model PasswordResetToken {
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt    @map("user_id") @db.UnsignedBigInt
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
 model ServiceCatalogItem {
   id         Int      @id @default(autoincrement()) @db.UnsignedInt
   categoryId Int      @map("category_id") @db.UnsignedInt
@@ -130,6 +145,7 @@ model ServiceCatalogItem {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  professionalServices ProfessionalCatalogService[]
 
   @@unique([categoryId, slug])
   @@index([active])
@@ -149,6 +165,8 @@ model ProfessionalProfile {
   headline           String?             @db.VarChar(255)
   bio                String?             @db.Text
   hourlyRate         Decimal             @default(0.00) @map("hourly_rate") @db.Decimal(10, 2)
+  dailyRate          Decimal?            @map("daily_rate") @db.Decimal(10, 2)
+  isPublished        Boolean             @default(false) @map("is_published")
   isVerified         Boolean             @default(false) @map("is_verified")
   averageRating      Decimal             @default(0.00) @map("average_rating") @db.Decimal(3, 2)
   totalReviews       Int                 @default(0) @map("total_reviews") @db.UnsignedInt
@@ -159,11 +177,52 @@ model ProfessionalProfile {
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   skills    ProfileSkill[]
   proposals Proposal[]
+  catalogServices ProfessionalCatalogService[]
+  availabilityEntries ProfessionalAvailability[]
+  portfolioImages ProfessionalPortfolioImage[]
 
   @@index([availabilityStatus])
+  @@index([isPublished])
   @@index([averageRating(sort: Desc)])
   @@index([isVerified])
   @@map("professional_profiles")
+}
+
+model ProfessionalCatalogService {
+  professionalId BigInt @map("professional_id") @db.UnsignedBigInt
+  catalogItemId Int    @map("catalog_item_id") @db.UnsignedInt
+
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+  catalogItem   ServiceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+
+  @@id([professionalId, catalogItemId])
+  @@index([catalogItemId])
+  @@map("professional_catalog_services")
+}
+
+model ProfessionalAvailability {
+  id             Int      @id @default(autoincrement()) @db.UnsignedInt
+  professionalId BigInt   @map("professional_id") @db.UnsignedBigInt
+  date           DateTime @db.Date
+  isAvailable    Boolean  @default(true) @map("is_available")
+
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+
+  @@unique([professionalId, date])
+  @@index([date, isAvailable])
+  @@map("professional_availability")
+}
+
+model ProfessionalPortfolioImage {
+  id             Int    @id @default(autoincrement()) @db.UnsignedInt
+  professionalId BigInt @map("professional_id") @db.UnsignedBigInt
+  url            String @db.VarChar(2048)
+  sortOrder      Int    @default(0) @map("sort_order") @db.UnsignedInt
+
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+
+  @@index([professionalId, sortOrder])
+  @@map("professional_portfolio_images")
 }
 
 model ProfileSkill {

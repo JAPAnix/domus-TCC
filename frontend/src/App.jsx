@@ -16,6 +16,9 @@ import ProfessionalProfile from './pages/ProfessionalProfile';
 import Navbar from './components/Navbar';
 import Onboarding from './pages/OnBoarding';
 import Landing from './pages/Landing';
+import ProfessionalSearch from './pages/ProfessionalSearch';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -26,8 +29,11 @@ function App() {
           {/* Públicas */}
           <Route path="/" element={<Landing />} />
           <Route path="/servicos" element={<Home />} />
+          <Route path="/buscar" element={<ProfessionalSearch />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/servicos/:uuid" element={<ServiceDetail />} />
           <Route path="/profissionais/:uuid" element={<ProfessionalProfile />} />
 

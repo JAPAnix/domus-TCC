@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  createProfile, getProfile,
+  createProfile, getProfile, searchProfessionals,
   updateProfile, updateAvailability
 } from '../controllers/professionalController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
@@ -14,6 +14,7 @@ import {
 const router = Router();
 
 router.post('/', authMiddleware, validate(createProfileSchema), createProfile);
+router.get('/search', searchProfessionals);
 router.get('/:uuid', getProfile);
 router.patch('/:uuid', authMiddleware, validate(updateProfileSchema), updateProfile);
 router.patch('/:uuid/availability', authMiddleware, validate(updateAvailabilitySchema), updateAvailability);

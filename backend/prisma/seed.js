@@ -33,6 +33,16 @@ function slugify(value) {
 async function seed() {
   let total = 0;
 
+  const [clientRole, professionalRole] = await Promise.all(['client', 'professional'].map((name) => prisma.role.upsert({
+    where: { name }, update: {}, create: { name }
+  })));
+  const [users, profiles] = await Promise.all([
+    prisma.user.findMany({ where: { deletedAt: null }, select: { id: true } }),
+    prisma.professionalProfile.findMany({ select: { userId: true } })
+  ]);
+  await prisma.userRole.createMany({ data: users.map((user) => ({ userId: user.id, roleId: clientRole.id })), skipDuplicates: true });
+  await prisma.userRole.createMany({ data: profiles.map((profile) => ({ userId: profile.userId, roleId: professionalRole.id })), skipDuplicates: true });
+
   for (const [categoryName, serviceNames] of Object.entries(catalog)) {
     const category = await prisma.category.upsert({
       where: { name: categoryName },

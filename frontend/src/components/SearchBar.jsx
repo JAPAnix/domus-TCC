@@ -528,23 +528,21 @@ export default function SearchBar() {
       return;
     }
 
-    if (!selectedService) {
-      setFeedbackMessage('Selecione o tipo de serviço.');
-      setActiveField('service');
-      return;
-    }
-
     const preparedSearch = {
       location: selectedLocation,
       coordinates: locationCoordinates,
       date: toDateKey(selectedDate),
-      serviceId: selectedService.id,
-      service: selectedService.name,
-      serviceCategory: selectedService.category.name,
+      serviceId: selectedService?.id,
+      service: selectedService?.name,
+      serviceCategory: selectedService?.category.name,
     };
 
-    setFeedbackMessage('Busca preparada.');
-    navigate('/servicos', { state: { search: preparedSearch } });
+    const params = new URLSearchParams({ cidade: selectedLocation.split(',')[0].trim(), data: preparedSearch.date });
+    if (preparedSearch.serviceId) {
+      params.set('serviceId', String(preparedSearch.serviceId));
+      params.set('servico', preparedSearch.service);
+    }
+    navigate(`/buscar?${params.toString()}`, { state: { search: preparedSearch } });
   }
 
   const activeValue =

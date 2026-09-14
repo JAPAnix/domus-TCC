@@ -25,7 +25,7 @@ export const createService = async (req, res) => {
         budgetMin: budget_min,
         budgetMax: budget_max,
         deadline,
-        status: 'draft'
+        status: 'open'
       },
       include: { category: true }
     });

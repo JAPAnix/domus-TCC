@@ -82,6 +82,19 @@ try {
     await send('Input.insertText', { text: value });
   };
   const goto = async (route) => { await send('Page.navigate', { url: base + route }); await waitFor(async () => (await evaluate('document.readyState')) === 'complete', 'page ready'); };
+  const reload = async () => {
+    const navigated = new Promise((resolve) => {
+      const handler = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.method === 'Page.frameNavigated' && !message.params.frame.parentId) {
+          ws.removeEventListener('message', handler); resolve();
+        }
+      };
+      ws.addEventListener('message', handler);
+    });
+    await send('Page.reload'); await navigated;
+    await waitFor(async () => (await evaluate('document.readyState')) === 'complete', 'reload complete');
+  };
   const check = async (name, fn) => { await fn(); console.log(`PASS ${name}`); };
   await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
@@ -96,7 +109,7 @@ try {
   await check('name save and persistence after refresh', async () => {
     await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/nome"]').click()`); await expectText('Confira suas informações');
     await fill('first_name', 'Nome Navegador'); await click('Salvar'); await expectText('Informações salvas com sucesso.');
-    await send('Page.reload'); await expectText('Nome Navegador Navegador');
+    await reload(); await expectText('Nome Navegador Navegador');
   });
   await check('dirty cancel preserves input and discard restores database value', async () => {
     await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/nome"]').click()`); await expectText('Confira suas informações');
@@ -144,7 +157,7 @@ try {
     await evaluate(`document.querySelector('[name="same_as_home"]').click()`);
     await click('Salvar'); await expectText('Mesmo endereço residencial');
     await edit('emergencia', { name: 'Contato Navegador', phone: '+5511999998888' });
-    await send('Page.reload'); await expectText('Contato Navegador');
+    await reload(); await expectText('Contato Navegador');
     saved = await prisma.user.findUnique({ where: { id: user.id } });
     assert.equal(saved.postalSameAsHome, true); assert.equal(saved.postalAddress, null);
     assert.equal(saved.emergencyContact.phone, '+5511999998888');
@@ -163,7 +176,7 @@ try {
       const saved = await prisma.user.findUnique({ where: { id: user.id } });
       assert.equal(section === 'email' ? saved.email : saved.phoneNumber, section === 'email' ? target : '+55' + target);
       assert.equal(section === 'email' ? saved.isEmailVerified : saved.isPhoneVerified, true);
-      await send('Page.reload'); await expectText('Nome legal');
+      await reload(); await expectText('Nome legal');
     }
   });
   await check('desktop and tablet fit the viewport', async () => {
@@ -200,7 +213,7 @@ try {
     await click('Voltar'); await expectText('Nome legal');
   });
   await check('profile, public pages, professional flow and logout', async () => {
-    for (const [route, content] of [['/perfil', 'Sobre mim'], ['/perfil/avaliacoes', 'Você ainda não possui avaliações.'], ['/perfil/resumo-profissional', 'Você ainda não possui um perfil profissional.'], ['/perfil/profissional', 'Criar perfil profissional']]) { await goto(route); await expectText(content); }
+    for (const [route, content] of [['/perfil', 'Sobre mim'], ['/perfil/avaliacoes', 'Você ainda não possui avaliações.'], ['/perfil/resumo-profissional', 'Você ainda não possui um perfil profissional.'], ['/perfil/profissional', 'Crie seu perfil profissional']]) { await goto(route); await expectText(content); }
     for (const route of ['/', '/servicos', '/buscar']) { await goto(route); await waitFor(async () => (await text()).length > 100, route); }
     await goto('/configuracoes/pessoais'); await expectText('Nome legal');
     await evaluate(`[...document.querySelectorAll('button[aria-label="Abrir menu"]')].find(e=>e.getClientRects().length).click()`); await click('Sair');

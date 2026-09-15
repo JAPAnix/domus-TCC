@@ -11,7 +11,12 @@ import {
   updateAvailabilitySchema
 } from '../validators/professionalValidator.js';
 
+import roleMiddleware from '../middleware/roleMiddleware.js';
+import { getProfessionalDashboard } from '../controllers/professionalDashboardController.js';
+
 const router = Router();
+
+router.get('/dashboard', authMiddleware, roleMiddleware('professional'), getProfessionalDashboard);
 
 router.post('/', authMiddleware, validate(createProfileSchema), createProfile);
 router.get('/search', searchProfessionals);

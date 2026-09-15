@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import { ProfileAbout, ProfileReviews, ProfessionalProfileSummary } from './pages/profile/ProfileSections';
 import CreateProfessionalProfile from './pages/CreateProfessionalProfile';
 import Home from './pages/Home';
+import ProfessionalDashboard from './pages/ProfessionalDashboard';
 import ServiceDetail from './pages/ServiceDetail';
 import CreateService from './pages/CreateService';
 import MyServices from './pages/MyServices';
@@ -42,6 +43,7 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/profissionais/:uuid" element={<ProfessionalProfile />} />
 
           {/* Autenticadas */}
+          <Route path="/painel-profissional" element={<ProtectedRoute roles={['professional']}><ProfessionalDashboard /></ProtectedRoute>} />
           <Route path="/configuracoes" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="pessoais" replace />} />
             <Route path="pessoais" element={<PersonalSettingsLayout />}>

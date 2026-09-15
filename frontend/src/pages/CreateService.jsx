@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
+
 
 function errorMessage(err) {
   const status = err?.response?.status;
@@ -28,7 +28,7 @@ function Field({ label, error, required, children }) {
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
@@ -41,7 +41,6 @@ function getInputClass(hasError) {
 }
 
 export default function CreateService() {
-  const { user } = useAuth();
 
   const [form, setForm] = useState(INITIAL_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -77,18 +76,19 @@ export default function CreateService() {
 
   function validate() {
     const errors = {};
-    if (!form.title.trim()) errors.title = "Título é obrigatório.";
-    if (!form.description.trim()) errors.description = "Descrição é obrigatória.";
+    if (form.title.trim().length < 5) errors.title = "Título deve ter pelo menos 5 caracteres.";
+    else if (form.title.trim().length > 255) errors.title = "Título deve ter no máximo 255 caracteres.";
+    if (form.description.trim().length < 20) errors.description = "Descrição deve ter pelo menos 20 caracteres.";
     if (!form.category_id) errors.category_id = "Categoria é obrigatória.";
     if (!form.budget_min) {
       errors.budget_min = "Budget mínimo é obrigatório.";
-    } else if (Number(form.budget_min) < 0) {
-      errors.budget_min = "Budget mínimo não pode ser negativo.";
+    } else if (!Number.isFinite(Number(form.budget_min)) || Number(form.budget_min) <= 0) {
+      errors.budget_min = "Orçamento mínimo deve ser maior que zero.";
     }
     if (!form.budget_max) {
       errors.budget_max = "Budget máximo é obrigatório.";
-    } else if (Number(form.budget_max) < 0) {
-      errors.budget_max = "Budget máximo não pode ser negativo.";
+    } else if (!Number.isFinite(Number(form.budget_max)) || Number(form.budget_max) <= 0) {
+      errors.budget_max = "Orçamento máximo deve ser maior que zero.";
     }
     if (form.budget_min && form.budget_max && Number(form.budget_min) > Number(form.budget_max)) {
       errors.budget_min = "Budget mínimo não pode ser maior que o máximo.";
@@ -105,6 +105,7 @@ export default function CreateService() {
       return;
     }
 
+    setFieldErrors({});
     setSubmitting(true);
     setGlobalError(null);
     setSuccess(false);
@@ -124,7 +125,13 @@ export default function CreateService() {
       setSuccess(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
-      setGlobalError(errorMessage(err));
+      const issues = err.response?.data?.errors;
+      if (Array.isArray(issues) && issues.length) {
+        setFieldErrors(Object.fromEntries(issues.filter(issue => Object.hasOwn(INITIAL_FORM, issue.field)).map(issue => [issue.field, issue.message])));
+        setGlobalError(issues.map(issue => issue.message).join(' '));
+      } else {
+        setGlobalError(errorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -178,7 +185,7 @@ export default function CreateService() {
               value={form.description}
               onChange={handleChange}
               rows={4}
-              placeholder="Descreva em detalhes o que você precisa..."
+              placeholder="Descreva o que você precisa (mínimo de 20 caracteres)..."
               className={getInputClass(!!fieldErrors.description)}
             />
           </Field>

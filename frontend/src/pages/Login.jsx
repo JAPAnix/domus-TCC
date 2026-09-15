@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from '../components/BrandLogo';
@@ -8,6 +8,8 @@ import GoogleSignInButton from '../components/GoogleSignInButton';
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [params] = useSearchParams();
+  const destination = params.get('profissional') === '1' ? '/perfil/profissional' : '/';
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -25,7 +27,7 @@ const Login = () => {
     try {
       const { data } = await api.post('/auth/login', form);
       login(data.token, data.user);
-      navigate('/');
+      navigate(destination);
     } catch (err) {
       setError(err.response?.data?.message || 'Erro ao fazer login');
     } finally {
@@ -39,13 +41,13 @@ const Login = () => {
     try {
       const { data } = await api.post('/auth/google', { credential });
       login(data.token, data.user);
-      navigate('/');
+      navigate(destination);
     } catch (err) {
       setError(err.response?.data?.message || 'Não foi possível entrar com o Google.');
     } finally {
       setLoading(false);
     }
-  }, [login, navigate]);
+  }, [login, navigate, destination]);
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center px-4">

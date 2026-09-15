@@ -1,3 +1,4 @@
+> Atualização posterior — integração autorizada em 15/09/2026: o trabalho foi salvo no commit `839e190` e a `origin/main` em `5103f41` foi integrada à `Thales`. O único conflito foi em App.jsx, resolvido preservando configurações, proteção de saída e a nova rota do painel profissional. A migration profissional agora está no checkout; não foi executada novamente. Prisma, build, lint dos arquivos revisados, oito testes de backend e a suíte Edge passaram após a integração. O relatório abaixo documenta o estado anterior ao merge.
 # Informações pessoais — relatório de retomada
 
 Data: 15/09/2026. Branch autorizada pelo usuário: **Thales**, também para as próximas etapas.

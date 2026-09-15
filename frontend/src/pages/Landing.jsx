@@ -165,7 +165,7 @@ export default function Landing() {
           </div>
           <div className="text-center mt-10">
             <Link
-              to={user ? '/perfil/profissional' : '/cadastro'}
+              to={user ? '/perfil/profissional' : '/cadastro?tipo=profissional'}
               className="border border-[#7C3AED] text-[#7C3AED] hover:bg-[#EDE9FE] font-semibold px-8 py-3 rounded-xl text-sm transition-colors"
             >
               Criar perfil profissional →

@@ -6,9 +6,9 @@ const ProtectedRoute = ({ children, roles }) => {
 
   if (loading) return null;
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={window.location.pathname === '/perfil/profissional' ? '/cadastro?tipo=profissional' : '/login'} replace />;
 
-  if (roles && !roles.some(role => user.roles.includes(role))) {
+  if (roles && !roles.some(role => user.roles?.includes(role))) {
     return <Navigate to="/" replace />;
   }
 

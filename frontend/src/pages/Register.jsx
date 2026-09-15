@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from '../components/BrandLogo';
@@ -7,6 +7,8 @@ import BrandLogo from '../components/BrandLogo';
 const Register = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [params] = useSearchParams();
+  const [professional, setProfessional] = useState(params.get('tipo') === 'profissional');
 
   const [form, setForm] = useState({
     first_name: '',
@@ -37,7 +39,7 @@ const Register = () => {
       });
 
       login(data.token, data.user);
-      navigate('/bem-vindo');
+      navigate(professional ? '/perfil/profissional' : '/bem-vindo');
     } catch (err) {
       setError(err.response?.data?.message || 'Erro ao criar conta');
     } finally {
@@ -64,6 +66,12 @@ const Register = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-sm font-medium">Como você quer usar o Domus?</legend>
+              <label className="block text-sm"><input type="radio" name="account_type" checked={!professional} onChange={() => setProfessional(false)} /> Contratar serviços</label>
+              <label className="block text-sm"><input type="radio" name="account_type" checked={professional} onChange={() => setProfessional(true)} /> Oferecer serviços (também posso contratar)</label>
+            </fieldset>
+            {professional && <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-700">Passo 1 de 2: crie sua conta. Em seguida, configure seu perfil profissional.</p>}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-[#111827] mb-1">Nome</label>
@@ -122,13 +130,13 @@ const Register = () => {
               disabled={loading}
               className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Criando conta...' : 'Criar conta'}
+              {loading ? 'Criando conta...' : professional ? 'Criar conta e continuar' : 'Criar conta'}
             </button>
           </form>
 
           <p className="text-center text-sm text-[#6B7280] mt-6">
             Já tem uma conta?{' '}
-            <Link to="/login" className="text-[#7C3AED] font-medium hover:underline">
+            <Link to={professional ? '/login?profissional=1' : '/login'} className="text-[#7C3AED] font-medium hover:underline">
               Entrar
             </Link>
           </p>

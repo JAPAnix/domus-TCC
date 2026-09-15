@@ -1,3 +1,4 @@
+import { getPersonalSettings } from '../services/personalSettingsService.js';
 import bcrypt from 'bcryptjs';
 import { logger } from '../utils/logger.js';
 import jwt from 'jsonwebtoken';
@@ -113,41 +114,9 @@ export const login = async (req, res) => {
 
 export const me = async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: BigInt(req.user.id) },
-      include: {
-        roles: {
-          include: { role: true }
-        },
-        professionalProfile: true
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-
-    res.json({
-  uuid: bufferToUuid(user.uuid),
-  firstName: user.firstName,
-  lastName: user.lastName,
-  email: user.email,
-  phoneNumber: user.phoneNumber,
-  profilePictureUrl: user.profilePictureUrl,
-  isEmailVerified: user.isEmailVerified,
-  roles: user.roles.map(ur => ur.role.name),
-  hasProfessionalProfile: !!user.professionalProfile,
-  zipCode: user.zipCode,
-  street: user.street,
-  number: user.number,
-  complement: user.complement,
-  neighborhood: user.neighborhood,
-  city: user.city,
-  state: user.state
-});
+    res.set('Cache-Control', 'no-store').json(await getPersonalSettings(BigInt(req.user.id)));
   } catch (err) {
-    logger.error('me', err);
-    res.status(500).json({ message: 'Erro interno do servidor' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : 'N?o foi poss?vel carregar sua conta.' });
   }
 };
 

@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
 export const updateUserSchema = z.object({
+  email: z.never({ error: 'Confirme o email em Informações pessoais antes de alterá-lo.' }).optional(),
   first_name: z.string().trim().min(2).max(100).optional(),
   last_name: z.string().trim().min(2).max(100).optional(),
-  phone_number: z.string().max(20).optional(),
+  phone_number: z.never({ error: 'Confirme o telefone em Informações pessoais antes de alterá-lo.' }).optional(),
   profile_picture_url: z.string().url('URL inválida').max(2048).optional(),
   zip_code: z.string().max(9).optional(),
   street: z.string().max(255).optional(),

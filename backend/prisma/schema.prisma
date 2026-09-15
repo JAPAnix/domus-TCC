@@ -160,7 +160,18 @@ model Skill {
   @@map("skills")
 }
 
+enum BillingMode {
+  hourly
+  daily
+  quote
+}
+
 model ProfessionalProfile {
+  displayName String? @map("display_name") @db.VarChar(150)
+  publicPhotoUrl String? @map("public_photo_url") @db.VarChar(2048)
+  serviceRegion String? @map("service_region") @db.VarChar(500)
+  billingMode BillingMode @default(hourly) @map("billing_mode")
+  certifications String? @db.Text
   userId             BigInt              @id @map("user_id") @db.UnsignedBigInt
   headline           String?             @db.VarChar(255)
   bio                String?             @db.Text

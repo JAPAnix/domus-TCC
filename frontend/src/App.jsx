@@ -20,12 +20,16 @@ import ProfessionalSearch from './pages/ProfessionalSearch';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
+import ProtectedRoute from './components/ProtectedRoute';
+import ProfessionalDashboard from './pages/ProfessionalDashboard';
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Navbar />
         <Routes>
+          <Route path="/painel-profissional" element={<ProtectedRoute roles={['professional']}><ProfessionalDashboard /></ProtectedRoute>} />
           {/* Públicas */}
           <Route path="/" element={<Landing />} />
           <Route path="/servicos" element={<Home />} />
@@ -40,7 +44,7 @@ function App() {
           {/* Autenticadas */}
           <Route path="/bem-vindo" element={<Onboarding />} />
           <Route path="/perfil" element={<Profile />} />
-          <Route path="/perfil/profissional" element={<CreateProfessionalProfile />} />
+          <Route path="/perfil/profissional" element={<ProtectedRoute><CreateProfessionalProfile /></ProtectedRoute>} />
           <Route path="/servicos/novo" element={<CreateService />} />
           <Route path="/meus-servicos" element={<MyServices />} />
           <Route path="/servicos/:uuid/propostas" element={<ServiceProposals />} />

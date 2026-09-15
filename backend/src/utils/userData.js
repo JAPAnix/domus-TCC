@@ -2,8 +2,7 @@ export function normalizeEmail(value) {
   return value.trim().toLowerCase();
 }
 
-// Armazenamos somente DDD + número, sem pontuação. O código +55 informado
-// pelo usuário é aceito e removido antes de persistir.
+// Novos cadastros usam E.164. Registros antigos são preservados até a auditoria.
 export function normalizeBrazilianPhone(value) {
   if (value == null || value === '') return null;
 
@@ -16,7 +15,7 @@ export function normalizeBrazilianPhone(value) {
     throw new Error('Telefone inválido. Informe DDD e número, por exemplo (11) 99999-8888.');
   }
 
-  return digits;
+  return `+55${digits}`;
 }
 
 export function normalizeOptionalText(value) {

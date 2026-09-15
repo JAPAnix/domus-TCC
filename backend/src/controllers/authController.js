@@ -116,7 +116,7 @@ export const me = async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store').json(await getPersonalSettings(BigInt(req.user.id)));
   } catch (err) {
-    res.status(err.status || 500).json({ message: err.status ? err.message : 'N?o foi poss?vel carregar sua conta.' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : 'Não foi possível carregar sua conta.' });
   }
 };
 

@@ -26,7 +26,7 @@ export async function sendEmailVerification({ email, code }) {
   const escape = (value) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const logo = /^https?:\/\//.test(process.env.EMAIL_LOGO_URL || '') ? `<img src="${escape(process.env.EMAIL_LOGO_URL)}" alt="DOMMOS" width="140" />` : '<strong style="color:#7C3AED;font-size:28px">DOMMOS</strong>';
   const result = await transport.sendMail({
-    from: process.env.EMAIL_FROM, to: email, subject: 'Confirme seu email no DOMMOS',
+    from: process.env.EMAIL_FROM, to: email, subject: 'Confirme seu novo email no DOMMOS',
     text: `Seu código DOMMOS é ${code}. Ele expira em 10 minutos. Se você não solicitou esta alteração, ignore esta mensagem.`,
     html: `<html lang="pt-BR"><body style="background:#F9FAFB;font-family:Arial,sans-serif;padding:24px;color:#111827"><div style="max-width:520px;margin:auto;padding:32px;background:white;border:1px solid #E5E7EB;border-radius:16px">${logo}<h1 style="font-size:24px">Confirme seu email</h1><p>Use este código para confirmar o endereço de email da sua conta.</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#5B21B6">${code}</p><p>O código expira em 10 minutos e só pode ser usado uma vez.</p><p style="color:#6B7280">Se você não solicitou esta alteração, ignore esta mensagem. Não compartilhe o código.</p></div></body></html>`,
   });

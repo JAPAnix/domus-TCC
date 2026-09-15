@@ -4,13 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    navigate('/sair');
   };
 
   const isClient = user?.roles?.includes('client');

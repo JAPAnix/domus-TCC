@@ -27,7 +27,7 @@ export function PersonalSettingsLayout() {
 }
 
 export function PersonalSettings() {
-  const { person, update } = useOutletContext();
+  const { person, update, setNotice } = useOutletContext();
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const values = {
@@ -61,7 +61,7 @@ export function PersonalSettings() {
               <div className="min-w-0"><dt className="font-medium">{section.title}</dt><dd className="mt-2 break-words text-sm text-[#6B7280]">{values[key] || 'Não informado'}</dd>
                 {['email', 'phone'].includes(key) && <p className="mt-1 text-xs text-[#6B7280]">{person[key === 'email' ? 'isEmailVerified' : 'isPhoneVerified'] ? 'Verificado' : 'Não verificado'}</p>}
               </div>
-              <Link to={`/configuracoes/pessoais/${key}`} className={`${linkClass} shrink-0`}>{missing ? 'Adicionar' : 'Editar'}</Link>
+              <Link to={`/configuracoes/pessoais/${key}`} onClick={() => setNotice('')} className={`${linkClass} shrink-0`}>{missing ? 'Adicionar' : 'Editar'}</Link>
             </div>
             {pending && <div className="mt-3 rounded-xl bg-[#F5F3FF] p-3 text-sm text-[#5B21B6]">
               <p className="break-words">{key === 'email' ? maskEmail(pending.target) : maskPhone(pending.target)} · Confirmação pendente</p>

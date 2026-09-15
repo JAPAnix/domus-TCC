@@ -1,5 +1,6 @@
 // Real Edge + real API + temporary database account. No browser dependencies.
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { once } from 'node:events';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -15,6 +16,29 @@ process.chdir(path.join(root, 'frontend'));
 const artifacts = path.join(root, '.tmp', 'personal-settings-browser');
 await fs.mkdir(artifacts, { recursive: true });
 const browserProfile = await fs.mkdtemp(path.join(artifacts, 'edge-'));
+const codes = [];
+const smtp = net.createServer((socket) => {
+  socket.write('220 localhost SMTP test\r\n');
+  let buffer = '', message = '', inData = false;
+  socket.on('data', (chunk) => {
+    buffer += chunk.toString();
+    let index;
+    while ((index = buffer.indexOf('\r\n')) >= 0) {
+      const line = buffer.slice(0, index); buffer = buffer.slice(index + 2);
+      if (inData) {
+        if (line === '.') { const code = message.match(/\b\d{6}\b/)?.[0]; if (code) codes.push(code); inData = false; message = ''; socket.write('250 accepted\r\n'); }
+        else message += line + '\n';
+      } else if (/^(EHLO|HELO)/.test(line)) socket.write('250 localhost\r\n');
+      else if (line === 'DATA') { inData = true; socket.write('354 data\r\n'); }
+      else if (line === 'QUIT') socket.end('221 bye\r\n');
+      else socket.write('250 ok\r\n');
+    }
+  });
+}).listen(0, '127.0.0.1');
+await once(smtp, 'listening');
+Object.assign(process.env, { SMTP_HOST: '127.0.0.1', SMTP_PORT: String(smtp.address().port), SMTP_SECURE: 'false', SMTP_USER: '', SMTP_PASS: '', EMAIL_FROM: 'DOMMOS <test@example.invalid>', SMS_PROVIDER: 'console', NODE_ENV: 'development' });
+const originalInfo = console.info;
+console.info = (...args) => { const code = String(args[0]).match(/Código: (\d{6})/)?.[1]; if (code) codes.push(code); else originalInfo(...args); };
 const server = app.listen(0, '127.0.0.1'); await once(server, 'listening');
 const apiUrl = `http://127.0.0.1:${server.address().port}`;
 const vite = await createServer({ root: path.join(root, 'frontend'), define: { 'import.meta.env.VITE_API_URL': JSON.stringify('/api') }, server: { host: '127.0.0.1', port: 5183, strictPort: true, proxy: { '/api': { target: apiUrl } } } });
@@ -41,7 +65,7 @@ try {
     if (message.method === 'Network.responseReceived' && message.params.response.status >= 500) networkFailures.push({ status: message.params.response.status, path: new URL(message.params.response.url).pathname });
   });
   const send = (method, params = {}) => new Promise((resolve, reject) => { const id = ++sequence; waiting.set(id, { resolve, reject }); ws.send(JSON.stringify({ id, method, params })); });
-  const evaluate = async (expression) => { const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (result.exceptionDetails) throw new Error(result.exceptionDetails.text); return result.result.value; };
+  const evaluate = async (expression) => { const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text); return result.result.value; };
   const text = () => evaluate('document.body.innerText');
   const expectText = (value) => waitFor(async () => (await text()).includes(value), value);
   const click = async (label) => {
@@ -49,6 +73,11 @@ try {
     assert.ok(success, `Control found: ${label}`);
   };
   const fill = async (name, value) => {
+    const dateInput = await evaluate(`document.querySelector('[name="${name}"]')?.type === 'date'`);
+    if (dateInput) {
+      await evaluate(`(() => { const e = document.querySelector('[name="${name}"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(e, ${JSON.stringify(value)}); e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+      await sleep(100); return;
+    }
     await evaluate(`(() => {const e=document.querySelector(${JSON.stringify(`[name="${name}"]`)}); if(!e)throw Error('input missing');e.focus();e.select();})()`);
     await send('Input.insertText', { text: value });
   };
@@ -92,6 +121,76 @@ try {
     assert.equal(await evaluate('document.querySelector("[name=first_name]").value'), 'Rascunho');
     await click('Voltar'); await expectText('Tem certeza de que quer sair?'); await click('Sair sem salvar'); await expectText('Nome legal');
   });
+  await check('birth date, home, postal and emergency forms persist', async () => {
+    async function edit(section, fields) {
+      await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/${section}"]').click()`);
+      await expectText('Confira suas informações');
+      for (const [key, value] of Object.entries(fields)) await fill(key, value);
+      await click('Salvar'); await expectText('Informações salvas com sucesso.');
+    }
+    await edit('nascimento', { birth_date: '2000-02-29' });
+    const address = { zip_code: '01001-000', street: 'Rua Teste', number: '12', complement: 'Apto 1', neighborhood: 'Centro', city: 'São Paulo', state: 'SP' };
+    await edit('residencial', address);
+    await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/postal"]').click()`);
+    await expectText('Usar o mesmo endereço residencial');
+    await evaluate(`document.querySelector('[name="same_as_home"]').click()`);
+    for (const [key, value] of Object.entries({ ...address, number: '99' })) await fill(key, value);
+    await click('Salvar'); await expectText('Informações salvas com sucesso.');
+    let saved = await prisma.user.findUnique({ where: { id: user.id } });
+    assert.equal(saved.zipCode, '01001000'); assert.equal(saved.postalAddress.number, '99');
+    assert.equal(saved.birthDate.toISOString().slice(0, 10), '2000-02-29');
+    await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/postal"]').click()`);
+    await expectText('Usar o mesmo endereço residencial');
+    await evaluate(`document.querySelector('[name="same_as_home"]').click()`);
+    await click('Salvar'); await expectText('Mesmo endereço residencial');
+    await edit('emergencia', { name: 'Contato Navegador', phone: '+5511999998888' });
+    await send('Page.reload'); await expectText('Contato Navegador');
+    saved = await prisma.user.findUnique({ where: { id: user.id } });
+    assert.equal(saved.postalSameAsHome, true); assert.equal(saved.postalAddress, null);
+    assert.equal(saved.emergencyContact.phone, '+5511999998888');
+  });
+  await check('email and SMS forms reject wrong codes and confirm persisted contacts', async () => {
+    for (const [section, target] of [['email', `browser-new-${suffix}@example.invalid`], ['phone', '119' + String(crypto.randomInt(10000000, 99999999))]]) {
+      await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/${section}"]').click()`);
+      await expectText('Confirme o novo contato'); await fill('target', target); await click('Enviar código');
+      await expectText('Código de confirmação');
+      const original = await prisma.user.findUnique({ where: { id: user.id } });
+      assert.notEqual(section === 'email' ? original.email : original.phoneNumber, section === 'email' ? target : '+55' + target);
+      const code = codes.at(-1); assert.match(code, /^\d{6}$/);
+      await fill('code', code === '000000' ? '111111' : '000000'); await click('Confirmar');
+      await expectText('O código informado é inválido.');
+      await fill('code', code); await click('Confirmar'); await expectText('Contato confirmado e atualizado.');
+      const saved = await prisma.user.findUnique({ where: { id: user.id } });
+      assert.equal(section === 'email' ? saved.email : saved.phoneNumber, section === 'email' ? target : '+55' + target);
+      assert.equal(section === 'email' ? saved.isEmailVerified : saved.isPhoneVerified, true);
+      await send('Page.reload'); await expectText('Nome legal');
+    }
+  });
+  await check('desktop and tablet fit the viewport', async () => {
+    for (const [label, width, height] of [['desktop', 1440, 1000], ['tablet', 768, 1024]]) {
+      await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+      assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'));
+      const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
+      await fs.writeFile(path.join(artifacts, `${label}-personal.png`), Buffer.from(shot.data, 'base64'));
+    }
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+  });
+  await check('logout preserves session until dirty changes are discarded', async () => {
+    await goto('/configuracoes/pessoais'); await expectText('Nome legal');
+    await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/nome"]').click()`);
+    await expectText('Confira suas informações'); await fill('first_name', 'Rascunho logout');
+    await click('Sair'); await expectText('Tem certeza de que quer sair?');
+    assert.ok(await evaluate('localStorage.getItem("token")'));
+    await click('Continuar editando');
+    assert.equal(await evaluate('document.querySelector("[name=first_name]").value'), 'Rascunho logout');
+    await click('Sair'); await expectText('Tem certeza de que quer sair?'); await click('Sair sem salvar');
+    await waitFor(async () => (await evaluate('location.pathname')) === '/login', 'confirmed logout');
+    assert.equal(await evaluate('localStorage.getItem("token")'), null);
+    assert.equal((await prisma.user.findUnique({ where: { id: user.id } })).firstName, 'Nome Navegador');
+    await evaluate(`localStorage.setItem('token',${JSON.stringify(session.token)});localStorage.setItem('user',${JSON.stringify(JSON.stringify(session.user))});`);
+    await goto('/bem-vindo'); await expectText('Nome legal');
+    assert.equal(await evaluate('location.pathname'), '/configuracoes/pessoais');
+  });
   await check('mobile layout fits viewport and navigation works', async () => {
     await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await expectText('Informações pessoais'); assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'));
@@ -113,7 +212,7 @@ try {
 } catch (err) {
   failures.push(err.message); console.error('FAIL', err.message);
 } finally {
-  ws?.close(); browser.kill(); await vite.close(); server.close();
+  console.info = originalInfo; smtp.close(); ws?.close(); browser.kill(); await vite.close(); server.close();
   if (user) await prisma.user.delete({ where: { id: user.id } });
   await prisma.$disconnect();
   await fs.writeFile(path.join(artifacts, 'results.json'), JSON.stringify({ failures, runtimeErrors, networkFailures }, null, 2));

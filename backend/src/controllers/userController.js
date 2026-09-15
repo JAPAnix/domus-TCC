@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
-import { normalizeBrazilianPhone, normalizeCity, normalizeOptionalText, normalizeState } from '../utils/userData.js';
+import { normalizeCity, normalizeOptionalText, normalizeState } from '../utils/userData.js';
 
 export const getUser = async (req, res) => {
   const { uuid } = req.params;
@@ -40,7 +40,7 @@ export const getUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { uuid } = req.params;
-  const { first_name, last_name, phone_number, profile_picture_url, zip_code, street, number, complement, neighborhood, city, state } = req.body;
+  const { first_name, last_name, profile_picture_url, zip_code, street, number, complement, neighborhood, city, state } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -59,7 +59,6 @@ export const updateUser = async (req, res) => {
     const data = {
       ...(first_name !== undefined && { firstName: first_name.trim() }),
       ...(last_name !== undefined && { lastName: last_name.trim() }),
-      ...(phone_number !== undefined && { phoneNumber: normalizeBrazilianPhone(phone_number) }),
       ...(profile_picture_url !== undefined && { profilePictureUrl: normalizeOptionalText(profile_picture_url) }),
       ...(zip_code !== undefined && { zipCode: normalizeOptionalText(zip_code) }),
       ...(street !== undefined && { street: normalizeOptionalText(street) }),

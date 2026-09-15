@@ -33,4 +33,5 @@ export function formPayload(section, form) {
 }
 export function maskEmail(value) { if (!value) return 'Não informado'; const [name, domain] = value.split('@'); return `${name[0]}***@${domain}`; }
 export function maskPhone(value) { return value ? `${value.startsWith('+55') || !value.startsWith('+') ? '+55 ' : '+'}** *****-${value.replace(/\D/g, '').slice(-4)}` : 'Não informado'; }
-export function addressSummary(value) { return value ? [value.street, value.number, value.complement, value.neighborhood, value.city, value.state, value.zip_code || value.zipCode].filter(Boolean).join(', ') || 'Não informado' : 'Não informado'; }
+export function formatZip(value) { return (value || '').replace(/^(\d{5})(\d{3})$/, '$1-$2'); }
+export function addressSummary(value) { return value ? [value.street, value.number, value.complement, value.neighborhood, value.city, value.state, formatZip(value.zip_code || value.zipCode)].filter(Boolean).join(', ') || 'Não informado' : 'Não informado'; }

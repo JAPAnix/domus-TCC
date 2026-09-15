@@ -1,3 +1,4 @@
+> Atualização de 15/09/2026: retomada realizada na branch **Thales**, autorizada pelo usuário também para as próximas etapas. Consulte [PERSONAL_SETTINGS_REPORT.md](PERSONAL_SETTINGS_REPORT.md) para correções, testes executados neste computador e pendências externas. O conteúdo abaixo é o registro histórico da pausa anterior; sua lista de pendências foi revisada no relatório novo.
 # Informações pessoais — ponto de retomada
 
 Trabalho pausado a pedido do usuário em 15/09/2026 para commit e continuação em outro computador.

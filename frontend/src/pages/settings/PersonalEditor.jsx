@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import UnsavedChangesDialog from '../../components/UnsavedChangesDialog';
-import { sections, initialForm, formPayload, inputClass, primaryClass, linkClass, maskEmail, maskPhone } from './personalFields';
+import { sections, initialForm, formPayload, inputClass, primaryClass, linkClass, maskEmail, maskPhone, formatZip } from './personalFields';
 
 export function PersonalEditor() {
   const { section } = useParams();
@@ -65,8 +65,8 @@ function EditForm({ section, person }) {
             <div key={name}>
               <label htmlFor={`personal-${name}`} className="block text-sm font-medium">{label}{optional && <span className="ml-1 font-normal text-[#6B7280]">(opcional)</span>}</label>
               {name === 'relationship' ? <select id={`personal-${name}`} name={name} value={form[name]} onChange={change} className={inputClass} aria-invalid={!!errors[name]} aria-describedby={errors[name] ? `error-${name}` : undefined}>{['Familiar', 'Responsável', 'Amigo', 'Outro'].map((v) => <option key={v}>{v}</option>)}</select> : <input
-                id={`personal-${name}`} name={name} type={type} value={form[name] || ''} onChange={change} maxLength={max} required={!optional}
-                max={type === 'date' ? new Date().toLocaleDateString('en-CA') : undefined}
+                id={`personal-${name}`} name={name} type={type} value={name === 'zip_code' ? formatZip(form[name]) : form[name] || ''} onChange={change} maxLength={max} required={!optional}
+                max={type === 'date' ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) : undefined}
                 pattern={name === 'zip_code' ? '[0-9]{5}-?[0-9]{3}' : name === 'state' ? '[A-Za-z]{2}' : undefined}
                 inputMode={type === 'tel' ? 'tel' : name === 'zip_code' ? 'numeric' : undefined}
                 autoComplete={name === 'first_name' ? 'given-name' : name === 'last_name' ? 'family-name' : type === 'email' ? 'email' : type === 'date' ? 'bday' : 'off'}
@@ -127,7 +127,7 @@ function ConfirmationForm({ section }) {
       {expired && <p role="status" className="mt-4 text-sm text-[#DC2626]">O código expirou. Solicite outro.</p>}
       {pending.attempts >= 5 && <p role="status" className="mt-4 text-sm text-[#DC2626]">Limite de tentativas atingido. Solicite outro código.</p>}
       <form onSubmit={(event) => { event.preventDefault(); run('confirmar'); }} className="mt-6 space-y-4">
-        <label htmlFor="confirmation-code" className="block text-sm font-medium">Código de confirmação<input id="confirmation-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required pattern="[0-9]{6}" inputMode="numeric" autoComplete="one-time-code" maxLength={6} disabled={!!busy} aria-invalid={!!error} aria-describedby={error ? 'code-error' : undefined} className={`${inputClass} text-center text-2xl tracking-[0.4em]`} /></label>
+        <label htmlFor="confirmation-code" className="block text-sm font-medium">Código de confirmação<input id="confirmation-code" name="code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required pattern="[0-9]{6}" inputMode="numeric" autoComplete="one-time-code" maxLength={6} disabled={!!busy} aria-invalid={!!error} aria-describedby={error ? 'code-error' : undefined} className={`${inputClass} text-center text-2xl tracking-[0.4em]`} /></label>
         {error && <p id="code-error" role="alert" className="text-sm text-[#DC2626]">{error}</p>}
         <button disabled={!!busy || expired || pending.attempts >= 5} className={primaryClass}>{busy === 'confirmar' ? 'Confirmando...' : 'Confirmar'}</button>
       </form>

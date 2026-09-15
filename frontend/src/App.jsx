@@ -17,7 +17,7 @@ import SendProposal from './pages/SendProposal';
 import CreateReview from './pages/CreateReview';
 import ProfessionalProfile from './pages/ProfessionalProfile';
 import Navbar from './components/Navbar';
-import Onboarding from './pages/OnBoarding';
+import Logout from './pages/Logout';
 import Landing from './pages/Landing';
 import ProfessionalSearch from './pages/ProfessionalSearch';
 import ForgotPassword from './pages/ForgotPassword';
@@ -34,6 +34,7 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/servicos" element={<Home />} />
           <Route path="/buscar" element={<ProfessionalSearch />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/sair" element={<Logout />} />
           <Route path="/cadastro" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -53,7 +54,7 @@ const router = createBrowserRouter(createRoutesFromElements(
             ))}
             <Route path="*" element={<Navigate to="/configuracoes/pessoais" replace />} />
           </Route>
-          <Route path="/bem-vindo" element={<Onboarding />} />
+          <Route path="/bem-vindo" element={<ProtectedRoute><Navigate to="/configuracoes/pessoais" replace /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>}>
             <Route index element={<Navigate to="sobre" replace />} />
             <Route path="sobre" element={<ProfileAbout />} />

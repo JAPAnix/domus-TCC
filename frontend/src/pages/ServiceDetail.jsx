@@ -1,177 +1,67 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import api from "../services/api";
-
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import ServiceWorkflowActions from '../components/ServiceWorkflowActions';
+import ServiceProposalActions from '../components/ServiceProposalActions';
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return "—";
-  return new Intl.DateTimeFormat("pt-BR").format(new Date(dateStr));
-}
-
-const STATUS_LABELS = {
-  draft: "Rascunho",
-  open: "Aberto",
-  in_progress: "Em andamento",
-  completed: "Concluído",
-  cancelled: "Cancelado",
+const states = {
+  draft: ['Rascunho', 'Este serviço ainda não foi publicado.', 'bg-slate-100 text-slate-600'],
+  open: ['Recebendo propostas', 'Profissionais podem apresentar propostas para este serviço.', 'bg-blue-50 text-blue-700'],
+  in_progress: ['Em andamento', 'Uma proposta já foi aceita. Ao final do trabalho, o cliente poderá concluir o serviço.', 'bg-amber-50 text-amber-700'],
+  completed: ['Concluído', 'O trabalho foi concluído. Cliente e profissional podem avaliar a experiência.', 'bg-emerald-50 text-emerald-700'],
+  cancelled: ['Cancelado', 'Este serviço foi encerrado e não recebe propostas.', 'bg-slate-100 text-slate-600']
 };
-
-function LoadingSkeleton() {
-  return (
-    <div className="animate-pulse space-y-6">
-      <div className="h-4 bg-slate-200 rounded w-1/4" />
-      <div className="h-8 bg-slate-200 rounded w-2/3" />
-      <div className="space-y-2">
-        <div className="h-4 bg-slate-100 rounded w-full" />
-        <div className="h-4 bg-slate-100 rounded w-5/6" />
-        <div className="h-4 bg-slate-100 rounded w-4/6" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-20 bg-slate-100 rounded-xl" />
-        ))}
-      </div>
-    </div>
-  );
+const money = value => value == null ? 'Não informado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
+function date(value) {
+  if(!value) return 'Não informado';
+  const result = new Date(String(value).slice(0,10)+'T12:00:00');
+  return Number.isNaN(result.getTime())?'Não informado':result.toLocaleDateString('pt-BR');
 }
-
-function InfoTile({ label, value, accent }) {
-  return (
-    <div className={`rounded-xl p-4 border ${accent ? "bg-[#EDE9FE] border-[#DDD6FE]" : "bg-[#F9FAFB] border-[#E5E7EB]"}`}>
-      <p className={`text-[11px] font-medium uppercase tracking-wide mb-1 ${accent ? "text-[#7C3AED]" : "text-[#6B7280]"}`}>
-        {label}
-      </p>
-      <p className={`text-sm font-semibold ${accent ? "text-[#6D28D9]" : "text-[#111827]"}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
 export default function ServiceDetail() {
-  const { uuid } = useParams();
-  const [service, setService] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    async function fetchService() {
-      setLoading(true);
-      setError(null);
-      setNotFound(false);
-      try {
-        const { data } = await api.get(`/services/${uuid}`);
-        setService(data);
-      } catch (err) {
-        if (err?.response?.status === 404) {
-          setNotFound(true);
-        } else {
-          setError(err.response?.data?.message || "Erro ao carregar serviço.");
-        }
-      } finally {
-        setLoading(false);
-      }
+  const {uuid}=useParams();
+  return <ServiceContent key={uuid} uuid={uuid} />;
+}
+function ServiceContent({uuid}) {
+  const {user}=useAuth();
+  const [service,setService]=useState(null);
+  const [error,setError]=useState('');
+  const [retry,setRetry]=useState(0);
+  useEffect(()=>{
+    let active=true;
+    async function load(){
+      try {const {data}=await api.get('/services/'+uuid);if(active){setService(data);setError('');}}
+      catch(err){if(active){setService(null);setError(err.response?.status===404?'Este serviço não foi encontrado ou foi removido.':'Não foi possível carregar o serviço.');}}
     }
-    fetchService();
-  }, [uuid]);
-
-  if (notFound) {
-    return (
-      <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center text-center px-4">
-        <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
+    load();window.addEventListener('focus',load);
+    return ()=>{active=false;window.removeEventListener('focus',load);};
+  },[uuid,retry]);
+  const [label,description,color]=states[service?.status] ?? ['Serviço','','bg-slate-100'];
+  return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
+    <div className="mx-auto max-w-4xl">
+      <Link to="/servicos" className="text-sm text-violet-700">← Todos os serviços</Link>
+      {error && <div role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-5"><p>{error}</p><button onClick={()=>setRetry(value=>value+1)} className="mt-3 font-semibold text-violet-700">Tentar novamente</button></div>}
+      {!service && !error && <p role="status" className="py-16 text-center">Carregando serviço...</p>}
+      {service && <article className="mt-6 space-y-5">
+        <header className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+          <div className="mb-4 flex flex-wrap gap-2"><span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">{service.category?.name ?? 'Sem categoria'}</span><span className={'rounded-full px-3 py-1 text-xs font-semibold '+color}>{label}</span></div>
+          <h1 className="break-words text-2xl font-bold sm:text-3xl">{service.title}</h1>
+          <p className="mt-3 text-sm text-slate-500">{description}</p>
+        </header>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[['Orçamento mínimo',money(service.budgetMin)],['Orçamento máximo',money(service.budgetMax)],['Prazo solicitado',date(service.deadline)]].map(([title,value])=><div key={title} className="rounded-xl border border-slate-200 bg-white p-5"><p className="text-xs text-slate-500">{title}</p><p className="mt-2 break-words font-semibold">{value}</p></div>)}
         </div>
-        <h2 className="text-xl font-semibold text-[#111827] mb-2">Serviço não encontrado</h2>
-        <p className="text-[#6B7280] text-sm mb-6">Este serviço pode ter sido removido ou o link está incorreto.</p>
-        <Link to="/" className="inline-flex items-center gap-2 rounded-lg bg-[#7C3AED] px-4 py-2 text-sm font-medium text-white hover:bg-[#6D28D9] transition-colors">
-          ← Voltar ao início
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F9FAFB]">
-      <div className="bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-[#7C3AED] transition-colors">
-            ← Todos os serviços
-          </Link>
-        </div>
-      </div>
-
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm flex items-center gap-2">
-            <span>⚠</span> {error}
-          </div>
-        )}
-
-        {loading && <LoadingSkeleton />}
-
-        {!loading && service && (
-          <article className="space-y-8">
-            <ServiceWorkflowActions key={uuid} uuid={uuid} onCompleted={() => setService(previous => ({ ...previous, status: "completed" }))} />
-            <div>
-              <span className="inline-block text-xs font-medium bg-[#EDE9FE] text-[#7C3AED] px-2.5 py-1 rounded-full mb-3">
-                {service.category?.name ?? "Sem categoria"}
-              </span>
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#111827] leading-tight mb-4">
-                {service.title}
-              </h1>
-              <p className="text-[#6B7280] leading-relaxed text-sm sm:text-base">
-                {service.description}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <InfoTile label="Budget mínimo" value={formatCurrency(service.budgetMin)} accent />
-              <InfoTile label="Budget máximo" value={formatCurrency(service.budgetMax)} accent />
-              <InfoTile label="Prazo" value={formatDate(service.deadline)} />
-              <InfoTile label="Status" value={STATUS_LABELS[service.status] ?? service.status} />
-            </div>
-
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6">
-              <h2 className="text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-4">
-                Publicado por
-              </h2>
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7C3AED] font-bold text-sm flex-shrink-0">
-                  {(service.client?.firstName ?? "?")[0].toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#111827]">
-                    {service.client?.firstName} {service.client?.lastName}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Link
-                to={`/servicos/${uuid}/enviar-proposta`}
-                className="flex-1 text-center bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors"
-              >
-                Enviar proposta
-              </Link>
-              <Link
-                to={`/servicos/${uuid}/propostas`}
-                className="flex-1 text-center border border-[#7C3AED] text-[#7C3AED] hover:bg-[#EDE9FE] font-semibold rounded-lg py-2.5 text-sm transition-colors"
-              >
-                Ver propostas
-              </Link>
-            </div>
-          </article>
-        )}
-      </main>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="mb-3 font-semibold">Sobre o serviço</h2><p className="whitespace-pre-wrap break-words leading-relaxed text-slate-600">{service.description}</p></section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="mb-4 text-sm font-semibold">Publicado por</h2><div className="flex items-center gap-3">
+          {service.client?.profilePictureUrl?<img src={service.client.profilePictureUrl} alt="" className="h-11 w-11 rounded-full object-cover" />:<span className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100 font-bold text-violet-700">{service.client?.firstName?.[0] ?? '?'}</span>}
+          <p>{service.client?.firstName} {service.client?.lastName}{user?.uuid===service.client?.uuid && <span className="ml-2 text-sm text-violet-700">(você)</span>}</p>
+        </div></section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="mb-4 font-semibold">{service.status==='open'?'Participação no serviço':'Acompanhamento do serviço'}</h2>
+          <ServiceProposalActions uuid={uuid} status={service.status} />
+          {user && ['in_progress','completed'].includes(service.status) && <ServiceWorkflowActions key={uuid+':'+user.uuid+':'+service.status} uuid={uuid} onCompleted={()=>setService(previous=>({...previous,status:'completed'}))} />}
+        </section>
+      </article>}
     </div>
-  );
+  </main>;
 }

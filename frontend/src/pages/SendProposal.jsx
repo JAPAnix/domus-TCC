@@ -3,7 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
+import ServiceProposalActions from '../components/ServiceProposalActions';
+
 export default function SendProposal() {
+  const { uuid } = useParams();
+  return <div className="mx-auto max-w-2xl px-4 py-8"><ServiceProposalActions uuid={uuid}><ProposalForm /></ServiceProposalActions></div>;
+}
+
+function ProposalForm() {
   const { uuid } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -39,9 +46,10 @@ export default function SendProposal() {
       await api.post(`/services/${uuid}/proposals`, {
         proposed_price: Number(form.proposed_price),
         cover_letter: form.cover_letter,
-        delivery_time_days: Number(form.delivery_time_days)
+        ...(form.delivery_time_days && { delivery_time_days: Number(form.delivery_time_days) })
       });
       setSuccess("Proposta enviada com sucesso.");
+      navigate("/painel-profissional");
       setForm({ proposed_price: "", cover_letter: "", delivery_time_days: "" });
     } catch (err) {
       setError(err.response?.data?.message || "Não foi possível enviar a proposta.");
@@ -97,7 +105,7 @@ export default function SendProposal() {
               <input
                 type="number"
                 name="proposed_price"
-                min="0"
+                min="0.01"
                 step="0.01"
                 value={form.proposed_price}
                 onChange={handleChange}

@@ -4,18 +4,18 @@ import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    navigate('/sair');
   };
 
+  const isProfessional = user?.roles?.includes('professional');
   const isClient = user?.roles?.includes('client');
 
-  const professionalPath = user ? '/perfil/profissional' : '/cadastro';
+  const professionalPath = user ? '/perfil/profissional' : '/cadastro?tipo=profissional';
 
   return (
     <nav className="bg-white border-b border-[#E5E7EB] sticky top-0 z-50">
@@ -63,6 +63,7 @@ export default function Navbar() {
                 <div className="absolute right-0 top-full z-50 mt-3 w-60 rounded-2xl border border-[#E5E7EB] bg-white p-2 shadow-[0_16px_45px_rgba(17,24,39,0.16)]">
                   <Link to="/servicos" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Serviços</Link>
                   <Link to={professionalPath} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Ofereça seus serviços</Link>
+                  {isProfessional && <Link to="/painel-profissional" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-50">Meu painel profissional</Link>}
                   {isClient && (
                     <>
                       <Link to="/servicos/novo" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Publicar serviço</Link>
@@ -72,7 +73,8 @@ export default function Navbar() {
                   <div className="my-1 border-t border-[#E5E7EB]" />
                   {user ? (
                     <>
-                      <Link to="/perfil" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Meu perfil</Link>
+                      <Link to="/perfil" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Perfil</Link>
+                      <Link to="/configuracoes" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm text-[#374151] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">Configurações da conta</Link>
                       <button type="button" onClick={() => { handleLogout(); setMenuOpen(false); }} className="block w-full rounded-xl px-3 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50">Sair</button>
                     </>
                   ) : (
@@ -116,7 +118,8 @@ export default function Navbar() {
               Ofereça seus serviços
             </Link>
 
-            {isClient && (
+            {isProfessional && <Link to="/painel-profissional" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-50">Meu painel profissional</Link>}
+                  {isClient && (
               <>
                 <Link to="/servicos/novo" onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">
                   Publicar serviço
@@ -130,7 +133,10 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link to="/perfil" onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">
-                  Meu perfil
+                  Perfil
+                </Link>
+                <Link to="/configuracoes" onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">
+                  Configurações da conta
                 </Link>
                 {!user.hasProfessionalProfile && (
                   <Link to="/perfil/profissional" onClick={() => setMenuOpen(false)} className="block text-sm text-[#6B7280] hover:text-[#7C3AED] py-1">

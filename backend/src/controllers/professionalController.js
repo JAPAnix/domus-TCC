@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
 import { normalizeCity, normalizeState } from '../utils/userData.js';
+import { assertPublishable } from '../utils/professionalPublication.js';
 
 function datesForDatabase(dates = []) {
   return [...new Set(dates)].map((date) => new Date(`${date}T12:00:00`));
@@ -19,16 +20,9 @@ async function validateCatalogItems(tx, ids) {
   return items;
 }
 
-function assertPublishable({ city, hourlyRate, dailyRate, catalogServiceIds }) {
-  if (!city) throw new Error('Informe a cidade de atendimento antes de publicar.');
-  if (!catalogServiceIds.length) throw new Error('Selecione pelo menos um serviço antes de publicar.');
-  if (Number(hourlyRate) <= 0 && (dailyRate == null || Number(dailyRate) <= 0)) {
-    throw new Error('Defina um preço por hora ou por diária antes de publicar.');
-  }
-}
 
 export const createProfile = async (req, res) => {
-  const { headline, bio, hourly_rate, daily_rate, skills, catalog_service_ids, availability_dates, city, state, publish = false } = req.body;
+  const { display_name, public_photo_url, service_region, billing_mode, certifications, portfolio_urls, headline, bio, hourly_rate, daily_rate, skills, catalog_service_ids, availability_dates, city, state, publish = false } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -42,20 +36,23 @@ export const createProfile = async (req, res) => {
 
     const profile = await prisma.$transaction(async (tx) => {
       const catalogItems = await validateCatalogItems(tx, catalog_service_ids);
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { city: true } });
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { city: true, state: true, firstName: true, lastName: true, deletedAt: true } });
+      if (!user || user.deletedAt) throw new Error('Conta não encontrada antes de publicar.');
       const normalizedCity = normalizeCity(city);
-      if (publish) assertPublishable({ city: normalizedCity ?? user.city, hourlyRate: hourly_rate, dailyRate: daily_rate, catalogServiceIds: catalogItems.map((item) => item.id) });
+      if (publish) assertPublishable({ displayName: display_name, headline, bio, state: state ?? user.state, serviceRegion: service_region, billingMode: billing_mode ?? 'hourly', availabilityDates: availability_dates, city: normalizedCity ?? user.city, hourlyRate: hourly_rate, dailyRate: daily_rate, catalogServiceIds: catalogItems.map((item) => item.id) });
       if (normalizedCity !== undefined || state !== undefined) {
         await tx.user.update({ where: { id: userId }, data: { ...(normalizedCity !== undefined && { city: normalizedCity }), ...(state !== undefined && { state: normalizeState(state) }) } });
       }
       const created = await tx.professionalProfile.create({
         data: {
-          userId, headline, bio, hourlyRate: hourly_rate, dailyRate: daily_rate, isPublished: publish,
+          userId, headline, bio, hourlyRate: hourly_rate ?? 0, dailyRate: daily_rate, isPublished: publish,
+          displayName: display_name, publicPhotoUrl: public_photo_url || null, serviceRegion: service_region, billingMode: billing_mode ?? 'hourly', certifications,
+          portfolioImages: portfolio_urls?.length ? { create: portfolio_urls.map((url, sortOrder) => ({ url, sortOrder })) } : undefined,
           skills: skills?.length ? { create: skills.map((skill) => ({ skillId: skill.skill_id, proficiencyLevel: skill.proficiency_level ?? 'intermediate' })) } : undefined,
           catalogServices: catalogItems.length ? { create: catalogItems.map((item) => ({ catalogItemId: item.id })) } : undefined,
           availabilityEntries: availability_dates?.length ? { create: datesForDatabase(availability_dates).map((date) => ({ date, isAvailable: true })) } : undefined
         },
-        include: { skills: { include: { skill: true } }, catalogServices: { include: { catalogItem: true } }, availabilityEntries: true }
+        include: { skills: { include: { skill: true } }, catalogServices: { include: { catalogItem: true } }, availabilityEntries: true, portfolioImages: { orderBy: { sortOrder: 'asc' } } }
       });
       const professionalRole = await tx.role.upsert({ where: { name: 'professional' }, update: {}, create: { name: 'professional' } });
       await tx.userRole.upsert({
@@ -98,7 +95,7 @@ export const getProfile = async (req, res) => {
               include: { skill: true }
             },
             catalogServices: { include: { catalogItem: { include: { category: true } } } },
-            availabilityEntries: true
+            availabilityEntries: true, portfolioImages: { orderBy: { sortOrder: 'asc' } }
           }
         }
       }
@@ -125,7 +122,7 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   const { uuid } = req.params;
-  const { headline, bio, hourly_rate, daily_rate, skills, catalog_service_ids, availability_dates, city, state, publish } = req.body;
+  const { display_name, public_photo_url, service_region, billing_mode, certifications, portfolio_urls, headline, bio, hourly_rate, daily_rate, skills, catalog_service_ids, availability_dates, city, state, publish } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -138,24 +135,36 @@ export const updateProfile = async (req, res) => {
     }
 
     const profile = await prisma.$transaction(async (tx) => {
-      const existing = await tx.professionalProfile.findUnique({ where: { userId }, include: { catalogServices: true, user: { select: { city: true } } } });
+      const existing = await tx.professionalProfile.findUnique({ where: { userId }, include: { catalogServices: true, availabilityEntries: true, user: { select: { city: true, state: true, firstName: true, lastName: true, deletedAt: true } } } });
       if (!existing) throw new Error('Perfil profissional não encontrado.');
       const catalogItems = await validateCatalogItems(tx, catalog_service_ids);
       const normalizedCity = normalizeCity(city);
       const effectiveCatalogIds = catalog_service_ids === undefined ? existing.catalogServices.map((item) => item.catalogItemId) : catalogItems.map((item) => item.id);
       const effectiveHourlyRate = hourly_rate ?? existing.hourlyRate;
       const effectiveDailyRate = daily_rate === undefined ? existing.dailyRate : daily_rate;
-      if (publish === true) assertPublishable({ city: normalizedCity ?? existing.user.city, hourlyRate: effectiveHourlyRate, dailyRate: effectiveDailyRate, catalogServiceIds: effectiveCatalogIds });
+      if (publish ?? existing.isPublished) assertPublishable({
+        displayName: display_name ?? existing.displayName, headline: headline ?? existing.headline, bio: bio ?? existing.bio,
+        state: state ?? existing.user.state, serviceRegion: service_region ?? existing.serviceRegion,
+        billingMode: billing_mode ?? existing.billingMode,
+        availabilityDates: availability_dates ?? existing.availabilityEntries,
+        city: normalizedCity ?? existing.user.city, hourlyRate: effectiveHourlyRate, dailyRate: effectiveDailyRate, catalogServiceIds: effectiveCatalogIds
+      });
       if (normalizedCity !== undefined || state !== undefined) await tx.user.update({ where: { id: userId }, data: { ...(normalizedCity !== undefined && { city: normalizedCity }), ...(state !== undefined && { state: normalizeState(state) }) } });
       return tx.professionalProfile.update({
         where: { userId },
         data: {
+          ...(display_name !== undefined && { displayName: display_name }),
+          ...(public_photo_url !== undefined && { publicPhotoUrl: public_photo_url || null }),
+          ...(service_region !== undefined && { serviceRegion: service_region }),
+          ...(billing_mode !== undefined && { billingMode: billing_mode }),
+          ...(certifications !== undefined && { certifications }),
+          ...(portfolio_urls !== undefined && { portfolioImages: { deleteMany: {}, create: portfolio_urls.map((url, sortOrder) => ({ url, sortOrder })) } }),
           ...(headline !== undefined && { headline }), ...(bio !== undefined && { bio }), ...(hourly_rate !== undefined && { hourlyRate: hourly_rate }), ...(daily_rate !== undefined && { dailyRate: daily_rate }), ...(publish !== undefined && { isPublished: publish }),
           ...(skills !== undefined && { skills: { deleteMany: {}, create: skills.map((skill) => ({ skillId: skill.skill_id, proficiencyLevel: skill.proficiency_level ?? 'intermediate' })) } }),
           ...(catalog_service_ids !== undefined && { catalogServices: { deleteMany: {}, create: catalogItems.map((item) => ({ catalogItemId: item.id })) } }),
           ...(availability_dates !== undefined && { availabilityEntries: { deleteMany: {}, create: datesForDatabase(availability_dates).map((date) => ({ date, isAvailable: true })) } })
         },
-        include: { skills: { include: { skill: true } }, catalogServices: { include: { catalogItem: { include: { category: true } } } }, availabilityEntries: true }
+        include: { skills: { include: { skill: true } }, catalogServices: { include: { catalogItem: { include: { category: true } } } }, availabilityEntries: true, portfolioImages: { orderBy: { sortOrder: 'asc' } } }
       });
     });
 
@@ -205,7 +214,7 @@ export const searchProfessionals = async (req, res) => {
     isPublished: true,
     availabilityStatus: 'available',
     user: { city, deletedAt: null },
-    availabilityEntries: { none: { date: searchDate, isAvailable: false } },
+    availabilityEntries: { some: { date: searchDate, isAvailable: true } },
     ...(serviceId ? { catalogServices: { some: { catalogItemId: Number(serviceId) } } } : {})
   };
 
@@ -228,16 +237,18 @@ export const searchProfessionals = async (req, res) => {
     res.json({
       data: profiles.map((profile) => ({
         id: bufferToUuid(profile.user.uuid),
-        name: `${profile.user.firstName} ${profile.user.lastName}`.trim(),
+        name: profile.displayName || `${profile.user.firstName} ${profile.user.lastName}`.trim(),
+        billingMode: profile.billingMode,
+        serviceRegion: profile.serviceRegion,
         city: profile.user.city,
         state: profile.user.state,
-        profilePictureUrl: profile.user.profilePictureUrl,
+        profilePictureUrl: profile.publicPhotoUrl,
         headline: profile.headline,
         bio: profile.bio,
         rating: Number(profile.averageRating),
         reviewCount: profile.totalReviews,
-        hourlyPrice: Number(profile.hourlyRate),
-        dailyPrice: profile.dailyRate == null ? null : Number(profile.dailyRate),
+        hourlyPrice: profile.billingMode === 'hourly' ? Number(profile.hourlyRate) : null,
+        dailyPrice: profile.billingMode === 'daily' ? Number(profile.dailyRate) : null,
         services: profile.catalogServices.map((item) => ({ id: item.catalogItem.id, name: item.catalogItem.name, category: item.catalogItem.category })),
         images: profile.portfolioImages.map((image) => image.url)
       })),

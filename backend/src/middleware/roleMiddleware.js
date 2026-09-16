@@ -9,6 +9,7 @@ const roleMiddleware = (...allowedRoles) => {
       const userWithRoles = await prisma.user.findUnique({
         where: { id: userId },
         select: {
+          deletedAt: true,
           roles: {
             select: {
               role: {
@@ -19,7 +20,7 @@ const roleMiddleware = (...allowedRoles) => {
         }
       });
 
-      if (!userWithRoles) {
+      if (!userWithRoles || userWithRoles.deletedAt) {
         return res.status(401).json({ message: 'Usuário não encontrado' });
       }
 

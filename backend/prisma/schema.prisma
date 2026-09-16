@@ -67,6 +67,12 @@ model User {
   phoneNumber        String?   @unique @map("phone_number") @db.VarChar(20)
   profilePictureUrl  String?   @map("profile_picture_url") @db.VarChar(2048)
   isEmailVerified    Boolean   @default(false) @map("is_email_verified")
+  isPhoneVerified    Boolean   @default(false) @map("is_phone_verified")
+  preferredName      String?   @map("preferred_name") @db.VarChar(100)
+  birthDate          DateTime? @map("birth_date") @db.Date
+  postalSameAsHome   Boolean   @default(true) @map("postal_same_as_home")
+  postalAddress      Json?     @map("postal_address")
+  emergencyContact   Json?     @map("emergency_contact")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
@@ -87,6 +93,7 @@ model User {
   reviewsWritten      Review[]             @relation("ReviewerRelation")
   reviewsReceived     Review[]             @relation("ReviewedRelation")
   passwordResetTokens PasswordResetToken[]
+  contactVerifications ContactVerification[]
 
   @@index([email])
   @@index([googleId])
@@ -160,7 +167,18 @@ model Skill {
   @@map("skills")
 }
 
+enum BillingMode {
+  hourly
+  daily
+  quote
+}
+
 model ProfessionalProfile {
+  displayName String? @map("display_name") @db.VarChar(150)
+  publicPhotoUrl String? @map("public_photo_url") @db.VarChar(2048)
+  serviceRegion String? @map("service_region") @db.VarChar(500)
+  billingMode BillingMode @default(hourly) @map("billing_mode")
+  certifications String? @db.Text
   userId             BigInt              @id @map("user_id") @db.UnsignedBigInt
   headline           String?             @db.VarChar(255)
   bio                String?             @db.Text
@@ -304,4 +322,21 @@ model Review {
   @@index([reviewedId])
   @@index([rating(sort: Desc)])
   @@map("reviews")
+}
+
+model ContactVerification {
+  id String @id @db.VarChar(36)
+  userId BigInt @map("user_id") @db.UnsignedBigInt
+  type String @db.VarChar(10)
+  target String @db.VarChar(255)
+  codeHash String @map("code_hash") @db.VarChar(64)
+  expiresAt DateTime @map("expires_at")
+  attempts Int @default(0)
+  deliveredAt DateTime? @map("delivered_at")
+  usedAt DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, type, createdAt])
+  @@index([target, createdAt])
+  @@map("contact_verifications")
 }

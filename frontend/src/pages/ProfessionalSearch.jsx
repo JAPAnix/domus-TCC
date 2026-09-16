@@ -85,9 +85,9 @@ function ProfessionalCard({ professional, selected, onSelect }) {
           </p>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             <span className="font-semibold text-[#111827]">
-              {formatMoney(professional.hourlyPrice)}/h
+              {professional.billingMode === 'quote' ? 'Sob orçamento' : professional.billingMode === 'daily' ? `${formatMoney(professional.dailyPrice)}/dia` : `${formatMoney(professional.hourlyPrice)}/h`}
             </span>
-            {professional.dailyPrice != null && (
+            {professional.billingMode == null && professional.dailyPrice != null && (
               <span className="text-[#374151]">
                 {formatMoney(professional.dailyPrice)}/dia
               </span>
@@ -167,9 +167,9 @@ function Highlight({ professional }) {
         </p>
         <div className="mt-4 flex gap-4 text-sm">
           <span className="font-semibold text-[#111827]">
-            {formatMoney(professional.hourlyPrice)}/h
+            {professional.billingMode === 'quote' ? 'Sob orçamento' : professional.billingMode === 'daily' ? `${formatMoney(professional.dailyPrice)}/dia` : `${formatMoney(professional.hourlyPrice)}/h`}
           </span>
-          {professional.dailyPrice != null && (
+          {professional.billingMode == null && professional.dailyPrice != null && (
             <span className="text-[#374151]">
               {formatMoney(professional.dailyPrice)}/dia
             </span>
@@ -243,7 +243,7 @@ export default function ProfessionalSearch() {
       [...professionals]
         .filter(
           (professional) =>
-            professional.hourlyPrice <= maxHourly &&
+            (professional.hourlyPrice == null || professional.hourlyPrice <= maxHourly) &&
             (professional.dailyPrice == null ||
               professional.dailyPrice <= maxDaily) &&
             professional.rating >= minimumRating,
@@ -252,9 +252,9 @@ export default function ProfessionalSearch() {
           sort === "reviews"
             ? b.reviewCount - a.reviewCount
             : sort === "hourly-asc"
-              ? a.hourlyPrice - b.hourlyPrice
+              ? (a.hourlyPrice ?? Infinity) - (b.hourlyPrice ?? Infinity)
               : sort === "hourly-desc"
-                ? b.hourlyPrice - a.hourlyPrice
+                ? (b.hourlyPrice ?? -Infinity) - (a.hourlyPrice ?? -Infinity)
                 : sort === "daily-asc"
                   ? (a.dailyPrice ?? Infinity) - (b.dailyPrice ?? Infinity)
                   : sort === "daily-desc"

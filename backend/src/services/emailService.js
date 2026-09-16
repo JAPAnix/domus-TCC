@@ -13,3 +13,23 @@ export async function sendPasswordResetEmail({ email, link }) {
   const result = await transport.sendMail({ from: process.env.EMAIL_FROM, to: email, subject: 'Redefina sua senha do DOMMOS', text: `Recebemos uma solicitação para redefinir sua senha. Este link expira em 30 minutos: ${link}`, html });
   console.info(`E-mail de recuperação aceito pelo SMTP: ${result.accepted?.length ?? 0} destinatário(s).`);
 }
+
+export async function sendEmailVerification({ email, code }) {
+  if (!process.env.SMTP_HOST || !process.env.EMAIL_FROM) {
+    throw Object.assign(new Error('O envio de email não está configurado.'), { status: 503 });
+  }
+  const transport = nodemailer.createTransport({
+    host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: process.env.SMTP_SECURE === 'true',
+    ...(process.env.SMTP_USER ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } } : {}),
+    connectionTimeout: 10000, socketTimeout: 15000,
+  });
+  const escape = (value) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const logo = /^https?:\/\//.test(process.env.EMAIL_LOGO_URL || '') ? `<img src="${escape(process.env.EMAIL_LOGO_URL)}" alt="DOMMOS" width="140" />` : '<strong style="color:#7C3AED;font-size:28px">DOMMOS</strong>';
+  const result = await transport.sendMail({
+    from: process.env.EMAIL_FROM, to: email, subject: 'Confirme seu novo email no DOMMOS',
+    text: `Seu código DOMMOS é ${code}. Ele expira em 10 minutos. Se você não solicitou esta alteração, ignore esta mensagem.`,
+    html: `<html lang="pt-BR"><body style="background:#F9FAFB;font-family:Arial,sans-serif;padding:24px;color:#111827"><div style="max-width:520px;margin:auto;padding:32px;background:white;border:1px solid #E5E7EB;border-radius:16px">${logo}<h1 style="font-size:24px">Confirme seu email</h1><p>Use este código para confirmar o endereço de email da sua conta.</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#5B21B6">${code}</p><p>O código expira em 10 minutos e só pode ser usado uma vez.</p><p style="color:#6B7280">Se você não solicitou esta alteração, ignore esta mensagem. Não compartilhe o código.</p></div></body></html>`,
+  });
+  if (!result.accepted?.length) throw Object.assign(new Error('Não foi possível enviar o email.'), { status: 502 });
+  return { delivery: 'provider-accepted' };
+}

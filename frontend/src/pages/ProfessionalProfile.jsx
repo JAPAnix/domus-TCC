@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../services/api";
 
+import ProfessionalPrice from '../components/ProfessionalPrice';
+
 const AVAILABILITY_LABELS = {
   available: "Disponível",
   busy: "Ocupado",
@@ -20,10 +22,6 @@ const PROFICIENCY_LABELS = {
   advanced: "Avançado",
   expert: "Especialista",
 };
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
-}
 
 function StarRating({ rating }) {
   return (
@@ -119,12 +117,12 @@ export default function ProfessionalProfile() {
         <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 sm:p-8">
           <div className="flex items-center gap-5">
             <div className="w-20 h-20 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7C3AED] text-2xl font-bold flex-shrink-0">
-              {(profile?.firstName ?? "?")[0].toUpperCase()}
+              {profile?.publicPhotoUrl ? <img src={profile.publicPhotoUrl} alt="" className="h-full w-full rounded-full object-cover" /> : (profile?.firstName ?? "?")[0].toUpperCase()}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl font-bold text-[#111827]">
-                  {profile?.firstName} {profile?.lastName}
+                  {profile?.displayName || [profile?.firstName, profile?.lastName].filter(Boolean).join(' ')}
                 </h1>
                 {profile?.isVerified && (
                   <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
@@ -144,12 +142,15 @@ export default function ProfessionalProfile() {
               </div>
             </div>
             <div className="text-right flex-shrink-0">
-              <p className="text-xs text-[#6B7280] uppercase tracking-wide">Valor/hora</p>
-              <p className="text-xl font-bold text-[#7C3AED]">{formatCurrency(profile?.hourlyRate ?? 0)}</p>
+              <p className="text-xs text-[#6B7280] uppercase tracking-wide">Cobrança</p>
+              <p className="text-xl font-bold text-[#7C3AED]"><ProfessionalPrice mode={profile?.billingMode} hourly={profile?.hourlyRate} daily={profile?.dailyRate} /></p>
             </div>
           </div>
         </div>
 
+        {profile?.serviceRegion && <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-semibold">Região de atendimento</h2><p>{profile.city} / {profile.state}</p><p className="mt-2 text-slate-600">{profile.serviceRegion}</p></section>}
+        {profile?.certifications && <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-semibold">Cursos e certificações</h2><p className="mt-2 whitespace-pre-line text-slate-600">{profile.certifications}</p></section>}
+        {!!profile?.portfolioImages?.length && <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="mb-4 font-semibold">Trabalhos realizados</h2><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{profile.portfolioImages.map(image => <img key={image.id} src={image.url} alt="Trabalho do profissional" loading="lazy" className="aspect-square w-full rounded-xl object-cover" />)}</div></section>}
         {/* Bio */}
         {profile?.bio && (
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6">

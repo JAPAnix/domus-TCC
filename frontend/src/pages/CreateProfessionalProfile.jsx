@@ -1,270 +1,155 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import ProfessionalPrice from '../components/ProfessionalPrice';
 
-const proficiencyOptions = [
-  { value: 'beginner', label: 'Iniciante' },
-  { value: 'intermediate', label: 'Intermediário' },
-  { value: 'advanced', label: 'Avançado' },
-  { value: 'expert', label: 'Especialista' }
-];
+const inputClass = 'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500';
+const states = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+const empty = { display_name: '', public_photo_url: '', headline: '', bio: '', city: '', state: '', service_region: '', billing_mode: 'quote', hourly_rate: '', daily_rate: '', catalog_service_ids: [], availability_dates: [], certifications: '', portfolio_urls: '' };
+function today() { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); }
 
-const CreateProfessionalProfile = () => {
+export default function CreateProfessionalProfile() {
+  const { user, token, login } = useAuth();
   const navigate = useNavigate();
-  const { user, login, token } = useAuth();
-
-  const [form, setForm] = useState({
-    headline: '',
-    bio: '',
-    hourly_rate: '', daily_rate: '', city: '', state: '', catalog_service_ids: [], availability_dates: []
-  });
-  const [catalogItems, setCatalogItems] = useState([]);
-  const [availabilityDate, setAvailabilityDate] = useState('');
-  const [skills, setSkills] = useState([]);
-  const [availableSkills, setAvailableSkills] = useState([]);
-  const [selectedSkill, setSelectedSkill] = useState('');
-  const [selectedProficiency, setSelectedProficiency] = useState('intermediate');
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState(empty);
+  const [catalog, setCatalog] = useState([]);
+  const [search, setSearch] = useState('');
+  const [date, setDate] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        const { data } = await api.get('/skills');
-        setAvailableSkills(data);
-      } catch {
-        // skills opcionais, ignora erro
-      }
-    };
-    fetchSkills();
-  }, []);
-
-  useEffect(() => { api.get('/service-catalog').then(({ data }) => setCatalogItems(data)).catch(() => setError('Não foi possível carregar o catálogo de serviços.')); }, []);
-
-  useEffect(() => {
-    if (!user?.uuid) return;
     let active = true;
-    async function loadExistingProfile() {
+    async function load() {
       try {
-        const { data } = await api.get(`/professionals/${user.uuid}`);
+        const [{ data: items }, { data: me }] = await Promise.all([api.get('/service-catalog'), api.get('/auth/me')]);
+        let profile = null;
+        try { profile = (await api.get('/professionals/' + me.uuid)).data; }
+        catch (err) { if (err.response?.status !== 404) throw err; }
         if (!active) return;
-        setIsEditing(true);
-        setForm({ headline: data.headline ?? '', bio: data.bio ?? '', hourly_rate: data.hourlyRate ?? '', daily_rate: data.dailyRate ?? '', city: data.city ?? '', state: data.state ?? '', catalog_service_ids: (data.catalogServices ?? []).map((item) => item.catalogItemId), availability_dates: (data.availabilityEntries ?? []).map((item) => String(item.date).slice(0, 10)) });
-        setSkills((data.skills ?? []).map((item) => ({ skill_id: item.skillId, proficiency_level: item.proficiencyLevel, name: item.skill?.name })));
-      } catch (err) {
-        if (err.response?.status !== 404 && active) setError('Não foi possível carregar seu perfil profissional.');
-      }
+        setCatalog(items);
+        setEditing(!!profile);
+        setForm({
+          ...empty, display_name: profile?.displayName || [me.firstName, me.lastName].join(' '),
+          public_photo_url: profile ? profile.publicPhotoUrl ?? '' : me.profilePictureUrl ?? '',
+          headline: profile?.headline ?? '', bio: profile?.bio ?? '',
+          city: profile?.city ?? me.city ?? '', state: profile?.state ?? me.state ?? '',
+          service_region: profile?.serviceRegion ?? '', billing_mode: profile?.billingMode ?? 'quote',
+          hourly_rate: profile?.hourlyRate ?? '', daily_rate: profile?.dailyRate ?? '',
+          catalog_service_ids: profile?.catalogServices?.map(item => item.catalogItemId) ?? [],
+          availability_dates: profile?.availabilityEntries?.filter(item => item.isAvailable && String(item.date).slice(0,10) >= today()).map(item => String(item.date).slice(0,10)) ?? [],
+          certifications: profile?.certifications ?? '',
+          portfolio_urls: profile?.portfolioImages?.map(item => item.url).join('\n') ?? ''
+        });
+        setLoadError('');
+        setReady(true);
+      } catch { if (active) setLoadError('Não foi possível carregar seu cadastro. Tente novamente.'); }
     }
-    loadExistingProfile();
+    load();
     return () => { active = false; };
-  }, [user?.uuid]);
+  }, [user?.uuid, retry]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const change = event => { setForm(previous => ({ ...previous, [event.target.name]: event.target.value })); setPreview(false); };
+  const selected = catalog.filter(item => form.catalog_service_ids.includes(item.id));
+  const images = form.portfolio_urls.split('\n').map(url => url.trim()).filter(Boolean);
+  const validImage = url => { try { return ['https:', 'http:'].includes(new URL(url).protocol); } catch { return false; } };
+  const toggleService = id => {
+    setForm(previous => ({ ...previous, catalog_service_ids: previous.catalog_service_ids.includes(id) ? previous.catalog_service_ids.filter(value => value !== id) : [...previous.catalog_service_ids, id] }));
+    setPreview(false);
   };
 
-  const addSkill = () => {
-    if (!selectedSkill) return;
-
-    const already = skills.find(s => s.skill_id === Number(selectedSkill));
-    if (already) return;
-
-    const skill = availableSkills.find(s => s.id === Number(selectedSkill));
-    setSkills([...skills, {
-      skill_id: Number(selectedSkill),
-      proficiency_level: selectedProficiency,
-      name: skill?.name
-    }]);
-    setSelectedSkill('');
-    setSelectedProficiency('intermediate');
-  };
-
-  const removeSkill = (skillId) => {
-    setSkills(skills.filter(s => s.skill_id !== skillId));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  function showPreview(event) {
+    event.preventDefault();
     setError('');
-    setLoading(true);
+    if (!form.display_name.trim() || !form.headline.trim() || !form.bio.trim() || !form.service_region.trim()) return setError('Preencha os campos obrigatórios.');
+    if (!selected.length || selected.length > 30) return setError('Selecione entre 1 e 30 serviços.');
+    if (!form.availability_dates.length) return setError('Adicione pelo menos uma data disponível.');
+    if (images.length > 12 || images.some(url => !validImage(url))) return setError('Use até 12 links de imagens válidos, começando com http:// ou https://.');
+    if (form.public_photo_url && !validImage(form.public_photo_url)) return setError('Informe um link válido para a foto.');
+    setPreview(true);
+  }
 
+  async function publish() {
+    setSaving(true); setError('');
     try {
       const payload = {
-        ...form,
-        hourly_rate: Number(form.hourly_rate),
-        daily_rate: form.daily_rate === '' ? null : Number(form.daily_rate),
-        publish: true,
-        skills: skills.map(({ skill_id, proficiency_level }) => ({ skill_id, proficiency_level }))
+        ...form, public_photo_url: form.public_photo_url.trim(), portfolio_urls: images, publish: true,
+        hourly_rate: form.billing_mode === 'hourly' ? Number(form.hourly_rate) : 0,
+        daily_rate: form.billing_mode === 'daily' ? Number(form.daily_rate) : null
       };
-      if (isEditing) await api.patch(`/professionals/${user.uuid}`, payload);
+      if (editing) await api.patch('/professionals/' + user.uuid, payload);
       else await api.post('/professionals', payload);
+      setEditing(true);
+      const { data } = await api.get('/auth/me');
+      login(token, data);
+      navigate('/painel-profissional');
+    } catch (err) { setError(err.response?.data?.errors?.map(item => item.message).join(' ') || err.response?.data?.message || 'Não foi possível publicar seu perfil.'); }
+    finally { setSaving(false); }
+  }
 
-      login(token, { ...user, hasProfessionalProfile: true });
-      navigate('/perfil');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao criar perfil profissional');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (loadError) return <main className="mx-auto max-w-xl p-8"><p role="alert">{loadError}</p><button className="mt-4 text-violet-700" onClick={() => setRetry(value => value+1)}>Tentar novamente</button></main>;
+  if (!ready) return <p role="status" className="p-12 text-center">Carregando seu cadastro...</p>;
 
-  return (
-    <div className="min-h-screen bg-[#F9FAFB] px-4 py-10">
-      <div className="max-w-xl mx-auto">
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#111827]">{isEditing ? 'Editar perfil profissional' : 'Criar perfil profissional'}</h1>
-          <p className="text-[#6B7280] mt-1">Configure seu perfil para aparecer nas buscas.</p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-8">
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Título profissional
-              </label>
-              <input
-                type="text"
-                name="headline"
-                value={form.headline}
-                onChange={handleChange}
-                placeholder="Ex: Desenvolvedor Full Stack"
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <label className="block text-sm font-medium text-[#111827]">Valor por diária (R$)<input type="number" name="daily_rate" value={form.daily_rate} onChange={handleChange} min="0" step="0.01" className="mt-1 w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm" /></label>
-              <label className="block text-sm font-medium text-[#111827]">UF<input type="text" name="state" value={form.state} onChange={handleChange} maxLength={2} required className="mt-1 w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm uppercase" /></label>
-            </div>
-            <label className="block text-sm font-medium text-[#111827]">Cidade de atendimento<input type="text" name="city" value={form.city} onChange={handleChange} required className="mt-1 w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm" /></label>
-            <label className="block text-sm font-medium text-[#111827]">Serviços oferecidos
-              <select multiple required value={form.catalog_service_ids} onChange={(event) => setForm({ ...form, catalog_service_ids: Array.from(event.target.selectedOptions, (option) => Number(option.value)) })} className="mt-1 h-36 w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm">
-                {catalogItems.map((item) => <option key={item.id} value={item.id}>{item.category.name} — {item.name}</option>)}
-              </select><span className="mt-1 block text-xs text-[#6B7280]">Use Ctrl/Cmd para selecionar mais de um serviço.</span>
-            </label>
-            <div><label className="block text-sm font-medium text-[#111827]">Datas disponíveis</label><div className="mt-1 flex gap-2"><input type="date" value={availabilityDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setAvailabilityDate(event.target.value)} className="flex-1 border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-sm" /><button type="button" onClick={() => { if (availabilityDate && !form.availability_dates.includes(availabilityDate)) setForm({ ...form, availability_dates: [...form.availability_dates, availabilityDate] }); setAvailabilityDate(''); }} className="rounded-lg bg-[#EDE9FE] px-3 text-sm font-semibold text-[#7C3AED]">Adicionar</button></div>{form.availability_dates.map((date) => <button type="button" key={date} onClick={() => setForm({ ...form, availability_dates: form.availability_dates.filter((item) => item !== date) })} className="mt-2 mr-2 rounded-full bg-[#EDE9FE] px-3 py-1 text-xs text-[#7C3AED]">{date} ×</button>)}</div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Biografia
-              </label>
-              <textarea
-                name="bio"
-                value={form.bio}
-                onChange={handleChange}
-                placeholder="Conte um pouco sobre você e sua experiência..."
-                rows={4}
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Valor por hora (R$)
-              </label>
-              <input
-                type="number"
-                name="hourly_rate"
-                value={form.hourly_rate}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                required
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            {/* Skills */}
-            {availableSkills.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-[#111827] mb-1">
-                  Habilidades
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <select
-                    value={selectedSkill}
-                    onChange={e => setSelectedSkill(e.target.value)}
-                    className="flex-1 border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-                  >
-                    <option value="">Selecione uma habilidade</option>
-                    {availableSkills.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={selectedProficiency}
-                    onChange={e => setSelectedProficiency(e.target.value)}
-                    className="border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-                  >
-                    {proficiencyOptions.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={addSkill}
-                    className="bg-[#EDE9FE] text-[#7C3AED] font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-[#DDD6FE] transition-colors"
-                  >
-                    + Add
-                  </button>
-                </div>
-
-                {skills.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map(s => (
-                      <span
-                        key={s.skill_id}
-                        className="flex items-center gap-1 bg-[#EDE9FE] text-[#7C3AED] text-xs font-medium px-3 py-1.5 rounded-full"
-                      >
-                        {s.name}
-                        <button
-                          type="button"
-                          onClick={() => removeSkill(s.skill_id)}
-                          className="ml-1 hover:text-red-500 transition-colors"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => navigate('/perfil')}
-                className="flex-1 border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F9FAFB] font-semibold rounded-lg py-2.5 text-sm transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Criar perfil'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+  return <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
+    <div className="mx-auto max-w-3xl">
+      {!editing && <ol aria-label="Etapas do cadastro" className="mb-6 flex gap-3 text-sm"><li className="rounded-full bg-emerald-50 px-4 py-2 text-emerald-700">1. Conta criada</li><li aria-current="step" className="rounded-full bg-violet-100 px-4 py-2 font-semibold text-violet-700">2. Perfil profissional</li></ol>}
+      <h1 className="text-2xl font-bold">{editing ? 'Editar perfil profissional' : 'Crie seu perfil profissional'}</h1>
+      <p className="mb-7 mt-2 text-slate-500">Conte o que você faz e onde atende. Revise a prévia antes de publicar.</p>
+      {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-red-700">{error}</p>}
+      {preview ? <section className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+        <p className="mb-5 text-sm font-semibold text-violet-700">Prévia do perfil público</p>
+        <div className="flex items-center gap-4">{form.public_photo_url && <img src={form.public_photo_url} alt="" className="h-20 w-20 rounded-full object-cover" />}
+          <div><h2 className="text-xl font-bold">{form.display_name}</h2><p>{form.headline}</p><p className="text-sm text-slate-500">{form.city} / {form.state}</p></div></div>
+        <p className="mt-5 text-lg font-semibold text-violet-700"><ProfessionalPrice mode={form.billing_mode} hourly={form.hourly_rate} daily={form.daily_rate} /></p>
+        <p className="mt-4 whitespace-pre-line">{form.bio}</p>
+        <h3 className="mt-5 font-semibold">Região de atendimento</h3><p>{form.service_region}</p>
+        <h3 className="mt-5 font-semibold">Serviços oferecidos</h3><p>{selected.map(item => item.name).join(', ')}</p>
+        <h3 className="mt-5 font-semibold">Datas disponíveis</h3><p>{form.availability_dates.map(value => new Date(value+'T12:00:00').toLocaleDateString('pt-BR')).join(', ')}</p>
+        {form.certifications && <><h3 className="mt-5 font-semibold">Cursos e certificações</h3><p className="whitespace-pre-line">{form.certifications}</p></>}
+        {!!images.length && <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">{images.map((url, i) => <img key={i} src={url} alt="Trabalho realizado" className="aspect-square w-full rounded-xl object-cover" />)}</div>}
+        <p className="mt-6 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Essas informações ficarão públicas. Seu e-mail, telefone e endereço residencial não são exibidos neste perfil.</p>
+        <div className="mt-6 flex flex-wrap gap-3"><button disabled={saving} onClick={() => setPreview(false)} className="rounded-lg border px-5 py-3">Voltar e editar</button><button disabled={saving} onClick={publish} className="rounded-lg bg-violet-600 px-5 py-3 font-semibold text-white disabled:opacity-50">{saving ? 'Publicando...' : editing ? 'Salvar e publicar alterações' : 'Publicar meu perfil profissional'}</button></div>
+      </section> : <form onSubmit={showPreview} className="space-y-7 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+        <p className="text-sm text-slate-500">Campos com * são obrigatórios.</p>
+        <fieldset className="space-y-4"><legend className="mb-3 text-lg font-semibold">Apresentação</legend>
+          <label className="block text-sm font-medium">Nome profissional *<input name="display_name" value={form.display_name} onChange={change} required minLength={2} maxLength={150} className={inputClass} /></label>
+          <label className="block text-sm font-medium">Foto de perfil (opcional)<input type="url" name="public_photo_url" value={form.public_photo_url} onChange={change} maxLength={2048} placeholder="https://.../foto.jpg" className={inputClass} /><span className="text-xs text-slate-500">Informe o link de uma imagem já hospedada.</span></label>
+          <label className="block text-sm font-medium">Título profissional *<input name="headline" value={form.headline} onChange={change} required maxLength={255} placeholder="Ex.: Eletricista residencial" className={inputClass} /></label>
+          <label className="block text-sm font-medium">Apresentação *<textarea name="bio" value={form.bio} onChange={change} required maxLength={5000} rows={4} placeholder="Conte sua experiência e os tipos de trabalho que realiza." className={inputClass} /></label>
+        </fieldset>
+        <fieldset className="space-y-4"><legend className="mb-3 text-lg font-semibold">Onde você atende</legend>
+          <div className="grid grid-cols-3 gap-3"><label className="col-span-2 text-sm font-medium">Cidade *<input name="city" value={form.city} onChange={change} required minLength={2} maxLength={100} className={inputClass} /></label>
+            <label className="text-sm font-medium">UF *<select name="state" value={form.state} onChange={change} required className={inputClass}><option value="">Selecione</option>{states.map(uf => <option key={uf}>{uf}</option>)}</select></label></div>
+          <label className="block text-sm font-medium">Região de atendimento *<textarea name="service_region" value={form.service_region} onChange={change} required minLength={2} maxLength={500} rows={2} placeholder="Bairros, cidades próximas ou atendimento remoto." className={inputClass} /></label>
+        </fieldset>
+        <fieldset><legend className="mb-3 text-lg font-semibold">Serviços oferecidos *</legend>
+          <label className="text-sm">Buscar no catálogo<input type="search" value={search} onChange={event => setSearch(event.target.value)} className={inputClass} placeholder="Ex.: limpeza, elétrica..." /></label>
+          <p className="my-2 text-xs text-slate-500">{form.catalog_service_ids.length} de 30 selecionados</p>
+          <div className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+            {catalog.filter(item => (item.name+' '+item.category.name).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR'))).map(item => <label key={item.id} className="flex cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-violet-50"><input type="checkbox" className="mt-1 accent-violet-600" checked={form.catalog_service_ids.includes(item.id)} disabled={form.catalog_service_ids.length >= 30 && !form.catalog_service_ids.includes(item.id)} onChange={() => toggleService(item.id)} /><span className="text-sm">{item.name}<small className="block text-slate-500">{item.category.name}</small></span></label>)}
+          </div>
+        </fieldset>
+        <fieldset className="space-y-4"><legend className="mb-3 text-lg font-semibold">Forma de cobrança *</legend>
+          <div className="flex flex-wrap gap-4">{[['quote','Sob orçamento'],['hourly','Por hora'],['daily','Por diária']].map(([value,label]) => <label key={value} className="text-sm"><input type="radio" name="billing_mode" value={value} checked={form.billing_mode===value} onChange={change} className="accent-violet-600" /> {label}</label>)}</div>
+          {form.billing_mode !== 'quote' ? <label className="block text-sm font-medium">{form.billing_mode === 'hourly' ? 'Valor por hora (R$) *' : 'Valor por diária (R$) *'}<input type="number" name={form.billing_mode === 'hourly' ? 'hourly_rate' : 'daily_rate'} value={form.billing_mode === 'hourly' ? form.hourly_rate : form.daily_rate} onChange={change} required min="0.01" max="99999999.99" step="0.01" className={inputClass} /></label> : <p className="text-sm text-slate-500">Você combina o preço depois de conhecer o serviço. Não será exibido um valor fixo.</p>}
+        </fieldset>
+        <fieldset><legend className="mb-3 text-lg font-semibold">Datas disponíveis *</legend>
+          <p className="mb-2 text-sm text-slate-500">Você aparecerá na busca nas datas selecionadas. Atualize sua agenda quando necessário.</p>
+          <div className="flex flex-wrap gap-2"><label className="min-w-0 flex-1 text-sm">Data<input type="date" value={date} min={today()} onChange={event => setDate(event.target.value)} className={inputClass} /></label><button type="button" disabled={!date || date < today() || form.availability_dates.length >= 180} onClick={() => { setForm(previous => ({...previous, availability_dates: [...new Set([...previous.availability_dates, date])].sort()})); setDate(''); }} className="self-end rounded-lg bg-violet-100 px-4 py-3 text-sm font-semibold text-violet-700 disabled:opacity-40">Adicionar</button></div>
+          <div className="mt-3 flex flex-wrap gap-2">{form.availability_dates.map(value => <button type="button" key={value} aria-label={'Remover data '+value} onClick={() => setForm(previous => ({...previous, availability_dates: previous.availability_dates.filter(item => item !== value)}))} className="rounded-full bg-violet-50 px-3 py-2 text-sm text-violet-700">{new Date(value+'T12:00:00').toLocaleDateString('pt-BR')} ×</button>)}</div>
+        </fieldset>
+        <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer font-semibold">Trabalhos, cursos e certificações (opcional)</summary>
+          <label className="mt-4 block text-sm">Fotos de trabalhos<textarea name="portfolio_urls" value={form.portfolio_urls} onChange={change} rows={3} placeholder="Um link de imagem por linha, até 12 fotos." className={inputClass} /></label>
+          <label className="mt-4 block text-sm">Cursos e certificações<textarea name="certifications" value={form.certifications} onChange={change} rows={3} maxLength={5000} className={inputClass} /></label>
+        </details>
+        <div className="flex flex-wrap items-center gap-4"><Link to="/perfil" className="text-sm text-slate-600">Completar depois</Link><button type="submit" className="rounded-lg bg-violet-600 px-5 py-3 font-semibold text-white hover:bg-violet-700">Revisar perfil antes de publicar</button></div>
+      </form>}
     </div>
-  );
-};
-
-export default CreateProfessionalProfile;
+  </main>;
+}

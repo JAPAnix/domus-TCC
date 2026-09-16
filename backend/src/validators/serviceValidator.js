@@ -8,7 +8,9 @@ const serviceBaseSchema = z.object({
   category_id: z.number().int().positive(),
   budget_min: z.number().positive().optional(),
   budget_max: z.number().positive().optional(),
-  deadline: z.string().date("Data inválida").optional(),
+  deadline: z.string().date("Data inválida")
+    .transform(value => new Date(value + "T00:00:00.000Z"))
+    .optional(),
 });
 
 export const createServiceSchema = serviceBaseSchema.refine(

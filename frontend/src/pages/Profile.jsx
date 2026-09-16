@@ -1,207 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+﻿import { NavLink, Outlet } from 'react-router-dom';
 
-const Profile = () => {
-  const { user, login, token, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+const sections = [
+  { path: 'sobre', label: 'Sobre mim', icon: 'M20 21v-2a8 8 0 0 0-16 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8' },
+  { path: 'avaliacoes', label: 'Avaliações', icon: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z' },
+  { path: 'resumo-profissional', label: 'Perfil profissional', icon: 'M3 7h18v14H3V7ZM8 7V3h8v4M3 12a20 20 0 0 0 18 0M12 11v4' },
+];
 
-  const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    phone_number: '',
-    profile_picture_url: ''
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const hasSession = Boolean(token && user);
-
-  useEffect(() => {
-    if (authLoading || !hasSession) {
-      return;
-    }
-
-    const fetchMe = async () => {
-      try {
-        const { data } = await api.get('/auth/me');
-        setForm({
-          first_name: data.firstName || '',
-          last_name: data.lastName || '',
-          phone_number: data.phoneNumber || '',
-          profile_picture_url: data.profilePictureUrl || ''
-        });
-      } catch {
-        setError('Erro ao carregar perfil');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMe();
-  }, [authLoading, hasSession]);
-
-  const handleChange = (e) => {
-    const value = e.target.name === 'phone_number'
-      ? e.target.value.replace(/\D/g, '').slice(0, 11).replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2')
-      : e.target.value;
-    setForm({ ...form, [e.target.name]: value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setSaving(true);
-
-    try {
-      const { profile_picture_url, ...profileFields } = form;
-      const profilePictureUrl = profile_picture_url.trim();
-      const payload = {
-        ...profileFields,
-        ...(profilePictureUrl ? { profile_picture_url: profilePictureUrl } : {})
-      };
-
-      const { data } = await api.patch(`/users/${user.uuid}`, payload);
-      login(token, { ...user, ...data });
-      setSuccess('Perfil atualizado com sucesso!');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao atualizar perfil');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
-        <p className="text-[#6B7280]">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!hasSession) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
-        <p className="text-[#6B7280]">Carregando...</p>
-      </div>
-    );
-  }
-
+export default function Profile() {
   return (
-    <div className="min-h-screen bg-[#F9FAFB] px-4 py-10">
-      <div className="max-w-xl mx-auto">
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#111827]">Meu Perfil</h1>
-          <p className="text-[#6B7280] mt-1">Gerencie suas informações pessoais</p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-8">
-
-          {/* Avatar */}
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-16 h-16 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7C3AED] text-xl font-bold">
-              {form.first_name?.[0]?.toUpperCase() || '?'}
-            </div>
-            <div>
-              <p className="font-semibold text-[#111827]">{form.first_name} {form.last_name}</p>
-              <p className="text-sm text-[#6B7280]">{user?.email}</p>
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-600 rounded-lg px-4 py-3 mb-4 text-sm">
-              {success}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#111827] mb-1">Nome</label>
-                <input
-                  type="text"
-                  name="first_name"
-                  value={form.first_name}
-                  onChange={handleChange}
-                  className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#111827] mb-1">Sobrenome</label>
-                <input
-                  type="text"
-                  name="last_name"
-                  value={form.last_name}
-                  onChange={handleChange}
-                  className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">Telefone</label>
-              <input
-                type="text"
-                name="phone_number"
-                value={form.phone_number}
-                onChange={handleChange}
-                placeholder="(11) 99999-9999"
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">URL da foto de perfil</label>
-              <input
-                type="text"
-                name="profile_picture_url"
-                value={form.profile_picture_url}
-                onChange={handleChange}
-                placeholder="https://..."
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? 'Salvando...' : 'Salvar alterações'}
-              </button>
-
-              {!user?.hasProfessionalProfile && (
-                <button
-                  type="button"
-                  onClick={() => navigate('/perfil/profissional')}
-                  className="flex-1 border border-[#7C3AED] text-[#7C3AED] hover:bg-[#EDE9FE] font-semibold rounded-lg py-2.5 text-sm transition-colors"
-                >
-                  Criar perfil profissional
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <h1 className="mb-8 text-3xl font-bold tracking-tight text-[#111827]">Perfil</h1>
+      <div className="grid items-start gap-8 md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12">
+        <nav aria-label="Seções do perfil" className="min-w-0 border-b border-[#E5E7EB] pb-4 md:border-r md:border-b-0 md:pr-6 md:pb-0">
+          <ul className="flex gap-2 overflow-x-auto p-1 md:flex-col">
+            {sections.map(({ path, label, icon }) => (
+              <li key={path} className="shrink-0">
+                <NavLink to={`/perfil/${path}`} end className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7C3AED] ${isActive ? 'bg-[#F5F3FF] font-semibold text-[#5B21B6]' : 'text-[#374151] hover:bg-[#F5F3FF] hover:text-[#6D28D9]'}`}>
+                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={icon} /></svg>
+                  {label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <section aria-labelledby="profile-section-title" className="min-w-0"><Outlet /></section>
       </div>
-    </div>
+    </main>
   );
-};
-
-export default Profile;
+}

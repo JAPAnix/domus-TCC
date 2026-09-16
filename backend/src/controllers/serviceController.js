@@ -1,14 +1,8 @@
+import { changeServiceStatus, workflowHandler } from '../services/serviceWorkflow.js';
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
 
-const STATUS_TRANSITIONS = {
-  draft:       ['open', 'cancelled'],
-  open:        ['in_progress', 'cancelled'],
-  in_progress: ['completed', 'cancelled'],
-  completed:   [],
-  cancelled:   []
-};
 
 export const createService = async (req, res) => {
   const { title, description, category_id, budget_min, budget_max, deadline } = req.body;
@@ -172,42 +166,7 @@ export const updateService = async (req, res) => {
   }
 };
 
-export const updateStatus = async (req, res) => {
-  const { uuid } = req.params;
-  const { status } = req.body;
-  const userId = BigInt(req.user.id);
-
-  try {
-    const service = await prisma.service.findFirst({
-      where: { uuid: uuidToBuffer(uuid), deletedAt: null }
-    });
-
-    if (!service) {
-      return res.status(404).json({ message: 'Serviço não encontrado' });
-    }
-
-    if (service.clientId !== userId) {
-      return res.status(403).json({ message: 'Acesso negado' });
-    }
-
-    const allowed = STATUS_TRANSITIONS[service.status];
-    if (!allowed.includes(status)) {
-      return res.status(400).json({
-        message: `Transição inválida: ${service.status} → ${status}. Permitido: ${allowed.join(', ') || 'nenhuma'}`
-      });
-    }
-
-    const updated = await prisma.service.update({
-      where: { id: service.id },
-      data: { status }
-    });
-
-    res.json({ status: updated.status });
-  } catch (err) {
-    logger.error('nome_da_função', err);
-    res.status(500).json({ message: 'Erro interno do servidor' });
-  }
-};
+export const updateStatus = workflowHandler((uuid, id, body) => changeServiceStatus(uuid, id, body.status));
 
 export const deleteService = async (req, res) => {
   const { uuid } = req.params;

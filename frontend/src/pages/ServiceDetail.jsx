@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../services/api";
 
+import ServiceWorkflowActions from '../components/ServiceWorkflowActions';
+
 function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
@@ -117,6 +119,7 @@ export default function ServiceDetail() {
 
         {!loading && service && (
           <article className="space-y-8">
+            <ServiceWorkflowActions key={uuid} uuid={uuid} onCompleted={() => setService(previous => ({ ...previous, status: "completed" }))} />
             <div>
               <span className="inline-block text-xs font-medium bg-[#EDE9FE] text-[#7C3AED] px-2.5 py-1 rounded-full mb-3">
                 {service.category?.name ?? "Sem categoria"}

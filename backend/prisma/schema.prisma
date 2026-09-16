@@ -56,7 +56,21 @@ model Role {
   @@map("roles")
 }
 
+model Notification {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  userId BigInt @map("user_id") @db.UnsignedBigInt
+  eventKey String @unique @map("event_key") @db.VarChar(191)
+  message String @db.VarChar(500)
+  href String @db.VarChar(255)
+  readAt DateTime? @map("read_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
 model User {
+  notifications Notification[]
   id                 BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
   uuid               Bytes     @unique @db.Binary(16)
   email              String    @unique @db.VarChar(255)

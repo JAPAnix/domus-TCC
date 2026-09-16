@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -94,6 +94,7 @@ export default function ServiceProposals() {
         <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold text-[#111827]">Propostas recebidas</h1>
+            <Link to={"/servicos/" + uuid} className="mt-2 inline-block text-sm font-semibold text-violet-700">Ver serviço e acompanhar conclusão</Link>
             <p className="text-[#6B7280] mt-1 text-sm">Gerencie as propostas do seu serviço</p>
           </div>
           <p className="text-xs text-[#6B7280]">Apenas o dono do serviço pode aceitar ou rejeitar</p>

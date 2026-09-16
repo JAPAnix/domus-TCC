@@ -28,6 +28,8 @@ import SettingsLayout from './pages/settings/SettingsLayout';
 import { SettingsPlaceholder } from './pages/settings/SettingsPages';
 import { settingsSections } from './pages/settings/settingsSections';
 
+import Notifications from './pages/Notifications';
+
 const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<AuthProvider><Navbar /><Outlet /></AuthProvider>}>
           {/* Públicas */}
@@ -43,6 +45,7 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/profissionais/:uuid" element={<ProfessionalProfile />} />
 
           {/* Autenticadas */}
+          <Route path="/notificacoes" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/painel-profissional" element={<ProtectedRoute roles={['professional']}><ProfessionalDashboard /></ProtectedRoute>} />
           <Route path="/configuracoes" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="pessoais" replace />} />
@@ -67,9 +70,9 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/perfil/profissional" element={<ProtectedRoute><CreateProfessionalProfile /></ProtectedRoute>} />
           <Route path="/servicos/novo" element={<CreateService />} />
           <Route path="/meus-servicos" element={<MyServices />} />
-          <Route path="/servicos/:uuid/propostas" element={<ServiceProposals />} />
+          <Route path="/servicos/:uuid/propostas" element={<ProtectedRoute roles={['client']}><ServiceProposals /></ProtectedRoute>} />
           <Route path="/servicos/:uuid/enviar-proposta" element={<SendProposal />} />
-          <Route path="/servicos/:uuid/avaliar" element={<CreateReview />} />
+          <Route path="/servicos/:uuid/avaliar" element={<ProtectedRoute><CreateReview /></ProtectedRoute>} />
   </Route>
 ));
 

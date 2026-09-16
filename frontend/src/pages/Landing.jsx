@@ -229,7 +229,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="bg-white border-t border-[#E5E7EB] px-4 py-8 text-center">
         <BrandLogo className="mx-auto mb-2" />
-        <p className="text-xs text-[#6B7280]">© 2026 domus. Todos os direitos reservados.</p>
+        <p className="text-xs text-[#6B7280]">© 2026 Dommos. Todos os direitos reservados.</p>
       </footer>
 
     </div>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
 
-export default function Navbar() {
+export default function Navbar({ simplified = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -16,6 +16,14 @@ export default function Navbar() {
   const isClient = user?.roles?.includes('client');
 
   const professionalPath = user ? '/perfil/profissional' : '/cadastro?tipo=profissional';
+
+  if (simplified) return (
+    <header className="border-b border-[#E5E7EB] bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+        <Link to="/configuracoes/pessoais" aria-label="Voltar às informações pessoais" className="inline-flex rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#7C3AED]"><BrandLogo /></Link>
+      </div>
+    </header>
+  );
 
   return (
     <nav className="bg-white border-b border-[#E5E7EB] sticky top-0 z-50">

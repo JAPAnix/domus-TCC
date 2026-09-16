@@ -1,10 +1,13 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate, useMatch } from 'react-router-dom';
 import { settingsSections } from './settingsSections';
 
 export default function SettingsLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const identityPage = useMatch('/configuracoes/pessoais/verificacao-identidade');
   const selectedSection = settingsSections.find(({ path }) => (pathname === `/configuracoes/${path}` || pathname.startsWith(`/configuracoes/${path}/`)));
+
+  if (identityPage) return <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12"><Outlet /></main>;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">

@@ -115,7 +115,7 @@ try {
     await evaluate(`document.querySelector('a[href="/configuracoes/pessoais/nome"]').click()`); await expectText('Confira suas informações');
     await fill('first_name', 'Não salvar'); await click('Voltar'); await expectText('Tem certeza de que quer sair?');
     await click('Continuar editando'); assert.equal(await evaluate('document.querySelector("[name=first_name]").value'), 'Não salvar');
-    await click('Concluir'); await expectText('Tem certeza de que quer sair?'); await click('Sair sem salvar'); await waitFor(async () => (await evaluate('location.pathname')) === '/servicos', 'Concluir services');
+    await click('Concluir'); await expectText('Tem certeza de que quer sair?'); await click('Sair sem salvar'); await waitFor(async () => (await evaluate('location.pathname')) === '/configuracoes/pessoais', 'Concluir personal settings');
     assert.equal((await prisma.user.findUnique({ where: { id: user.id } })).firstName, 'Nome Navegador');
   });
   await check('browser back and settings sidebar respect dirty form', async () => {

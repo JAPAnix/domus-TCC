@@ -59,7 +59,7 @@ export function PersonalSettings() {
           return <div key={key} className="py-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0"><dt className="font-medium">{section.title}</dt><dd className="mt-2 break-words text-sm text-[#6B7280]">{values[key] || 'Não informado'}</dd>
-                {['email', 'phone'].includes(key) && <p className="mt-1 text-xs text-[#6B7280]">{person[key === 'email' ? 'isEmailVerified' : 'isPhoneVerified'] ? 'Verificado' : 'Não verificado'}</p>}
+                {['email', 'phone'].includes(key) && <p className="mt-1 text-xs text-[#6B7280]">{key === 'email' ? (person.isEmailVerified ? 'Email confirmado' : 'Email não confirmado') : (person.isPhoneVerified ? 'Telefone confirmado' : 'Telefone não confirmado')}</p>}
               </div>
               <Link to={`/configuracoes/pessoais/${key}`} onClick={() => setNotice('')} className={`${linkClass} shrink-0`}>{missing ? 'Adicionar' : 'Editar'}</Link>
             </div>
@@ -69,6 +69,10 @@ export function PersonalSettings() {
             </div>}
           </div>;
         })}
+        <div className="flex items-start justify-between gap-3 py-5">
+          <div><dt className="font-medium">Verificação de identidade</dt><dd className="mt-2 text-sm text-[#6B7280]">Identidade não verificada</dd></div>
+          <Link to="/configuracoes/pessoais/verificacao-identidade" onClick={() => setNotice('')} className={`${linkClass} shrink-0`}>Começar</Link>
+        </div>
       </dl>
       <aside className="mt-8 space-y-5 rounded-2xl bg-[#F5F3FF] p-5 text-sm leading-6 text-[#374151]">
         <div><h3 className="font-semibold text-[#5B21B6]">Por que algumas informações ficam ocultas?</h3><p>Email e telefone aparecem parcialmente nesta tela para reduzir sua exposição.</p></div>

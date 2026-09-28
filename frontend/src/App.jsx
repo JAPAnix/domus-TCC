@@ -1,6 +1,7 @@
 import { PersonalSettingsLayout, PersonalSettings } from './pages/settings/PersonalSettings';
 import { PersonalEditor, ContactConfirmation } from './pages/settings/PersonalEditor';
-import { createBrowserRouter, createRoutesFromElements, RouterProvider, Outlet, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, RouterProvider, Outlet, Route, Navigate, useMatch } from 'react-router-dom';
+import IdentityVerification from './pages/settings/IdentityVerification';
 import { AuthProvider } from './context/AuthContext';
 
 import Login from './pages/Login';
@@ -27,11 +28,15 @@ import ProtectedRoute from './components/ProtectedRoute';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import { SettingsPlaceholder } from './pages/settings/SettingsPages';
 import { settingsSections } from './pages/settings/settingsSections';
-
 import Notifications from './pages/Notifications';
 
+function ApplicationLayout() {
+  const identityPage = useMatch('/configuracoes/pessoais/verificacao-identidade');
+  return <AuthProvider><Navbar simplified={!!identityPage} /><Outlet /></AuthProvider>;
+}
+
 const router = createBrowserRouter(createRoutesFromElements(
-  <Route element={<AuthProvider><Navbar /><Outlet /></AuthProvider>}>
+  <Route element={<ApplicationLayout />}>
           {/* Públicas */}
           <Route path="/" element={<Landing />} />
           <Route path="/servicos" element={<Home />} />
@@ -51,6 +56,7 @@ const router = createBrowserRouter(createRoutesFromElements(
             <Route index element={<Navigate to="pessoais" replace />} />
             <Route path="pessoais" element={<PersonalSettingsLayout />}>
               <Route index element={<PersonalSettings />} />
+              <Route path="verificacao-identidade" element={<IdentityVerification />} />
               <Route path=":section" element={<PersonalEditor />} />
               <Route path=":section/confirmar" element={<ContactConfirmation />} />
             </Route>

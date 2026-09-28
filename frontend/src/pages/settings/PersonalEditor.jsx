@@ -53,7 +53,7 @@ function EditForm({ section, person }) {
   }
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="settings-page-title" className="text-2xl font-semibold">{sections[section].title}</h2><Link to="/servicos" className={linkClass}>Concluir</Link></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="settings-page-title" className="text-2xl font-semibold">{sections[section].title}</h2><Link to="/configuracoes/pessoais" className={linkClass}>Concluir</Link></div>
       <p className="mt-3 text-sm leading-6 text-[#6B7280]">{verification ? 'Confirme o novo contato com um código. O dado atual permanece até a confirmação.' : 'Confira suas informações da conta antes de salvar.'}</p>
       <form onSubmit={save} className="mt-6 space-y-5">
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-[#DC2626]">{error}</p>}
@@ -120,7 +120,7 @@ function ConfirmationForm({ section }) {
     finally { submitting.current = false; setBusy(''); }
   }
   return <>
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="settings-page-title" className="text-2xl font-semibold">Confirme seu {section === 'email' ? 'email' : 'telefone'}</h2><Link to="/servicos" className={linkClass}>Concluir</Link></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="settings-page-title" className="text-2xl font-semibold">Confirme seu {section === 'email' ? 'email' : 'telefone'}</h2><Link to="/configuracoes/pessoais" className={linkClass}>Concluir</Link></div>
     {!pending ? <div className="mt-6"><p>Não há confirmação pendente.</p><Link to={`/configuracoes/pessoais/${section}`} className={`${linkClass} mt-3`}>Informar {section === 'email' ? 'email' : 'telefone'}</Link></div> : <>
       <p className="mt-4 break-words text-sm text-[#6B7280]">Digite o código de 6 dígitos para {section === 'email' ? maskEmail(pending.target) : maskPhone(pending.target)}.</p>
       <p className="mt-2 text-sm text-[#6B7280]">O código vale por 10 minutos. O contato atual só será substituído após a confirmação.</p>

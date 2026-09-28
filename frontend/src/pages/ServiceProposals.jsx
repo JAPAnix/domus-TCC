@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -48,30 +48,31 @@ export default function ServiceProposals() {
   const { user } = useAuth();
 
   const [proposals, setProposals] = useState([]);
+  const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
 
-  const loadProposals = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const { data } = await api.get(`/services/${uuid}/proposals`);
+  const loadProposals = useCallback((signal) =>
+    Promise.all([
+      api.get('/services/' + uuid + '/proposals', { signal }),
+      api.get('/services/' + uuid, { signal })
+    ]).then(([{ data }, { data: currentService }]) => {
+      if (signal?.aborted) return;
+      setError('');
+      setService(currentService);
       setProposals(Array.isArray(data) ? data : data?.data ?? []);
-    } catch (err) {
-      setError(err.response?.data?.message || "Erro ao carregar propostas.");
-    } finally {
-      setLoading(false);
-    }
-  }, [uuid]);
+    }).catch(err => {
+      if (!signal?.aborted) setError(err.response?.data?.message || 'Erro ao carregar propostas.');
+    }).finally(() => {
+      if (!signal?.aborted) setLoading(false);
+    }), [uuid]);
 
   useEffect(() => {
-    if (uuid) loadProposals();
-    else {
-      setLoading(false);
-      setError("UUID do serviço não informado.");
-    }
+    const controller = new AbortController();
+    loadProposals(controller.signal);
+    return () => controller.abort();
   }, [loadProposals, uuid]);
 
   async function updateProposalStatus(proposalUuid, status) {
@@ -82,6 +83,7 @@ export default function ServiceProposals() {
       await loadProposals();
     } catch (err) {
       setActionError(err.response?.data?.message || "Não foi possível atualizar o status da proposta.");
+      if (err.response?.status === 409) await loadProposals();
     } finally {
       setActionLoading(null);
     }
@@ -94,6 +96,7 @@ export default function ServiceProposals() {
         <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold text-[#111827]">Propostas recebidas</h1>
+            <Link to={"/servicos/" + uuid} className="mt-2 inline-block text-sm font-semibold text-violet-700">Ver serviço e acompanhar conclusão</Link>
             <p className="text-[#6B7280] mt-1 text-sm">Gerencie as propostas do seu serviço</p>
           </div>
           <p className="text-xs text-[#6B7280]">Apenas o dono do serviço pode aceitar ou rejeitar</p>
@@ -126,7 +129,7 @@ export default function ServiceProposals() {
         ) : (
           <div className="space-y-4">
             {proposals.map((proposal) => {
-              const isFinal = ["accepted", "rejected", "withdrawn"].includes(proposal.status);
+              const isFinal = proposal.status !== "pending" || service?.status !== "open" || service?.client?.uuid !== user?.uuid;
               const isLoading = actionLoading === proposal.uuid;
               const professional = proposal.professional?.user;
 
@@ -175,7 +178,7 @@ export default function ServiceProposals() {
                       <div className="flex gap-2 flex-shrink-0">
                         <button
                           type="button"
-                          disabled={isLoading}
+                          disabled={actionLoading !== null}
                           onClick={() => updateProposalStatus(proposal.uuid, "accepted")}
                           className="rounded-lg bg-emerald-500 hover:bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                         >
@@ -185,7 +188,7 @@ export default function ServiceProposals() {
                         </button>
                         <button
                           type="button"
-                          disabled={isLoading}
+                          disabled={actionLoading !== null}
                           onClick={() => updateProposalStatus(proposal.uuid, "rejected")}
                           className="rounded-lg bg-red-500 hover:bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >

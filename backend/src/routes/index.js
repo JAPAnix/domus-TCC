@@ -9,7 +9,10 @@ import categoryRoutes from './categories.js';
 import skillRoutes from './skills.js';
 import { userReviewRouter, serviceReviewRouter } from './reviews.js';
 
+import notificationRoutes from './notifications.js';
+
 const router = Router();
+router.use('/notifications', notificationRoutes);
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);

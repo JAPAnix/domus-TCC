@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
+import NotificationBell from './NotificationBell';
+import api from '../services/api';
 
 export default function Navbar({ simplified = false }) {
   const { user } = useAuth();
@@ -35,6 +37,7 @@ export default function Navbar({ simplified = false }) {
             <BrandLogo />
           </Link>
 
+          {user && <NotificationBell key={user.uuid} api={api} />}
           {/* Desktop actions */}
           <div className="hidden md:flex items-center gap-4 flex-shrink-0 ml-auto">
             <Link to={professionalPath} className="text-sm font-medium text-[#374151] hover:text-[#7C3AED] transition-colors whitespace-nowrap">

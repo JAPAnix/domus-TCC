@@ -12,7 +12,10 @@ import {
   updateStatusSchema
 } from '../validators/serviceValidator.js';
 
+import { getServiceParticipation } from '../controllers/serviceParticipationController.js';
+
 const router = Router();
+router.get('/:uuid/participation', authMiddleware, getServiceParticipation);
 
 router.post('/', authMiddleware, roleMiddleware('client'), validate(createServiceSchema), createService);
 router.get('/', listServices);

@@ -130,7 +130,7 @@ export const forgotPassword = async (req, res) => {
         prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } }),
         prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 30 * 60 * 1000) } })
       ]);
-      await sendPasswordResetEmail({ email: user.email, link: `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}` });
+      await sendPasswordResetEmail({ email: user.email, link: `${process.env.FRONTEND_URL.replace(/\/$/, '')}/reset-password?token=${rawToken}` });
     }
   } catch (err) { logger.error('forgotPassword', err); }
   res.json(genericResetResponse);

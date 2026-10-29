@@ -80,6 +80,6 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/servicos/:uuid/enviar-proposta" element={<SendProposal />} />
           <Route path="/servicos/:uuid/avaliar" element={<ProtectedRoute><CreateReview /></ProtectedRoute>} />
   </Route>
-));
+), { basename: import.meta.env.BASE_URL });
 
 export default function App() { return <RouterProvider router={router} />; }

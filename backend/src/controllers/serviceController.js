@@ -88,8 +88,6 @@ export const listServices = async (req, res) => {
 
 export const getService = async (req, res) => {
   const { uuid } = req.params;
-  console.log('uuid recebido:', uuid);
-  console.log('buffer:', uuidToBuffer(uuid));
   try {
     const service = await prisma.service.findFirst({
       where: { uuid: uuidToBuffer(uuid), deletedAt: null },
@@ -105,7 +103,6 @@ export const getService = async (req, res) => {
         }
       }
     });
-    console.log('service:', service);
     if (!service) {
       return res.status(404).json({ message: 'Serviço não encontrado' });
     }

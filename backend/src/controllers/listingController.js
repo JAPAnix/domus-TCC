@@ -10,6 +10,7 @@ import { registerDeletionStep } from './accountController.js';
 import { platformFeePercent } from '../services/orderWorkflow.js';
 import { asaasActive, approvedReceiver } from '../services/payoutAccounts.js';
 import { feeConfig } from '../config/fees.js';
+import { listingIdsMatching } from '../utils/textSearch.js';
 import { busyForListing, listingReviews, ownerPageData, reportListing, REPORT_REASONS } from '../services/listingPageService.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -280,7 +281,7 @@ export async function searchListings(req, res) {
 
     const and = [];
     if (q.city) and.push({ OR: [{ city: String(q.city).trim() }, { isRemote: true }] });
-    if (q.q) and.push({ OR: [{ title: { contains: String(q.q).trim() } }, { description: { contains: String(q.q).trim() } }] });
+    if (String(q.q ?? '').trim()) and.push({ id: { in: await listingIdsMatching(prisma, String(q.q).trim()) } });
     const viewer = req.user ? BigInt(req.user.id) : null;
     const excluded = viewer ? await blockedIds(prisma, viewer) : [];
     const minRating = Number(q.minRating);

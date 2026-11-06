@@ -89,5 +89,11 @@ export function describeAccountDetail(detail) {
   return pending.length ? `Pendente: ${pending.join(', ')}.` : null;
 }
 
+/**
+ * Tipos de alerta guardados em payment_events (sempre "alert:<tipo>"). Lista explícita em vez de "começa com alert:":
+ * no MariaDB da hospedagem esse LIKE falha por mistura de collations ("Illegal mix of collations").
+ */
+export const ALERT_TYPES = ['split_problem', 'paid_after_close', 'chargeback', 'release_failed', 'refund_failed'].map((kind) => `alert:${kind}`);
+
 /** Estados em que o dinheiro do cliente ainda pode ser devolvido por nós. */
 export const REFUNDABLE = ['confirmed', 'disputed'];

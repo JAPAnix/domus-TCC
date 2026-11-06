@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { formatCents } from '../utils/money.js';
+import { ALERT_TYPES } from '../utils/asaasEvents.js';
 import { bufferToUuid } from '../utils/uuid.js';
 
 const nameOf = (user) => user.preferredName?.trim() || [user.firstName, user.lastName].filter(Boolean).join(' ');
@@ -79,7 +80,7 @@ export async function adminSummary() {
     prisma.payment.groupBy({ by: ['status'], where: { provider: 'asaas' }, _count: { _all: true } }),
     prisma.paymentDispute.count({ where: { status: 'open' } }),
     prisma.webhookEvent.count({ where: { provider: 'asaas', status: 'failed' } }),
-    prisma.paymentEvent.count({ where: { type: { startsWith: 'alert:' }, createdAt: { gte: since } } }),
+    prisma.paymentEvent.count({ where: { type: { in: ALERT_TYPES }, createdAt: { gte: since } } }),
     prisma.payment.aggregate({ where: { provider: 'asaas', status: { in: ['confirmed', 'disputed'] } }, _sum: { commissionCents: true, clientFeeCents: true, amountCents: true } }),
   ]);
   const byStatus = Object.fromEntries(grouped.map((row) => [row.status, row._count._all]));
@@ -105,7 +106,7 @@ export async function adminDisputes(status = 'open') {
 
 export async function adminAlerts() {
   const rows = await prisma.paymentEvent.findMany({
-    where: { type: { startsWith: 'alert:' } }, orderBy: { id: 'desc' }, take: 50,
+    where: { type: { in: ALERT_TYPES } }, orderBy: { id: 'desc' }, take: 50,
     include: { payment: { include: { order: { select: { uuid: true, titleSnapshot: true } } } } },
   });
   return rows.map((row) => ({ id: row.id.toString(), kind: row.type.slice(6), detail: row.detail, createdAt: row.createdAt, paymentUuid: bufferToUuid(row.payment.uuid), service: row.payment.order.titleSnapshot }));

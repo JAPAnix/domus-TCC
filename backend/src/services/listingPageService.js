@@ -3,6 +3,7 @@ import { runTransaction, notify } from './serviceWorkflow.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 import { busyOf } from '../utils/bookingSlots.js';
 import { highlightFor, HIGHLIGHT_LABELS } from '../utils/highlightRules.js';
+import { reviewIdsMatching } from '../utils/textSearch.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -78,7 +79,7 @@ export async function listingReviews(uuid, { sort = 'recent', q = '', page = 1, 
   const listing = await listingByUuid(uuid);
   const base = { reviewedId: listing.ownerId, order: { listingId: listing.id, professionalId: listing.ownerId } };
   const term = q.trim().slice(0, 60);
-  const where = { ...base, ...(term && { comment: { contains: term } }) };
+  const where = { ...base, ...(term && { id: { in: await reviewIdsMatching(prisma, listing.ownerId, term) } }) };
   const orderBy = sort === 'best' ? [{ rating: 'desc' }, { createdAt: 'desc' }] : sort === 'worst' ? [{ rating: 'asc' }, { createdAt: 'desc' }] : [{ createdAt: 'desc' }, { id: 'desc' }];
   const [rows, total, all] = await prisma.$transaction([
     prisma.review.findMany({

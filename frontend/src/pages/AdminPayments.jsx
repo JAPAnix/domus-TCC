@@ -10,7 +10,7 @@ import { Breadcrumb, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonList
 
 const cents = (value) => formatMoney((value ?? 0) / 100);
 const when = (value) => (value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '');
-const ALERTS = { chargeback: 'Contestação no cartão (chargeback)', release_failed: 'Falha ao liberar o valor', refund_failed: 'Falha ao estornar', transfer_failed: 'Falha no repasse', dispute: 'Reclamação aberta', payout_failed: 'Falha no repasse ao profissional' };
+const ALERTS = { split_problem: 'Problema na divisão do pagamento (split)', paid_after_close: 'Pagamento recebido depois de o pedido ser encerrado', chargeback: 'Contestação no cartão (chargeback)', release_failed: 'Falha ao liberar o valor', refund_failed: 'Falha ao estornar', transfer_failed: 'Falha no repasse', dispute: 'Reclamação aberta', payout_failed: 'Falha no repasse ao profissional' };
 
 function List({ resource, label, children, empty }) {
   if (!resource.data && resource.loading) return <SkeletonList count={3} label={label} itemClassName="h-16" />;

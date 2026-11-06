@@ -7,6 +7,7 @@ import {
 } from '../utils/messageRules.js';
 import { isOnline, onTyping, publish } from './realtime.js';
 import { dispatchEventEmails } from './eventEmails.js';
+import { conversationIdsMatching } from '../utils/textSearch.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -84,7 +85,7 @@ export async function listConversations(userId, { archived = false, q = '', page
   const term = q.trim().slice(0, 60);
   const where = {
     OR: [mine('client'), mine('professional')],
-    ...(term && { AND: [{ OR: [{ title: { contains: term } }, { lastMessagePreview: { contains: term } }, { client: { OR: [{ firstName: { contains: term } }, { lastName: { contains: term } }] } }, { professional: { OR: [{ firstName: { contains: term } }, { lastName: { contains: term } }] } }] }] }),
+    ...(term && { id: { in: await conversationIdsMatching(prisma, userId, term) } }),
   };
   const [rows, total] = await prisma.$transaction([
     prisma.conversation.findMany({ where, include: conversationInclude, orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }], skip: (page - 1) * limit, take: limit }),

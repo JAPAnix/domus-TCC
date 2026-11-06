@@ -132,6 +132,15 @@ Passo a passo:
 
 **O que foi e o que não foi testado:** o fluxo completo (cadastro da conta, Pix, cartão e boleto, webhook com idempotência, conciliação, liberação, reclamação, estorno por política, CSV) foi validado contra um **servidor Asaas simulado**, com banco real descartável. **Nada foi testado contra o Asaas real.** Confirme no sandbox, na primeira vez: a atualização do split (`PUT /v3/lean/payments/{id}`), o encerramento da garantia, quem arca com a taxa do gateway quando há split e a liquidação do boleto. Segurança: o webhook só aceita o token correto (comparação em tempo constante), eventos repetidos são ignorados pelo id, dados de cartão nunca passam pelo servidor (o cliente paga na página segura do Asaas), os logs não guardam segredos e só as duas partes do pedido (e administradores) veem o pagamento.
 
+### E-mail (recuperação de senha, códigos e avisos)
+
+Há duas formas, e `EMAIL_FROM` (por exemplo `Dommos <seu@gmail.com>`) é obrigatório nas duas:
+
+- **Brevo por API HTTPS (recomendado no Render):** o plano gratuito do Render **bloqueia as portas SMTP** (25, 465 e 587), então o Gmail SMTP não funciona lá. A Brevo é gratuita (300 e-mails por dia) e não exige domínio próprio. Crie a conta em https://www.brevo.com, vá em **Remetentes e IPs > Remetentes** e adicione o seu e-mail como remetente (a Brevo manda um link de confirmação). Em **SMTP e API > Chaves de API**, gere uma chave (começa com `xkeysib-`). No Render, defina `BREVO_API_KEY` e `EMAIL_FROM` com **o mesmo e-mail** do remetente confirmado.
+- **SMTP:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`. Serve para desenvolvimento local ou hospedagens que liberam SMTP. Com `BREVO_API_KEY` definida, ela tem prioridade.
+
+Sem nenhuma das duas, o app funciona, mas não envia e-mails.
+
 ### Tempo real (mensagens)
 
 As mensagens usam **WebSocket no próprio servidor** (`/ws`, biblioteca `ws`) e, se ele não estiver disponível, as telas consultam a API a cada poucos segundos. Não há serviço externo. Com mais de uma instância do backend, o estado em memória (presença, "digitando", limite de taxa) precisa ir para um Redis. Alternativas gratuitas avaliadas: Supabase Realtime (plano gratuito com 200 conexões e 100 mensagens por segundo, segundo a documentação) e Firebase; não foram usadas para não criar dependência externa.

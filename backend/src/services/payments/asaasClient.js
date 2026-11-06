@@ -41,7 +41,7 @@ export async function asaasRequest(method, path, { body, apiKey, env = process.e
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const first = Array.isArray(data.errors) ? data.errors[0] : null;
-    throw new AsaasError(response.status >= 500 ? 502 : 422, first?.description || 'O gateway recusou a operação.', { status: response.status, code: first?.code });
+    throw new AsaasError(response.status >= 500 ? 502 : 422, first?.description || `O gateway recusou a operação (HTTP ${response.status}).`, { status: response.status, code: first?.code });
   }
   return data;
 }
@@ -62,6 +62,8 @@ export const asaas = {
   finishEscrow: (escrowId, options) => asaasRequest('POST', `/escrow/${encodeURIComponent(escrowId)}/finish`, options),
   /** Só no sandbox: aprova uma subconta (chamado com a chave da conta principal). */
   sandboxApproveAccount: (accountId, options) => asaasRequest('POST', `/accounts/${encodeURIComponent(accountId)}/approve`, options),
+  /** Só no sandbox: aprova a conta dona da chave usada (a subconta, com a chave dela). */
+  sandboxApproveOwnAccount: (apiKey, options) => asaasRequest('POST', '/sandbox/myAccount/approve', { ...options, apiKey }),
   sandboxConfirmPayment: (id, options) => asaasRequest('POST', `/sandbox/payment/${encodeURIComponent(id)}/confirm`, options),
 };
 

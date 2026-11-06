@@ -54,7 +54,18 @@ export async function approveInSandbox(userId, env = process.env) {
   if (asaasEnvironment(env) !== 'sandbox') fail(403, 'A aprovação de teste só existe no ambiente de testes (sandbox).');
   const account = await prisma.payoutAccount.findUnique({ where: { userId } });
   if (!account?.accountId) fail(404, 'Você ainda não cadastrou o seu recebimento.');
-  await asaas.sandboxApproveAccount(account.accountId, { env });
+  // A documentação do Asaas cita duas rotas: a da conta principal (por id) e a da própria subconta (com a chave dela). Tenta as duas.
+  try {
+    await asaas.sandboxApproveAccount(account.accountId, { env });
+  } catch (first) {
+    if (!account.apiKeyEnc) throw first;
+    try {
+      await asaas.sandboxApproveOwnAccount(decryptSecret(account.apiKeyEnc), { env });
+    } catch (second) {
+      logger.warn('sandbox.approve falhou', { porId: first.details?.status, pelaSubconta: second.details?.status });
+      throw second;
+    }
+  }
   return refreshPayoutStatus(userId);
 }
 

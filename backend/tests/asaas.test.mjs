@@ -198,3 +198,8 @@ test('segredos cifrados: ida e volta, adulteração e chave ausente', () => {
   assert.throws(() => encryptSecret('x', {}), (error) => error.status === 503);
   assert.throws(() => encryptSecret('x', { SECRETS_KEY: 'curta' }), (error) => error.status === 503);
 });
+
+test('aprovação de teste só existe no sandbox', async () => {
+  const { approveInSandbox } = await import('../src/services/payoutAccounts.js');
+  await assert.rejects(approveInSandbox(1n, { ASAAS_ENV: 'production' }), (error) => error.status === 403);
+});

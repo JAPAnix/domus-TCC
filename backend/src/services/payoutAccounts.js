@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { providerByName } from './payments/index.js';
-import { asaasConfigured } from './payments/asaasClient.js';
+import { asaas, asaasConfigured, asaasEnvironment } from './payments/asaasClient.js';
 import { planAccountEvent, describeAccountDetail } from '../utils/asaasEvents.js';
 import { decryptSecret, encryptSecret } from '../utils/secretBox.js';
 import { feeConfig } from '../config/fees.js';
@@ -18,6 +18,7 @@ export function serializePayout(account) {
   const status = account?.status ?? 'not_started';
   return {
     enabled: asaasActive(),
+    sandbox: asaasEnvironment() === 'sandbox',
     status,
     canReceive: status === 'approved',
     detail: describeAccountDetail(account?.statusDetail),
@@ -46,6 +47,15 @@ export async function createPayoutAccount(userId, form) {
   };
   await prisma.payoutAccount.upsert({ where: { userId }, create: { userId, ...data }, update: data });
   return getPayoutState(userId);
+}
+
+/** Só no sandbox: aprova a subconta de teste do próprio usuário (em produção quem aprova é o Asaas). */
+export async function approveInSandbox(userId, env = process.env) {
+  if (asaasEnvironment(env) !== 'sandbox') fail(403, 'A aprovação de teste só existe no ambiente de testes (sandbox).');
+  const account = await prisma.payoutAccount.findUnique({ where: { userId } });
+  if (!account?.accountId) fail(404, 'Você ainda não cadastrou o seu recebimento.');
+  await asaas.sandboxApproveAccount(account.accountId, { env });
+  return refreshPayoutStatus(userId);
 }
 
 /** "Atualizar status": consulta o gateway agora (além do webhook). */

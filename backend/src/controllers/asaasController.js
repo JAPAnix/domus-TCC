@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger.js';
 import { handleAsaasWebhook } from '../services/asaasWebhook.js';
-import { createPayoutAccount, getPayoutState, refreshPayoutStatus, receivingWarning } from '../services/payoutAccounts.js';
+import { approveInSandbox, createPayoutAccount, getPayoutState, refreshPayoutStatus, receivingWarning } from '../services/payoutAccounts.js';
 import { confirmService, openDispute, resolveDispute } from '../services/asaasPayments.js';
 import { adminAlerts, adminDisputes, adminPayments, adminSummary, adminWebhookEvents, earningsCsv, earningsFor } from '../services/asaasReports.js';
 
@@ -33,6 +33,7 @@ export const createReceivingAccount = handler('asaas.createReceivingAccount', (r
   });
 }, 201);
 export const refreshReceivingAccount = handler('asaas.refreshReceivingAccount', (req) => refreshPayoutStatus(me(req)));
+export const sandboxApproveAccount = handler('asaas.sandboxApprove', (req) => approveInSandbox(me(req)));
 
 // ---- Ações do cliente sobre um pagamento --------------------------------------------------------------------------
 export const confirmServiceAction = handler('asaas.confirmService', (req) => confirmService(req.params.uuid, me(req)));

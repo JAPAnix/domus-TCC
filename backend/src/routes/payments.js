@@ -5,7 +5,7 @@ import { validate } from '../middleware/validateMiddleware.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { receivingSchema } from '../validators/areaValidator.js';
 import { payoutAccountSchema, disputeSchema, startAsaasSchemaExtras } from '../validators/payoutValidator.js';
-import { asaasWebhook, confirmServiceAction, createReceivingAccount, disputeAction, earnings, receivingAccount, refreshReceivingAccount } from '../controllers/asaasController.js';
+import { asaasWebhook, confirmServiceAction, createReceivingAccount, disputeAction, earnings, receivingAccount, refreshReceivingAccount, sandboxApproveAccount } from '../controllers/asaasController.js';
 import { config, getReceiving, putReceiving, mine, forOrder, start, act, receipt, mercadoPagoWebhook } from '../controllers/paymentController.js';
 
 const router = Router();
@@ -29,6 +29,7 @@ router.post('/order/:orderUuid', actionLimit, validate(startSchema), start);
 router.get('/receiving-account', receivingAccount);
 router.post('/receiving-account', rateLimit({ limit: 10, windowMs: 60 * 60 * 1000, message: 'Muitas tentativas de cadastro. Tente mais tarde.' }), validate(payoutAccountSchema), createReceivingAccount);
 router.post('/receiving-account/refresh', rateLimit({ limit: 30, windowMs: 10 * 60 * 1000 }), refreshReceivingAccount);
+router.post('/receiving-account/sandbox-approve', rateLimit({ limit: 10, windowMs: 10 * 60 * 1000 }), sandboxApproveAccount);
 router.get('/earnings', earnings);
 router.post('/:uuid/confirm-service', actionLimit, confirmServiceAction);
 router.post('/:uuid/dispute', actionLimit, validate(disputeSchema), disputeAction);

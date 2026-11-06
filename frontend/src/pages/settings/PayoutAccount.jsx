@@ -101,6 +101,11 @@ export default function PayoutAccount() {
   if (resource.error && !state) return <ErrorState title="Não foi possível carregar o seu recebimento" message={apiError(resource.error)} onRetry={resource.retry} />;
   const status = STATUS[state.status] ?? STATUS.not_started;
 
+  async function approveTest() {
+    setBusy(true);
+    try { await api.post('/payments/receiving-account/sandbox-approve'); toast.success('Conta aprovada no sandbox.'); resource.retry(); } catch (err) { toast.error(apiError(err, 'Não foi possível aprovar agora.')); } finally { setBusy(false); }
+  }
+
   async function refresh() {
     setBusy(true);
     try { await api.post('/payments/receiving-account/refresh'); toast.success('Status atualizado.'); resource.retry(); } catch (err) { toast.error(apiError(err, 'Não foi possível atualizar agora.')); } finally { setBusy(false); }
@@ -112,6 +117,7 @@ export default function PayoutAccount() {
         <div className="flex flex-wrap items-center gap-3">
           <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${status.tone}`}>{status.label}</span>
           {state.status !== 'not_started' && <Button variant="secondary" size="sm" onClick={refresh} loading={busy}>Atualizar status</Button>}
+          {state.sandbox && state.status === 'pending' && <Button variant="soft" size="sm" onClick={approveTest} loading={busy}>Aprovar conta de teste (sandbox)</Button>}
         </div>
         {state.status === 'approved' && <p className="rounded-control bg-success-soft p-3 text-sm text-success-strong">Tudo certo: os clientes já podem pagar os seus pedidos pela plataforma.</p>}
         {state.status === 'pending' && <p role="status" className="rounded-control bg-warning-soft p-3 text-sm text-warning-strong">{state.nextStep}{state.detail ? ` Situação atual: ${state.detail}.` : ''} Enquanto a conta não for aprovada, os clientes não conseguem pagar pelo Dommos.</p>}

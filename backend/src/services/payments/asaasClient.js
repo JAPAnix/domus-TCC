@@ -60,6 +60,8 @@ export const asaas = {
   enableEscrow: (accountId, payload, options) => asaasRequest('POST', `/accounts/${encodeURIComponent(accountId)}/escrow`, { body: payload, ...options }),
   getPaymentEscrow: (paymentId, subaccountApiKey, options) => asaasRequest('GET', `/payments/${encodeURIComponent(paymentId)}/escrow`, { apiKey: subaccountApiKey, ...options }),
   finishEscrow: (escrowId, options) => asaasRequest('POST', `/escrow/${encodeURIComponent(escrowId)}/finish`, options),
+  /** Só no sandbox: aprova uma subconta (chamado com a chave da conta principal). */
+  sandboxApproveAccount: (accountId, options) => asaasRequest('POST', `/accounts/${encodeURIComponent(accountId)}/approve`, options),
   sandboxConfirmPayment: (id, options) => asaasRequest('POST', `/sandbox/payment/${encodeURIComponent(id)}/confirm`, options),
 };
 

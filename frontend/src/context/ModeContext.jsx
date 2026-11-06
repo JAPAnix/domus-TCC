@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from './useAuth';
 import { ModeContext } from './useMode';
 
@@ -16,18 +16,21 @@ function readStoredMode(uuid) {
 function ModeState({ uuid, canWork, children }) {
   const [stored, setStored] = useState(() => readStoredMode(uuid));
 
+  // Identidade estável: telas que chamam setMode num efeito (ProLayout) não podem rodar de novo a cada troca de modo.
+  const setMode = useCallback((next) => {
+    setStored(next);
+    try {
+      if (uuid) localStorage.setItem(storageKey(uuid), next);
+    } catch {
+      // Sem armazenamento disponível, a escolha vale até recarregar a página.
+    }
+  }, [uuid]);
+
   const value = useMemo(() => ({
     // Sem perfil profissional, a conta só pode estar no modo cliente.
     mode: stored === 'professional' && canWork ? 'professional' : 'client',
-    setMode(next) {
-      setStored(next);
-      try {
-        if (uuid) localStorage.setItem(storageKey(uuid), next);
-      } catch {
-        // Sem armazenamento disponível, a escolha vale até recarregar a página.
-      }
-    },
-  }), [stored, canWork, uuid]);
+    setMode,
+  }), [stored, canWork, setMode]);
 
   return <ModeContext.Provider value={value}>{children}</ModeContext.Provider>;
 }

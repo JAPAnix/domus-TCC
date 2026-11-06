@@ -120,7 +120,7 @@ export default function IdentityVerification() {
     </div>;
   }
 
-  if (confirmingExit) return <section aria-labelledby="identity-exit-title" className="rounded-card border border-line bg-white p-6 sm:p-10">
+  if (confirmingExit) return <section aria-labelledby="identity-exit-title" className="rounded-card border border-line bg-surface p-6 sm:p-10">
     <p className="mb-4 text-sm font-medium text-primary-strong">Verificação de identidade</p>
     <h1 ref={heading} tabIndex={-1} id="identity-exit-title" className="text-2xl font-semibold tracking-tight text-ink outline-none sm:text-3xl">Tem certeza de que quer sair?</h1>
     <p className="mt-5 leading-7 text-ink-soft">A verificação de identidade ainda não foi concluída.</p>
@@ -128,7 +128,7 @@ export default function IdentityVerification() {
     <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6"><button type="button" onClick={() => blocker.reset()} className={linkClass}>Continuar agora</button><button type="button" onClick={leave} className={primaryClass}>Sair</button></div>
   </section>;
 
-  return <section aria-labelledby="identity-title" className="rounded-card border border-line bg-white p-5 sm:p-10">
+  return <section aria-labelledby="identity-title" className="rounded-card border border-line bg-surface p-5 sm:p-10">
     <p className="mb-4 text-sm font-medium text-primary-strong">Verificação de identidade · Etapa inicial</p>
     <h1 ref={heading} tabIndex={-1} id="identity-title" className="text-2xl font-semibold tracking-tight text-ink outline-none sm:text-3xl">Confirme as informações da sua conta</h1>
     <p className="mt-4 text-sm leading-7 text-ink-muted">Confira os dados que poderão ser necessários para uma futura verificação de identidade.</p>

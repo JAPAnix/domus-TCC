@@ -56,14 +56,14 @@ function ServiceContent({uuid}) {
           <p className="mt-3 text-sm text-ink-muted">{description}</p>
         </header>
         <div className="grid gap-3 sm:grid-cols-3">
-          {[['Orçamento mínimo',money(service.budgetMin)],['Orçamento máximo',money(service.budgetMax)],['Prazo solicitado',date(service.deadline)]].map(([title,value])=><div key={title} className="rounded-control border border-line bg-white p-5"><p className="text-xs text-ink-muted">{title}</p><p className="mt-2 break-words font-semibold">{value}</p></div>)}
+          {[['Orçamento mínimo',money(service.budgetMin)],['Orçamento máximo',money(service.budgetMax)],['Prazo solicitado',date(service.deadline)]].map(([title,value])=><div key={title} className="rounded-control border border-line bg-surface p-5"><p className="text-xs text-ink-muted">{title}</p><p className="mt-2 break-words font-semibold">{value}</p></div>)}
         </div>
-        <section className="rounded-card border border-line bg-white p-6"><h2 className="mb-3 font-semibold">Sobre o pedido</h2><p className="whitespace-pre-wrap break-words leading-relaxed text-ink-soft">{service.description}</p></section>
-        <section className="rounded-card border border-line bg-white p-6"><h2 className="mb-4 font-semibold">Publicado por</h2><div className="flex items-center gap-3">
+        <section className="rounded-card border border-line bg-surface p-6"><h2 className="mb-3 font-semibold">Sobre o pedido</h2><p className="whitespace-pre-wrap break-words leading-relaxed text-ink-soft">{service.description}</p></section>
+        <section className="rounded-card border border-line bg-surface p-6"><h2 className="mb-4 font-semibold">Publicado por</h2><div className="flex items-center gap-3">
           <Avatar src={service.client?.profilePictureUrl} name={fullName(service.client)} decorative />
           <p>{service.client?.firstName} {service.client?.lastName}{user?.uuid===service.client?.uuid && <span className="ml-2 text-sm text-primary-strong">(você)</span>}</p>
         </div></section>
-        <section className="rounded-card border border-line bg-white p-6">
+        <section className="rounded-card border border-line bg-surface p-6">
           <h2 className="mb-4 font-semibold">{service.status==='open'?'Participar deste pedido':'Acompanhamento'}</h2>
           <ServiceProposalActions uuid={uuid} status={service.status} />
           {user && ['in_progress','completed'].includes(service.status) && <ServiceWorkflowActions key={uuid+':'+user.uuid+':'+service.status} uuid={uuid} onCompleted={()=>setService(previous=>({...previous,status:'completed'}))} />}

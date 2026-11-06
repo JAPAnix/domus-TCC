@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { useMode } from '../context/useMode';
+import { useTheme } from '../hooks/useTheme';
 import { useCategories } from '../hooks/useCategories';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
@@ -39,6 +40,20 @@ function unreadLabel(count) {
   return count > 99 ? '99+' : String(count);
 }
 
+/** Interruptor do modo escuro, no fim do menu. */
+function ThemeSwitch() {
+  const { dark, toggle } = useTheme();
+  return (
+    <button type="button" role="switch" aria-checked={dark} onClick={toggle} className="flex min-h-control w-full items-center gap-3 rounded-control px-3 py-2 text-left text-sm text-ink-soft transition-colors hover:bg-surface-muted">
+      <Icon path="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+      <span className="flex-1">Modo escuro</span>
+      <span aria-hidden="true" className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${dark ? 'bg-primary' : 'bg-line-strong'}`}>
+        <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-transform ${dark ? 'translate-x-4' : ''}`} />
+      </span>
+    </button>
+  );
+}
+
 /** Conteúdo do menu da conta, o mesmo no dropdown (desktop) e na gaveta (mobile). */
 function AccountMenu({ onNavigate, unread, unreadMessages, onOpenLocale }) {
   const { user } = useAuth();
@@ -65,6 +80,8 @@ function AccountMenu({ onNavigate, unread, unreadMessages, onOpenLocale }) {
         {item({ to: '/cadastro', label: 'Criar conta', icon: 'user' })}
         <div className="my-2 border-t border-line" />
         {item({ to: '/ajuda', label: 'Central de Ajuda', icon: 'help' })}
+        <div className="my-2 border-t border-line" />
+        <ThemeSwitch />
       </nav>
     );
   }
@@ -93,6 +110,8 @@ function AccountMenu({ onNavigate, unread, unreadMessages, onOpenLocale }) {
       <button type="button" onClick={() => { onNavigate?.(); navigate('/sair'); }} className={`${itemClass(false)} w-full text-left`}>
         <Icon path={icons.logout} />Sair da conta
       </button>
+      <div className="my-2 border-t border-line" />
+      <ThemeSwitch />
     </nav>
   );
 }

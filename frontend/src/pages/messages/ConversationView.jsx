@@ -94,7 +94,7 @@ function Composer({ uuid, canSend, replies, onSent }) {
       </form>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <Button size="sm" variant="ghost" onClick={() => setPhotoOpen((value) => !value)} aria-expanded={photoOpen}>Foto</Button>
-        <Dropdown align="left" panelClassName="w-80" trigger={({ open, toggle }) => <Button size="sm" variant="ghost" onClick={toggle} aria-expanded={open}>Respostas rápidas</Button>}>
+        <Dropdown align="left" direction="up" panelClassName="w-80" trigger={({ open, toggle }) => <Button size="sm" variant="ghost" onClick={toggle} aria-expanded={open}>Respostas rápidas</Button>}>
           {({ close }) => (
             <div className="space-y-1">
               {replies?.quickReplies?.length ? replies.quickReplies.map((item) => (

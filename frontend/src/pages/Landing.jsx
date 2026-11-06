@@ -69,7 +69,7 @@ export default function Landing() {
           <p className="mx-auto mt-4 max-w-2xl text-base text-white sm:text-lg">Encontre quem faz o que você precisa, compare propostas e contrate. Ou ofereça seus serviços e receba novos pedidos.</p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button to="/buscar" variant="inverse">Buscar profissionais</Button>
-            <Button to="/servicos/novo" variant="secondary" className="border-white bg-transparent text-white hover:bg-primary-strong">Publicar um pedido</Button>
+            <Button to="/servicos/novo" variant="secondary" className="border-white bg-transparent text-white hover:bg-primary-800">Publicar um pedido</Button>
           </div>
         </div>
       </section>

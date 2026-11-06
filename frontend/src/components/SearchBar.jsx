@@ -100,8 +100,8 @@ function CatalogServicePicker({ items, loading, error, query, onQueryChange, cat
       </label>
       {loading && <p className="py-6 text-center text-sm text-ink-muted">Carregando serviços...</p>}
       {error && <p className="rounded-card border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p>}
-      {!loading && !error && !query && !category && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Categorias</p><div className="grid gap-2 sm:grid-cols-2">{categories.map((item) => <button key={item.id} type="button" onClick={() => onCategoryChange(item)} className="rounded-card border border-line bg-white px-4 py-3 text-left text-sm font-medium text-ink transition-colors hover:bg-primary-softer hover:text-primary">{item.name}</button>)}</div></div>}
-      {!loading && !error && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">{title}</p><div className="grid max-h-[220px] gap-2 overflow-y-auto pr-1">{results.map((item) => <button key={item.id} type="button" onClick={() => onSelect(item)} className={`flex items-center justify-between rounded-card border px-4 py-3 text-left text-sm transition-colors ${selectedService?.id === item.id ? 'border-primary-line bg-primary-soft text-primary-strong' : 'border-line bg-white text-ink hover:bg-canvas'}`}><span>{item.name}</span>{query && <span className="ml-3 text-xs text-ink-muted">{item.category.name}</span>}</button>)}{results.length === 0 && <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-sm text-ink-muted">Nenhum serviço encontrado.</p>}</div></div>}
+      {!loading && !error && !query && !category && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Categorias</p><div className="grid gap-2 sm:grid-cols-2">{categories.map((item) => <button key={item.id} type="button" onClick={() => onCategoryChange(item)} className="rounded-card border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink transition-colors hover:bg-primary-softer hover:text-primary">{item.name}</button>)}</div></div>}
+      {!loading && !error && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">{title}</p><div className="grid max-h-[220px] gap-2 overflow-y-auto pr-1">{results.map((item) => <button key={item.id} type="button" onClick={() => onSelect(item)} className={`flex items-center justify-between rounded-card border px-4 py-3 text-left text-sm transition-colors ${selectedService?.id === item.id ? 'border-primary-line bg-primary-soft text-primary-strong' : 'border-line bg-surface text-ink hover:bg-canvas'}`}><span>{item.name}</span>{query && <span className="ml-3 text-xs text-ink-muted">{item.category.name}</span>}</button>)}{results.length === 0 && <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-sm text-ink-muted">Nenhum serviço encontrado.</p>}</div></div>}
     </div>
   );
 }
@@ -179,7 +179,7 @@ function LocationPicker({ selectedLocation, onSelect }) {
           <div className="grid max-h-[280px] gap-2 overflow-y-auto pr-1">
             {filteredCities.map((city) => {
               const label = `${city}, ${selectedState.code}`;
-              return <button key={city} type="button" onClick={() => onSelect(city)} className={`rounded-card border px-4 py-3 text-left text-sm transition-colors ${selectedLocation === city ? 'border-primary-line bg-primary-soft text-primary-strong' : 'border-line bg-white text-ink hover:bg-canvas'}`}>{label}</button>;
+              return <button key={city} type="button" onClick={() => onSelect(city)} className={`rounded-card border px-4 py-3 text-left text-sm transition-colors ${selectedLocation === city ? 'border-primary-line bg-primary-soft text-primary-strong' : 'border-line bg-surface text-ink hover:bg-canvas'}`}>{label}</button>;
             })}
           </div>
         )}
@@ -200,7 +200,7 @@ function LocationPicker({ selectedLocation, onSelect }) {
         <input value={cityQuery} onChange={(event) => setCityQuery(event.target.value)} type="text" placeholder="Buscar estado" className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted outline-none" />
       </label>
       <div className="grid max-h-[280px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-        {filteredStates.map((state) => <button key={state.code} type="button" onClick={() => chooseState(state)} className="rounded-card border border-line bg-white px-4 py-3 text-left text-sm text-ink transition-colors hover:bg-canvas"><span className="font-semibold">{state.code}</span><span className="ml-2">{state.name}</span></button>)}
+        {filteredStates.map((state) => <button key={state.code} type="button" onClick={() => chooseState(state)} className="rounded-card border border-line bg-surface px-4 py-3 text-left text-sm text-ink transition-colors hover:bg-canvas"><span className="font-semibold">{state.code}</span><span className="ml-2">{state.name}</span></button>)}
       </div>
     </div>
   );
@@ -265,12 +265,12 @@ function DateCalendar({ currentMonth, selectedDate, onMonthChange, onSelectDate 
       {showMonthPicker && (
         <div className="grid grid-cols-1 gap-3 rounded-card bg-canvas p-4 sm:grid-cols-2">
           <label className="text-xs font-medium text-ink-muted">Mês
-            <select value={currentMonth.getMonth()} onChange={(event) => changeMonth(Number(event.target.value))} className="mt-1.5 w-full rounded-control border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-primary">
+            <select value={currentMonth.getMonth()} onChange={(event) => changeMonth(Number(event.target.value))} className="mt-1.5 w-full rounded-control border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-primary">
               {MONTH_LABELS.map((month, index) => <option key={month} value={index} disabled={currentMonth.getFullYear() === firstAllowedMonth.getFullYear() && index < firstAllowedMonth.getMonth()}>{month}</option>)}
             </select>
           </label>
           <label className="text-xs font-medium text-ink-muted">Ano
-            <select value={currentMonth.getFullYear()} onChange={(event) => changeYear(Number(event.target.value))} className="mt-1.5 w-full rounded-control border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-primary">
+            <select value={currentMonth.getFullYear()} onChange={(event) => changeYear(Number(event.target.value))} className="mt-1.5 w-full rounded-control border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-primary">
               {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
             </select>
           </label>
@@ -303,7 +303,7 @@ function DateCalendar({ currentMonth, selectedDate, onMonthChange, onSelectDate 
                 ? 'bg-primary text-white shadow-raised shadow-primary/25'
                 : disabled
                   ? 'cursor-not-allowed bg-canvas text-line-strong'
-                  : `border bg-white text-ink hover:bg-primary-softer hover:text-primary ${today ? 'border-primary-line ring-1 ring-primary-line' : 'border-line'}`}`}
+                  : `border bg-surface text-ink hover:bg-primary-softer hover:text-primary ${today ? 'border-primary-line ring-1 ring-primary-line' : 'border-line'}`}`}
             >
               {date.getDate()}
             </button>
@@ -500,7 +500,7 @@ export default function SearchBar({ onSearched }) {
       </div>
 
       {activeField && (
-        <div className={`left-0 top-full z-50 mt-3 w-full max-h-[70dvh] overflow-y-auto rounded-panel md:absolute md:max-w-[calc(100vw-2rem)] border border-line bg-white p-5 shadow-overlay ${panelPosition}`}>
+        <div className={`left-0 top-full z-50 mt-3 w-full max-h-[70dvh] overflow-y-auto rounded-panel md:absolute md:max-w-[calc(100vw-2rem)] border border-line bg-surface p-5 shadow-overlay ${panelPosition}`}>
           {activeField === 'location' && (
             <LocationPicker
                             selectedLocation={selectedLocation}

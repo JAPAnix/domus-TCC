@@ -44,6 +44,7 @@
   --color-warning-line: #F2D7A5;
   --color-danger: #B91C1C;
   --color-danger-hover: #991B1B;
+  --color-danger-solid: #B91C1C; /* fundo de botão perigoso, com texto branco, nos dois temas */
   --color-danger-soft: #FCECEC;
   --color-danger-line: #F2C4C4;
   --color-info: #1D4ED8;
@@ -140,6 +141,18 @@
  * accent-600 em diante). Fundos suaves (soft, warm, cool) levam texto escuro.
  */
 :root {
+  color-scheme: light;
+  --avatar-violet: var(--color-cat-violet-ink);
+  --avatar-indigo: var(--color-cat-indigo-ink);
+  --avatar-teal: var(--color-cat-teal-ink);
+  --avatar-sky: var(--color-cat-sky-ink);
+  --avatar-coral: var(--color-cat-coral-ink);
+  --avatar-rose: var(--color-cat-rose-ink);
+  --avatar-fuchsia: var(--color-cat-fuchsia-ink);
+  --avatar-emerald: var(--color-cat-emerald-ink);
+  --avatar-cyan: var(--color-cat-cyan-ink);
+  --avatar-amber: var(--color-cat-amber-ink);
+  --avatar-slate: var(--color-cat-slate-ink);
   --gradient-primary: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 100%);
   --gradient-primary-hover: linear-gradient(135deg, var(--color-primary-700) 0%, var(--color-primary-900) 100%);
   --gradient-accent: linear-gradient(135deg, var(--color-accent-600) 0%, var(--color-accent-700) 100%);
@@ -148,6 +161,64 @@
   --gradient-soft: linear-gradient(180deg, var(--color-primary-50) 0%, var(--color-canvas) 100%);
   --gradient-warm: linear-gradient(180deg, var(--color-accent-50) 0%, var(--color-canvas) 100%);
   --gradient-cool: linear-gradient(180deg, var(--color-secondary-50) 0%, var(--color-canvas) 100%);
+}
+
+
+/* Modo escuro: só redefine os tokens. A escolha vem de <html data-theme="dark"> (ver hooks/useTheme.js). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-canvas: #0E0C16; --color-canvas-tint: #15111F; --color-surface: #1A1626; --color-surface-muted: #241F33;
+  --color-line: #342E48; --color-line-tint: #2C2740; --color-line-strong: #7B7494; --color-overlay: rgb(0 0 0 / 0.65);
+  --color-ink: #F3F0FA; --color-ink-soft: #D2CCE3; --color-ink-muted: #ABA4C2;
+  --color-primary: #7C3AED; --color-primary-hover: #6D28D9; --color-primary-strong: #C4B5FD; --color-primary-line: #4C3C86;
+  --color-primary-soft: #2A2150; --color-primary-softer: #211A3F;
+  --color-primary-50: #1F1840; --color-primary-100: #2A2150; --color-primary-200: #3A2D6B;
+  --color-secondary: #2DD4BF; --color-secondary-strong: #99F6E4; --color-secondary-soft: #12302E;
+  --color-secondary-50: #112826; --color-secondary-100: #12302E; --color-secondary-200: #174240;
+  --color-accent-50: #2A1A10; --color-accent-100: #3A2214; --color-accent-200: #5C3419;
+  --color-success: #86EFAC; --color-success-soft: #11291B; --color-success-line: #1F4D31; --color-success-strong: #BBF7D0;
+  --color-warning: #FCD34D; --color-warning-soft: #33260A; --color-warning-line: #5E4513; --color-warning-strong: #FDE68A;
+  --color-danger: #FCA5A5; --color-danger-soft: #321416; --color-danger-line: #6B2428; --color-danger-strong: #FECACA;
+  --color-info: #93C5FD; --color-info-soft: #10203F; --color-info-line: #25427A; --color-info-strong: #BFDBFE;
+  --color-rating: #FBBF24;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-raised: 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-overlay: 0 20px 60px rgb(0 0 0 / 0.65);
+  --color-cat-violet-soft: color-mix(in srgb, var(--color-cat-violet-solid) 22%, var(--color-surface));
+  --color-cat-violet-ink: color-mix(in srgb, var(--color-cat-violet-solid) 40%, white);
+  --color-cat-teal-soft: color-mix(in srgb, var(--color-cat-teal-solid) 22%, var(--color-surface));
+  --color-cat-teal-ink: color-mix(in srgb, var(--color-cat-teal-solid) 40%, white);
+  --color-cat-coral-soft: color-mix(in srgb, var(--color-cat-coral-solid) 22%, var(--color-surface));
+  --color-cat-coral-ink: color-mix(in srgb, var(--color-cat-coral-solid) 40%, white);
+  --color-cat-rose-soft: color-mix(in srgb, var(--color-cat-rose-solid) 22%, var(--color-surface));
+  --color-cat-rose-ink: color-mix(in srgb, var(--color-cat-rose-solid) 40%, white);
+  --color-cat-amber-soft: color-mix(in srgb, var(--color-cat-amber-solid) 22%, var(--color-surface));
+  --color-cat-amber-ink: color-mix(in srgb, var(--color-cat-amber-solid) 40%, white);
+  --color-cat-lime-soft: color-mix(in srgb, var(--color-cat-lime-solid) 22%, var(--color-surface));
+  --color-cat-lime-ink: color-mix(in srgb, var(--color-cat-lime-solid) 40%, white);
+  --color-cat-sky-soft: color-mix(in srgb, var(--color-cat-sky-solid) 22%, var(--color-surface));
+  --color-cat-sky-ink: color-mix(in srgb, var(--color-cat-sky-solid) 40%, white);
+  --color-cat-indigo-soft: color-mix(in srgb, var(--color-cat-indigo-solid) 22%, var(--color-surface));
+  --color-cat-indigo-ink: color-mix(in srgb, var(--color-cat-indigo-solid) 40%, white);
+  --color-cat-fuchsia-soft: color-mix(in srgb, var(--color-cat-fuchsia-solid) 22%, var(--color-surface));
+  --color-cat-fuchsia-ink: color-mix(in srgb, var(--color-cat-fuchsia-solid) 40%, white);
+  --color-cat-emerald-soft: color-mix(in srgb, var(--color-cat-emerald-solid) 22%, var(--color-surface));
+  --color-cat-emerald-ink: color-mix(in srgb, var(--color-cat-emerald-solid) 40%, white);
+  --color-cat-cyan-soft: color-mix(in srgb, var(--color-cat-cyan-solid) 22%, var(--color-surface));
+  --color-cat-cyan-ink: color-mix(in srgb, var(--color-cat-cyan-solid) 40%, white);
+  --color-cat-slate-soft: color-mix(in srgb, var(--color-cat-slate-solid) 22%, var(--color-surface));
+  --color-cat-slate-ink: color-mix(in srgb, var(--color-cat-slate-solid) 40%, white);
+  --avatar-violet: color-mix(in srgb, var(--color-cat-violet-solid) 62%, black);
+  --avatar-indigo: color-mix(in srgb, var(--color-cat-indigo-solid) 62%, black);
+  --avatar-teal: color-mix(in srgb, var(--color-cat-teal-solid) 62%, black);
+  --avatar-sky: color-mix(in srgb, var(--color-cat-sky-solid) 62%, black);
+  --avatar-coral: color-mix(in srgb, var(--color-cat-coral-solid) 62%, black);
+  --avatar-rose: color-mix(in srgb, var(--color-cat-rose-solid) 62%, black);
+  --avatar-fuchsia: color-mix(in srgb, var(--color-cat-fuchsia-solid) 62%, black);
+  --avatar-emerald: color-mix(in srgb, var(--color-cat-emerald-solid) 62%, black);
+  --avatar-cyan: color-mix(in srgb, var(--color-cat-cyan-solid) 62%, black);
+  --avatar-amber: color-mix(in srgb, var(--color-cat-amber-solid) 62%, black);
+  --avatar-slate: color-mix(in srgb, var(--color-cat-slate-solid) 62%, black);
 }
 
 @utility bg-gradient-primary { background-image: var(--gradient-primary); }
@@ -160,14 +231,14 @@
 @utility bg-gradient-cool { background-image: var(--gradient-cool); }
 
 /* Avatar sem foto: degradê escuro (texto branco com contraste AA) escolhido pelo nome. */
-@utility bg-avatar-0 { background-image: linear-gradient(135deg, var(--color-cat-violet-ink), var(--color-cat-indigo-ink)); }
-@utility bg-avatar-1 { background-image: linear-gradient(135deg, var(--color-cat-teal-ink), var(--color-cat-sky-ink)); }
-@utility bg-avatar-2 { background-image: linear-gradient(135deg, var(--color-cat-coral-ink), var(--color-cat-rose-ink)); }
-@utility bg-avatar-3 { background-image: linear-gradient(135deg, var(--color-cat-fuchsia-ink), var(--color-cat-violet-ink)); }
-@utility bg-avatar-4 { background-image: linear-gradient(135deg, var(--color-cat-emerald-ink), var(--color-cat-teal-ink)); }
-@utility bg-avatar-5 { background-image: linear-gradient(135deg, var(--color-cat-indigo-ink), var(--color-cat-cyan-ink)); }
-@utility bg-avatar-6 { background-image: linear-gradient(135deg, var(--color-cat-amber-ink), var(--color-cat-coral-ink)); }
-@utility bg-avatar-7 { background-image: linear-gradient(135deg, var(--color-cat-slate-ink), var(--color-cat-violet-ink)); }
+@utility bg-avatar-0 { background-image: linear-gradient(135deg, var(--avatar-violet), var(--avatar-indigo)); }
+@utility bg-avatar-1 { background-image: linear-gradient(135deg, var(--avatar-teal), var(--avatar-sky)); }
+@utility bg-avatar-2 { background-image: linear-gradient(135deg, var(--avatar-coral), var(--avatar-rose)); }
+@utility bg-avatar-3 { background-image: linear-gradient(135deg, var(--avatar-fuchsia), var(--avatar-violet)); }
+@utility bg-avatar-4 { background-image: linear-gradient(135deg, var(--avatar-emerald), var(--avatar-teal)); }
+@utility bg-avatar-5 { background-image: linear-gradient(135deg, var(--avatar-indigo), var(--avatar-cyan)); }
+@utility bg-avatar-6 { background-image: linear-gradient(135deg, var(--avatar-amber), var(--avatar-coral)); }
+@utility bg-avatar-7 { background-image: linear-gradient(135deg, var(--avatar-slate), var(--avatar-violet)); }
 
 /* Carregando: brilho suave na cor da paleta. Sem movimento para quem desativou animações (regra global abaixo). */
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }

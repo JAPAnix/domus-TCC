@@ -6,9 +6,9 @@ const buttonVariants = {
   accent: 'bg-gradient-accent text-white shadow-card hover:bg-gradient-accent-hover active:brightness-95',
   secondary: 'border border-line-strong bg-surface text-ink hover:bg-surface-muted',
   ghost: 'text-primary-strong hover:bg-primary-soft',
-  danger: 'bg-danger text-white hover:bg-danger-hover',
+  danger: 'bg-danger-solid text-white hover:bg-danger-hover',
   dangerOutline: 'border border-danger text-danger hover:bg-danger-soft',
-  inverse: 'bg-white text-primary-strong hover:bg-primary-soft',
+  inverse: 'bg-white text-primary-800 hover:bg-white/90',
 };
 
 const buttonSizes = {

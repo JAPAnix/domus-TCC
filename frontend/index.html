@@ -9,6 +9,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Dommos: encontre profissionais, receba propostas e contrate serviços." />
     <title>Dommos</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('dommos:tema');
+          var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+        } catch (e) { /* sem armazenamento: fica no claro */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

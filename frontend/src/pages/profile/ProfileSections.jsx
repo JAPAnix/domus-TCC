@@ -1,183 +1,186 @@
-import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import { useAuth } from '../../context/useAuth';
+import { useApiResource } from '../../hooks/useApiResource';
+import { apiError } from '../../services/api';
+import { formatDay, fullName } from '../../utils/format';
+import { roleLabel } from '../../utils/roles';
+import Pagination from '../../components/Pagination';
+import { Avatar, Breadcrumb, Button, Card, EmptyState, ErrorState, SkeletonList } from '../../components/ui';
 
-const buttonStyle = 'inline-flex min-h-11 items-center justify-center rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#6D28D9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7C3AED]';
-
-// Tie each response to its request and account, including navigation and retries.
-function useProfileResource(url) {
-  const { user } = useAuth();
-  const uuid = user?.uuid;
-  const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    api.get(url, { signal: controller.signal }).then(({ data }) => {
-      if (!controller.signal.aborted) setResult({ url, uuid, attempt, data });
-    }).catch((error) => {
-      if (!controller.signal.aborted) setResult({ url, uuid, attempt, error });
-    });
-    return () => controller.abort();
-  }, [url, uuid, attempt]);
-  const current = result?.url === url && result?.uuid === uuid && result?.attempt === attempt;
-  return { data: current ? result.data : null, error: current ? result.error : null, loading: !current, retry: () => setAttempt((value) => value + 1) };
+function Chips({ items }) {
+  return <ul className="mt-1 flex flex-wrap gap-2">{items.map((item) => <li key={item} className="rounded-full bg-primary-soft px-3 py-1 text-sm text-primary-strong">{item}</li>)}</ul>;
 }
 
-function ResourceStatus({ resource }) {
-  if (resource.loading) return <p role="status" className="py-10 text-sm text-[#6B7280]">Carregando informações...</p>;
-  if (resource.error) return (
-    <div role="alert" className="my-6 rounded-xl border border-[#E5E7EB] bg-white p-6">
-      <p className="text-sm text-[#374151]">Não foi possível carregar estas informações.</p>
-      <button type="button" onClick={resource.retry} className={`${buttonStyle} mt-4`}>Tentar novamente</button>
-    </div>
-  );
-  return null;
-}
-
-function Avatar({ person }) {
-  const [failedUrl, setFailedUrl] = useState(null);
-  const name = [person.firstName, person.lastName].filter(Boolean).join(' ');
-  const initials = [person.firstName, person.lastName].filter(Boolean).map((part) => part.trim()[0]).join('').toUpperCase() || '?';
+function Details({ profile }) {
+  const rows = [
+    ['Cidade onde moro', [profile.city, profile.state].filter(Boolean).join(', ')],
+    ['Meu trabalho', profile.profession],
+    ['Anos de experiência', profile.yearsExperience != null ? `${profile.yearsExperience} ${profile.yearsExperience === 1 ? 'ano' : 'anos'}` : ''],
+    ['Onde estudei', profile.school],
+    ['Curiosidade sobre mim', profile.funFact],
+    ['Idiomas que falo', profile.languages],
+    ['Habilidades', profile.skills],
+    ['Áreas de atuação', profile.serviceAreas],
+    ['Interesses', profile.interests],
+  ].filter(([, value]) => (Array.isArray(value) ? value.length : value));
+  if (!rows.length) return null;
   return (
-    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EDE9FE] text-3xl font-semibold text-[#7C3AED]">
-      {person.profilePictureUrl && person.profilePictureUrl !== failedUrl ? (
-        <img src={person.profilePictureUrl} alt={`Foto de ${name || 'perfil'}`} onError={() => setFailedUrl(person.profilePictureUrl)} className="h-full w-full object-cover" />
-      ) : <span aria-label={`Iniciais de ${name || 'perfil'}`}>{initials}</span>}
-    </div>
+    <dl className="divide-y divide-line">
+      {rows.map(([label, value]) => (
+        <div key={label} className="py-4">
+          <dt className="text-sm text-ink-muted">{label}</dt>
+          <dd className="mt-0.5 text-sm font-medium">{Array.isArray(value) ? <Chips items={value} /> : value}</dd>
+        </div>
+      ))}
+    </dl>
   );
-}
-
-function InformationList({ fields }) {
-  return <dl className="grid gap-x-8 sm:grid-cols-2">{fields.map(([label, value]) => (
-    <div key={label} className="border-b border-[#E5E7EB] py-5">
-      <dt className="text-sm text-[#6B7280]">{label}</dt>
-      <dd className="mt-2 break-words text-sm font-medium text-[#111827]">{value ?? 'Não informado'}</dd>
-    </div>
-  ))}</dl>;
-}
-
-function formatDate(value, options) {
-  if (!value) return 'Não informado';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Não informado' : date.toLocaleDateString('pt-BR', options);
 }
 
 export function ProfileAbout() {
-  const resource = useProfileResource('/auth/me');
-  const person = resource.data;
-  const isClient = person?.roles?.includes('client');
-  const isProfessional = person?.roles?.includes('professional');
-  const role = isClient && isProfessional ? 'Cliente e profissional' : isProfessional ? 'Profissional' : isClient ? 'Cliente' : null;
-  return (
-    <>
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <h2 id="profile-section-title" className="text-2xl font-semibold text-[#111827]">Sobre mim</h2>
-        <Link to="/configuracoes/pessoais" className="rounded-lg px-3 py-2 text-sm font-semibold text-[#7C3AED] hover:bg-[#EDE9FE] focus-visible:outline-2 focus-visible:outline-[#7C3AED]">Editar</Link>
-      </div>
-      <ResourceStatus resource={resource} />
-      {person && (
-        <>
-          <div className="grid gap-8 xl:grid-cols-2">
-            <div className="flex min-w-0 flex-col items-center justify-center rounded-2xl border border-[#E5E7EB] bg-white px-6 py-10 text-center shadow-sm">
-              <Avatar person={person} />
-              <h3 className="mt-5 max-w-full break-words text-xl font-semibold text-[#111827]">{[person.firstName, person.lastName].filter(Boolean).join(' ') || 'Nome não informado'}</h3>
-              {role && <p className="mt-2 text-sm text-[#6B7280]">{role}</p>}
-            </div>
-            <div className="flex flex-col items-start justify-center py-3">
-              <h3 className="text-xl font-semibold text-[#111827]">Complete seu perfil</h3>
-              <p className="mt-3 text-sm leading-7 text-[#6B7280]">Complete seu perfil para ajudar profissionais e clientes a conhecerem você melhor.</p>
-              <Link to="/configuracoes/pessoais" className={`${buttonStyle} mt-6`}>Completar perfil</Link>
-            </div>
-          </div>
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold text-[#111827]">Informações</h3>
-            <InformationList fields={[
-              ['Cidade', [person.city, person.state].filter(Boolean).join(', ') || null],
-              ['Telefone', person.phoneNumber || null],
-              ['Membro desde', formatDate(person.createdAt, { month: 'long', year: 'numeric' })],
-            ]} />
-          </div>
-        </>
-      )}
-    </>
-  );
-}
-
-export function ProfileReviews() {
-  const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const requestedPage = Number(searchParams.get('pagina') || 1);
-  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const resource = useProfileResource(`/users/${user.uuid}/reviews?page=${page}&limit=10`);
-  const reviews = resource.data?.data ?? [];
-  const meta = resource.data?.meta;
-  return (
-    <>
-      <h2 id="profile-section-title" className="text-2xl font-semibold text-[#111827]">Avaliações</h2>
-      <p className="mt-2 text-sm text-[#6B7280]">Experiências de quem já contou com você no DOMMOS.</p>
-      <ResourceStatus resource={resource} />
-      {resource.data && (
-        <>
-          {reviews.length === 0 ? (
-            <p className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-sm text-[#6B7280]">{Number(meta?.total) > 0 ? 'Nenhuma avaliação nesta página.' : 'Você ainda não possui avaliações.'}</p>
-          ) : (
-            <div className="mt-8 divide-y divide-[#E5E7EB]">
-              {reviews.map((review) => (
-                <article key={review.id} className="py-6 first:pt-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="break-words font-semibold text-[#111827]">{[review.reviewer?.firstName, review.reviewer?.lastName].filter(Boolean).join(' ') || 'Nome não informado'}</h3>
-                    <span className="text-sm font-semibold text-[#5B21B6]" aria-label={`Nota ${review.rating} de 5`}>★ {review.rating}/5</span>
-                  </div>
-                  <p className="mt-1 text-xs text-[#6B7280]">{formatDate(review.createdAt)}</p>
-                  {review.comment && <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-[#374151]">{review.comment}</p>}
-                </article>
-              ))}
-            </div>
-          )}
-          {(page > 1 || meta?.pages > 1) && (
-            <nav aria-label="Páginas de avaliações" className="mt-6 flex flex-wrap items-center gap-4 text-sm">
-              <button type="button" disabled={page <= 1} onClick={() => setSearchParams({ pagina: String(page - 1) })} className="min-h-11 rounded-lg border border-[#E5E7EB] px-4 text-[#5B21B6] disabled:opacity-40">Anterior</button>
-              <span className="text-[#6B7280]">Página {page}</span>
-              <button type="button" disabled={page >= (meta?.pages ?? 1)} onClick={() => setSearchParams({ pagina: String(page + 1) })} className="min-h-11 rounded-lg border border-[#E5E7EB] px-4 text-[#5B21B6] disabled:opacity-40">Próxima</button>
-            </nav>
-          )}
-        </>
-      )}
-    </>
-  );
-}
-
-export function ProfessionalProfileSummary() {
-  const { user } = useAuth();
-  const resource = useProfileResource(`/professionals/${user.uuid}`);
+  const resource = useApiResource('/profile/me', undefined, { keepPrevious: true });
   const profile = resource.data;
-  const missing = resource.error?.response?.status === 404;
-  const currency = (value) => value == null || value === '' || !Number.isFinite(Number(value)) ? 'Não informado' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
+
+  if (!profile && resource.loading) return <SkeletonList count={2} label="Carregando perfil" itemClassName="h-48" />;
+  if (resource.error) return <ErrorState title="Não foi possível carregar seu perfil" message={apiError(resource.error)} onRetry={resource.retry} />;
+
+  const name = fullName(profile);
+  const { completion } = profile;
+  const isProfessional = profile.roles.includes('professional');
+  return (
+    <div className="grid gap-8 md:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="space-y-4">
+        <Card className="text-center">
+          <Avatar src={profile.profilePictureUrl} name={name} size="xl" className="mx-auto" />
+          <h2 className="mt-4 break-words text-xl font-semibold">{name}</h2>
+          <p className="mt-1 text-sm text-ink-muted">{roleLabel(profile.roles)}</p>
+          <div className="mt-5 flex flex-col gap-2">
+            <Button to="/perfil/editar">Editar</Button>
+            <Button to={`/usuarios/${profile.uuid}`} variant="secondary">Ver como os outros veem</Button>
+          </div>
+        </Card>
+
+        {completion.done < completion.total && (
+          <Card as="section" aria-labelledby="preencha">
+            <h2 id="preencha" className="font-semibold">Preencha seu perfil</h2>
+            <p className="mt-1 text-sm text-ink-muted">Um perfil completo ajuda profissionais e clientes a conhecerem você.</p>
+            <div role="progressbar" aria-label="Perfil preenchido" aria-valuemin={0} aria-valuemax={completion.total} aria-valuenow={completion.done} className="mt-4 h-2 overflow-hidden rounded-full bg-line">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${(completion.done / completion.total) * 100}%` }} />
+            </div>
+            <p className="mt-2 text-xs text-ink-muted">{completion.done} de {completion.total} itens · falta: {completion.missing.join(', ')}</p>
+            <Button to="/perfil/editar" variant="secondary" className="mt-4" block>Preencher agora</Button>
+          </Card>
+        )}
+
+        <Card as="nav" aria-label="Avaliações" className="space-y-1 !p-3">
+          <Link to="/perfil/avaliacoes-escritas" className="flex min-h-control items-center rounded-control px-3 text-sm font-medium text-primary-strong hover:bg-primary-soft">Mostrar avaliações que escrevi</Link>
+          {isProfessional && <Link to="/perfil/avaliacoes" className="flex min-h-control items-center rounded-control px-3 text-sm font-medium text-primary-strong hover:bg-primary-soft">Avaliações que recebi</Link>}
+        </Card>
+      </div>
+
+      <section aria-labelledby="sobre-mim">
+        <h2 id="sobre-mim" className="mb-3 text-xl font-semibold">Sobre mim</h2>
+        {profile.about
+          ? <p className="mb-6 whitespace-pre-line break-words leading-7 text-ink-soft">{profile.about}</p>
+          : <p className="mb-6 rounded-card border border-dashed border-line-strong bg-surface p-5 text-sm text-ink-muted">Conte um pouco sobre você, sua rotina e o que você valoriza. <Link to="/perfil/editar" className="font-semibold text-primary-strong underline underline-offset-2">Escrever introdução</Link></p>}
+        <Details profile={profile} />
+        <p className="mt-6 text-sm text-ink-muted">Membro desde {formatDay(profile.createdAt, { month: 'long', year: 'numeric' })}. Seu e-mail e telefone ficam em <Link to="/configuracoes/pessoais" className="font-semibold text-primary-strong underline underline-offset-2">Configurações da conta</Link> e não aparecem no perfil público.</p>
+      </section>
+    </div>
+  );
+}
+
+export function ProfileConnections() {
+  const resource = useApiResource('/profile/me/connections');
+  if (resource.loading) return <SkeletonList count={3} label="Carregando conexões" itemClassName="h-24" className="grid gap-4 sm:grid-cols-2" />;
+  if (resource.error) return <ErrorState title="Não foi possível carregar suas conexões" message={apiError(resource.error)} onRetry={resource.retry} />;
+  if (!resource.data.length) {
+    return <EmptyState icon="chat" title="Você ainda não tem conexões" description="Elas aparecem aqui quando você contrata alguém, ou é contratado, e o serviço é aceito." action={<Button to="/buscar">Explorar serviços</Button>} />;
+  }
   return (
     <>
-      <h2 id="profile-section-title" className="text-2xl font-semibold text-[#111827]">Perfil profissional</h2>
-      {missing ? (
-        <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-6 sm:p-8">
-          <p className="text-sm text-[#6B7280]">Você ainda não possui um perfil profissional.</p>
-          <Link to="/perfil/profissional" className={`${buttonStyle} mt-6`}>Oferecer meus serviços</Link>
-        </div>
-      ) : <ResourceStatus resource={resource} />}
-      {profile && (
-        <div className="mt-8">
-          <h3 className="break-words text-xl font-semibold text-[#111827]">{profile.headline || 'Título profissional não informado'}</h3>
-          {profile.bio && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-[#6B7280]">{profile.bio}</p>}
-          <InformationList fields={[
-            ['Serviços', profile.catalogServices?.map((item) => item.catalogItem?.name).filter(Boolean).join(', ') || null],
-            ['Avaliação', Number(profile.totalReviews) > 0 && profile.averageRating != null ? `${Number(profile.averageRating).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}/5 · ${profile.totalReviews} avaliações` : 'Sem avaliações'],
-            ['Preço por hora', currency(profile.hourlyRate)],
-            ['Preço por dia', currency(profile.dailyRate)],
-            ['Localização', [profile.city, profile.state].filter(Boolean).join(', ') || null],
-            ['Status do perfil', profile.isPublished === true ? 'Publicado' : profile.isPublished === false ? 'Não publicado' : null],
-          ]} />
-          <Link to="/perfil/profissional" className={`${buttonStyle} mt-8`}>Editar perfil profissional</Link>
-        </div>
-      )}
+      <p className="mb-4 text-sm text-ink-muted">Pessoas com quem você já fechou negócio.</p>
+      <ul className="grid gap-4 sm:grid-cols-2">
+        {resource.data.map((person) => (
+          <li key={person.uuid}>
+            <Link to={`/usuarios/${person.uuid}`} className="flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-card transition-colors hover:border-primary">
+              <Avatar src={person.profilePictureUrl} name={person.name} size="lg" decorative />
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{person.name}</p>
+                <p className="text-sm text-ink-muted">{person.isProfessional ? 'Profissional' : 'Cliente'}{person.location ? ` · ${person.location}` : ''}</p>
+                <p className="text-xs text-ink-muted">{person.count} {person.count === 1 ? 'serviço' : 'serviços'} juntos · último em {formatDay(person.lastAt)}</p>
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </>
+  );
+}
+
+function usePageParam() {
+  const [params, setParams] = useSearchParams();
+  const requested = Number(params.get('pagina') || 1);
+  const page = Number.isSafeInteger(requested) && requested > 0 ? requested : 1;
+  return [page, (next) => setParams({ pagina: String(next) })];
+}
+
+function ReviewsPage({ crumb, title, resource, page, setPage, personOf, emptyIcon = 'star', emptyTitle, emptyText, emptyAction }) {
+  const reviews = resource.data?.data ?? [];
+  return (
+    <main className="mx-auto max-w-content px-4 py-10 sm:px-6">
+      <Breadcrumb items={[{ label: 'Perfil', to: '/perfil/sobre' }, { label: crumb }]} />
+      <h1 className="mb-6 text-2xl font-bold sm:text-3xl">{title}</h1>
+      {resource.loading ? <SkeletonList count={3} label="Carregando avaliações" itemClassName="h-24" />
+        : resource.error ? <ErrorState title="Não foi possível carregar as avaliações" message={apiError(resource.error)} onRetry={resource.retry} />
+          : !reviews.length ? <EmptyState icon={emptyIcon} title={emptyTitle} description={emptyText} action={emptyAction} />
+            : (
+              <>
+                <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+                  {reviews.map((review) => {
+                    const person = personOf(review);
+                    return (
+                      <li key={review.id} className="p-5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          {person.to ? <Link to={person.to} className="font-semibold text-primary-strong underline-offset-2 hover:underline">{person.name}</Link> : <p className="font-semibold">{person.name}</p>}
+                          <span className="text-sm font-semibold" aria-label={`Nota ${review.rating} de 5`}><span aria-hidden="true" className="text-rating">★</span> {review.rating}/5</span>
+                        </div>
+                        <p className="text-xs text-ink-muted">{formatDay(review.createdAt)}{review.context ? ` · ${review.context}` : ''}</p>
+                        {review.comment && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-ink-soft">{review.comment}</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Pagination page={page} pages={resource.data.meta.pages} onChange={setPage} label="Páginas de avaliações" />
+              </>
+            )}
+    </main>
+  );
+}
+
+/** Avaliações que o usuário recebeu (quando é profissional). */
+export function ReceivedReviews() {
+  const { user } = useAuth();
+  const [page, setPage] = usePageParam();
+  const resource = useApiResource(`/users/${user.uuid}/reviews`, { page, limit: 10 });
+  return (
+    <ReviewsPage
+      crumb="Avaliações que recebi" title="Avaliações que recebi" resource={resource} page={page} setPage={setPage}
+      personOf={(review) => ({ name: fullName(review.reviewer) || 'Nome não informado' })}
+      emptyTitle="Você ainda não recebeu avaliações" emptyText="Elas aparecem depois que um serviço é concluído e o cliente avalia."
+    />
+  );
+}
+
+/** Avaliações que o usuário escreveu. */
+export function WrittenReviews() {
+  const [page, setPage] = usePageParam();
+  const resource = useApiResource('/profile/me/reviews-written', { page, limit: 10 });
+  return (
+    <ReviewsPage
+      crumb="Avaliações que escrevi" title="Avaliações que escrevi" resource={resource} page={page} setPage={setPage}
+      personOf={(review) => ({ name: review.reviewed.name, to: `/usuarios/${review.reviewed.uuid}` })}
+      emptyTitle="Você ainda não escreveu avaliações" emptyText="Depois que um serviço for concluído, você pode avaliar a outra pessoa."
+      emptyAction={<Button to="/meus-servicos">Ver meus pedidos</Button>}
+    />
   );
 }

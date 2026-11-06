@@ -1,149 +1,86 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import BrandLogo from '../components/BrandLogo';
+import api, { apiError, apiFieldErrors } from '../services/api';
+import { useAuth } from '../context/useAuth';
+import { PRO_START_PATH } from '../utils/routes';
+import GoogleSignInButton from '../components/GoogleSignInButton';
+import { Button, Input } from '../components/ui';
+import AuthLayout from './AuthLayout';
 
-const Register = () => {
+export default function Register() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [params] = useSearchParams();
   const [professional, setProfessional] = useState(params.get('tipo') === 'profissional');
-
-  const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    password: ''
-  });
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '' });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const destination = professional ? PRO_START_PATH : '/';
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  function change(event) {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+    setErrors((current) => ({ ...current, [name]: undefined }));
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  async function submit(event) {
+    event.preventDefault();
     setError('');
+    setErrors({});
+    if (form.password.length < 8) {
+      setErrors({ password: 'A senha precisa ter pelo menos 8 caracteres.' });
+      return;
+    }
     setLoading(true);
-
     try {
-      // Cadastra o usuário
       await api.post('/auth/register', form);
-
-      // Faz login automático
-      const { data } = await api.post('/auth/login', {
-        email: form.email,
-        password: form.password
-      });
-
+      const { data } = await api.post('/auth/login', { email: form.email, password: form.password });
       login(data.token, data.user);
-      navigate(professional ? '/perfil/profissional' : '/bem-vindo');
+      navigate(destination);
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao criar conta');
-    } finally {
+      const fieldErrors = apiFieldErrors(err);
+      setErrors(fieldErrors);
+      setError(Object.keys(fieldErrors).length ? 'Confira os campos destacados.' : apiError(err, 'Não foi possível criar a conta.'));
       setLoading(false);
     }
-  };
+  }
+
+  const onGoogle = useCallback(async (credential) => {
+    setError('');
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/google', { credential });
+      login(data.token, data.user);
+      navigate(destination);
+    } catch (err) {
+      setError(apiError(err, 'Não foi possível continuar com o Google.'));
+      setLoading(false);
+    }
+  }, [login, navigate, destination]);
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-
-        <div className="text-center mb-8">
-          <h1><BrandLogo className="mx-auto" /></h1>
-          <p className="text-[#6B7280] mt-2">Conectamos talentos com oportunidades</p>
+    <AuthLayout title="Criar conta" subtitle={professional ? 'Passo 1 de 2: crie sua conta. Em seguida, você monta seu perfil profissional.' : undefined}>
+      {error && <p role="alert" className="mb-4 rounded-control border border-danger-line bg-danger-soft p-3 text-sm text-danger">{error}</p>}
+      <form onSubmit={submit} className="space-y-4">
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium">Como você quer usar o Dommos?</legend>
+          <div className="space-y-1">
+            <label className="flex min-h-control-sm cursor-pointer items-center gap-2 text-sm"><input type="radio" name="account_type" checked={!professional} onChange={() => setProfessional(false)} />Contratar serviços</label>
+            <label className="flex min-h-control-sm cursor-pointer items-center gap-2 text-sm"><input type="radio" name="account_type" checked={professional} onChange={() => setProfessional(true)} />Oferecer serviços (também posso contratar)</label>
+          </div>
+        </fieldset>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Nome" name="first_name" autoComplete="given-name" required value={form.first_name} onChange={change} error={errors.first_name} />
+          <Input label="Sobrenome" name="last_name" autoComplete="family-name" required value={form.last_name} onChange={change} error={errors.last_name} />
         </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-8">
-          <h2 className="text-xl font-semibold text-[#111827] mb-6">Criar conta</h2>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <fieldset className="space-y-2">
-              <legend className="mb-2 text-sm font-medium">Como você quer usar o Domus?</legend>
-              <label className="block text-sm"><input type="radio" name="account_type" checked={!professional} onChange={() => setProfessional(false)} /> Contratar serviços</label>
-              <label className="block text-sm"><input type="radio" name="account_type" checked={professional} onChange={() => setProfessional(true)} /> Oferecer serviços (também posso contratar)</label>
-            </fieldset>
-            {professional && <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-700">Passo 1 de 2: crie sua conta. Em seguida, configure seu perfil profissional.</p>}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#111827] mb-1">Nome</label>
-                <input
-                  type="text"
-                  name="first_name"
-                  value={form.first_name}
-                  onChange={handleChange}
-                  placeholder="João"
-                  required
-                  className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#111827] mb-1">Sobrenome</label>
-                <input
-                  type="text"
-                  name="last_name"
-                  value={form.last_name}
-                  onChange={handleChange}
-                  placeholder="Silva"
-                  required
-                  className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">E-mail</label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="seu@email.com"
-                required
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">Senha</label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="mínimo 8 caracteres"
-                required
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Criando conta...' : professional ? 'Criar conta e continuar' : 'Criar conta'}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-[#6B7280] mt-6">
-            Já tem uma conta?{' '}
-            <Link to={professional ? '/login?profissional=1' : '/login'} className="text-[#7C3AED] font-medium hover:underline">
-              Entrar
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+        <Input label="E-mail" type="email" name="email" autoComplete="email" required value={form.email} onChange={change} error={errors.email} />
+        <Input label="Senha" type="password" name="password" autoComplete="new-password" required hint="Use pelo menos 8 caracteres." value={form.password} onChange={change} error={errors.password} />
+        <Button type="submit" block loading={loading}>{loading ? 'Criando conta...' : professional ? 'Criar conta e continuar' : 'Criar conta'}</Button>
+      </form>
+      <div className="flex items-center gap-3 py-4 text-xs text-ink-muted"><span className="h-px flex-1 bg-line" />ou<span className="h-px flex-1 bg-line" /></div>
+      <GoogleSignInButton onCredential={onGoogle} disabled={loading} />
+      <p className="mt-6 text-center text-sm text-ink-muted">Já tem uma conta? <Link to={professional ? '/login?profissional=1' : '/login'} className="font-medium text-primary-strong underline-offset-2 hover:underline">Entrar</Link></p>
+    </AuthLayout>
   );
-};
-
-export default Register;
+}

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  createService, listServices, getService,
+  createService, listServices, listMyServices, getService,
   updateService, updateStatus, deleteService
 } from '../controllers/serviceController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
@@ -19,6 +19,7 @@ router.get('/:uuid/participation', authMiddleware, getServiceParticipation);
 
 router.post('/', authMiddleware, roleMiddleware('client'), validate(createServiceSchema), createService);
 router.get('/', listServices);
+router.get('/mine', authMiddleware, listMyServices);
 router.get('/:uuid', getService);
 router.patch('/:uuid', authMiddleware, roleMiddleware('client'), validate(updateServiceSchema), updateService);
 router.patch('/:uuid/status', authMiddleware, roleMiddleware('client'), validate(updateStatusSchema), updateStatus);

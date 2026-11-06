@@ -1,47 +1,38 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AuthContext } from './useAuth';
+import { SESSION_EXPIRED_EVENT } from '../services/api';
 
-const AuthContext = createContext(null);
+function readSession() {
+  try {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user'));
+    return token && user ? { token, user } : { token: null, user: null };
+  } catch {
+    return { token: null, user: null };
+  }
+}
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(readSession);
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-
-    setLoading(false);
-  }, []);
-
-  const login = (token, user) => {
+  const login = useCallback((token, user) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
-    setToken(token);
-    setUser(user);
-  };
+    setSession({ token, user });
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-  };
+    setSession({ token: null, user: null });
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
+  useEffect(() => {
+    window.addEventListener(SESSION_EXPIRED_EVENT, logout);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, logout);
+  }, [logout]);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth deve ser usado dentro do AuthProvider');
-  return context;
-};
+  const value = useMemo(() => ({ ...session, loading: false, login, logout }), [session, login, logout]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

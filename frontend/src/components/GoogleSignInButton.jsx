@@ -37,5 +37,5 @@ export default function GoogleSignInButton({ onCredential, disabled }) {
   }, [clientId, onCredential]);
 
   if (!clientId) return null;
-  return <div className={disabled ? 'pointer-events-none opacity-60' : ''}><div ref={containerRef} className="flex justify-center" />{error && <p className="mt-2 text-center text-xs text-red-600">{error}</p>}</div>;
+  return <div className={disabled ? 'pointer-events-none opacity-60' : ''}><div ref={containerRef} className="flex justify-center" />{error && <p className="mt-2 text-center text-xs text-danger">{error}</p>}</div>;
 }

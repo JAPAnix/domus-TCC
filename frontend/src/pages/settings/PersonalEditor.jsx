@@ -54,16 +54,16 @@ function EditForm({ section, person }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="settings-page-title" className="text-2xl font-semibold">{sections[section].title}</h2><Link to="/configuracoes/pessoais" className={linkClass}>Concluir</Link></div>
-      <p className="mt-3 text-sm leading-6 text-[#6B7280]">{verification ? 'Confirme o novo contato com um código. O dado atual permanece até a confirmação.' : 'Confira suas informações da conta antes de salvar.'}</p>
+      <p className="mt-3 text-sm leading-6 text-ink-muted">{verification ? 'Confirme o novo contato com um código. O dado atual permanece até a confirmação.' : 'Confira suas informações da conta antes de salvar.'}</p>
       <form onSubmit={save} className="mt-6 space-y-5">
-        {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-[#DC2626]">{error}</p>}
+        {error && <p role="alert" className="rounded-control bg-danger-soft p-3 text-sm text-danger">{error}</p>}
         <fieldset disabled={busy} className="min-w-0 space-y-5">
-          {['residencial', 'postal'].includes(section) && <p className="text-sm text-[#6B7280]">País/Região: Brasil. Preencha o endereço manualmente.</p>}
-          {section === 'postal' && <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="same_as_home" checked={form.same_as_home} onChange={change} className="h-5 w-5 accent-[#7C3AED]" />Usar o mesmo endereço residencial</label>}
+          {['residencial', 'postal'].includes(section) && <p className="text-sm text-ink-muted">País/Região: Brasil. Preencha o endereço manualmente.</p>}
+          {section === 'postal' && <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="same_as_home" checked={form.same_as_home} onChange={change} className="h-5 w-5 accent-primary" />Usar o mesmo endereço residencial</label>}
           {section === 'phone' && <label className="block text-sm font-medium" htmlFor="country">País<select id="country" name="country" value={form.country} onChange={change} className={inputClass}><option value="+55">Brasil (+55)</option><option value="+351">Portugal (+351)</option><option value="+1">Estados Unidos/Canadá (+1)</option><option value="+54">Argentina (+54)</option><option value="+56">Chile (+56)</option><option value="+598">Uruguai (+598)</option></select></label>}
           {!(section === 'postal' && form.same_as_home) && sections[section].fields.map(([name, label, max, optional, type = 'text']) => (
             <div key={name}>
-              <label htmlFor={`personal-${name}`} className="block text-sm font-medium">{label}{optional && <span className="ml-1 font-normal text-[#6B7280]">(opcional)</span>}</label>
+              <label htmlFor={`personal-${name}`} className="block text-sm font-medium">{label}{optional && <span className="ml-1 font-normal text-ink-muted">(opcional)</span>}</label>
               {name === 'relationship' ? <select id={`personal-${name}`} name={name} value={form[name]} onChange={change} className={inputClass} aria-invalid={!!errors[name]} aria-describedby={errors[name] ? `error-${name}` : undefined}>{['Familiar', 'Responsável', 'Amigo', 'Outro'].map((v) => <option key={v}>{v}</option>)}</select> : <input
                 id={`personal-${name}`} name={name} type={type} value={name === 'zip_code' ? formatZip(form[name]) : form[name] || ''} onChange={change} maxLength={max} required={!optional}
                 max={type === 'date' ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) : undefined}
@@ -72,11 +72,11 @@ function EditForm({ section, person }) {
                 autoComplete={name === 'first_name' ? 'given-name' : name === 'last_name' ? 'family-name' : type === 'email' ? 'email' : type === 'date' ? 'bday' : 'off'}
                 className={inputClass} aria-invalid={!!errors[name]} aria-describedby={errors[name] ? `error-${name}` : undefined}
               />}
-              {errors[name] && <p id={`error-${name}`} className="mt-1 text-sm text-[#DC2626]">{errors[name]}</p>}
+              {errors[name] && <p id={`error-${name}`} className="mt-1 text-sm text-danger">{errors[name]}</p>}
             </div>
           ))}
         </fieldset>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E5E7EB] pt-6"><Link to="/configuracoes/pessoais" className={linkClass}>Voltar</Link><button disabled={busy || (!dirty && !verification)} className={primaryClass}>{busy ? (verification ? 'Enviando...' : 'Salvando...') : verification ? 'Enviar código' : 'Salvar'}</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6"><Link to="/configuracoes/pessoais" className={linkClass}>Voltar</Link><button disabled={busy || (!dirty && !verification)} className={primaryClass}>{busy ? (verification ? 'Enviando...' : 'Salvando...') : verification ? 'Enviar código' : 'Salvar'}</button></div>
       </form>
       <UnsavedChangesDialog dirty={dirty} busy={busy} allowLeave={allowLeave} />
     </>
@@ -122,13 +122,13 @@ function ConfirmationForm({ section }) {
   return <>
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="settings-page-title" className="text-2xl font-semibold">Confirme seu {section === 'email' ? 'email' : 'telefone'}</h2><Link to="/configuracoes/pessoais" className={linkClass}>Concluir</Link></div>
     {!pending ? <div className="mt-6"><p>Não há confirmação pendente.</p><Link to={`/configuracoes/pessoais/${section}`} className={`${linkClass} mt-3`}>Informar {section === 'email' ? 'email' : 'telefone'}</Link></div> : <>
-      <p className="mt-4 break-words text-sm text-[#6B7280]">Digite o código de 6 dígitos para {section === 'email' ? maskEmail(pending.target) : maskPhone(pending.target)}.</p>
-      <p className="mt-2 text-sm text-[#6B7280]">O código vale por 10 minutos. O contato atual só será substituído após a confirmação.</p>
-      {expired && <p role="status" className="mt-4 text-sm text-[#DC2626]">O código expirou. Solicite outro.</p>}
-      {pending.attempts >= 5 && <p role="status" className="mt-4 text-sm text-[#DC2626]">Limite de tentativas atingido. Solicite outro código.</p>}
+      <p className="mt-4 break-words text-sm text-ink-muted">Digite o código de 6 dígitos para {section === 'email' ? maskEmail(pending.target) : maskPhone(pending.target)}.</p>
+      <p className="mt-2 text-sm text-ink-muted">O código vale por 10 minutos. O contato atual só será substituído após a confirmação.</p>
+      {expired && <p role="status" className="mt-4 text-sm text-danger">O código expirou. Solicite outro.</p>}
+      {pending.attempts >= 5 && <p role="status" className="mt-4 text-sm text-danger">Limite de tentativas atingido. Solicite outro código.</p>}
       <form onSubmit={(event) => { event.preventDefault(); run('confirmar'); }} className="mt-6 space-y-4">
         <label htmlFor="confirmation-code" className="block text-sm font-medium">Código de confirmação<input id="confirmation-code" name="code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required pattern="[0-9]{6}" inputMode="numeric" autoComplete="one-time-code" maxLength={6} disabled={!!busy} aria-invalid={!!error} aria-describedby={error ? 'code-error' : undefined} className={`${inputClass} text-center text-2xl tracking-[0.4em]`} /></label>
-        {error && <p id="code-error" role="alert" className="text-sm text-[#DC2626]">{error}</p>}
+        {error && <p id="code-error" role="alert" className="text-sm text-danger">{error}</p>}
         <button disabled={!!busy || expired || pending.attempts >= 5} className={primaryClass}>{busy === 'confirmar' ? 'Confirmando...' : 'Confirmar'}</button>
       </form>
       <div className="mt-6 flex flex-wrap gap-3"><button onClick={() => run('solicitar')} disabled={!!busy || seconds > 0} className={linkClass}>{busy === 'solicitar' ? 'Enviando...' : seconds ? `Reenviar em ${seconds}s` : 'Reenviar código'}</button><Link to={`/configuracoes/pessoais/${section}`} className={linkClass}>{section === 'email' ? 'Trocar email' : 'Alterar número'}</Link><button disabled={!!busy} onClick={() => run('cancelar')} className={linkClass}>{busy === 'cancelar' ? 'Cancelando...' : 'Cancelar alteração'}</button></div>

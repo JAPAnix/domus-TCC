@@ -3,6 +3,10 @@ import { logger } from '../utils/logger.js';
 export const errorMiddleware = (err, req, res, next) => {
   logger.error(`${req.method} ${req.url}`, err);
 
+  // Corpo da requisição grande demais ou JSON quebrado: erro de quem enviou, não do servidor.
+  if (err.type === 'entity.too.large') return res.status(413).json({ message: 'Os dados enviados são grandes demais.' });
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ message: 'Dados inválidos' });
+
   // Erros do Prisma
   if (err.code === 'P2002') {
     return res.status(409).json({ message: 'Registro duplicado' });

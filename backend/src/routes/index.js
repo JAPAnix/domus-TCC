@@ -10,9 +10,37 @@ import skillRoutes from './skills.js';
 import { userReviewRouter, serviceReviewRouter } from './reviews.js';
 
 import notificationRoutes from './notifications.js';
+import uploadRoutes from './uploads.js';
+import accountRoutes from './account.js';
+import settingsRoutes from './settings.js';
+import blockRoutes from './blocks.js';
+import profileRoutes from './profile.js';
+import favoriteRoutes from './favorites.js';
+import helpRoutes from './help.js';
+import listingRoutes from './listings.js';
+import proRoutes from './pro.js';
+import orderRoutes from './orders.js';
+import paymentRoutes from './payments.js';
+import reviewReplyRoutes from './reviewReplies.js';
+import conversationRoutes, { quickReplyRouter, feedbackRouter } from './conversations.js';
 
 const router = Router();
 router.use('/notifications', notificationRoutes);
+router.use('/uploads', uploadRoutes);
+router.use('/account', accountRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/blocks', blockRoutes);
+router.use('/profile', profileRoutes);
+router.use('/favorites', favoriteRoutes);
+router.use('/help', helpRoutes);
+router.use('/listings', listingRoutes);
+router.use('/pro', proRoutes);
+router.use('/orders', orderRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/reviews', reviewReplyRoutes);
+router.use('/conversations', conversationRoutes);
+router.use('/quick-replies', quickReplyRouter);
+router.use('/feedback', feedbackRouter);
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);

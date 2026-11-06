@@ -33,3 +33,19 @@ export async function sendEmailVerification({ email, code }) {
   if (!result.accepted?.length) throw Object.assign(new Error('Não foi possível enviar o email.'), { status: 502 });
   return { delivery: 'provider-accepted' };
 }
+
+export function smtpConfigured() {
+  return !!(process.env.SMTP_HOST && process.env.EMAIL_FROM);
+}
+
+/** E-mail de texto simples (eventos, suporte). Não faz nada se o SMTP não estiver configurado. */
+export async function sendPlainEmail({ to, subject, text, replyTo }) {
+  if (!smtpConfigured()) return { delivery: 'skipped' };
+  const transport = nodemailer.createTransport({
+    host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: process.env.SMTP_SECURE === 'true',
+    ...(process.env.SMTP_USER ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } } : {}),
+    connectionTimeout: 10000, socketTimeout: 15000,
+  });
+  const result = await transport.sendMail({ from: process.env.EMAIL_FROM, to, subject, text, ...(replyTo ? { replyTo } : {}) });
+  return { delivery: result.accepted?.length ? 'provider-accepted' : 'rejected' };
+}

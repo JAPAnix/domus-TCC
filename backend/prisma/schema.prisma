@@ -57,57 +57,93 @@ model Role {
 }
 
 model Notification {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  userId BigInt @map("user_id") @db.UnsignedBigInt
-  eventKey String @unique @map("event_key") @db.VarChar(191)
-  message String @db.VarChar(500)
-  href String @db.VarChar(255)
-  readAt DateTime? @map("read_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt    @map("user_id") @db.UnsignedBigInt
+  eventKey  String    @unique @map("event_key") @db.VarChar(191)
+  message   String    @db.VarChar(500)
+  href      String    @db.VarChar(255)
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, readAt, createdAt])
   @@map("notifications")
 }
 
 model User {
-  notifications Notification[]
-  id                 BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid               Bytes     @unique @db.Binary(16)
-  email              String    @unique @db.VarChar(255)
-  passwordHash       String?   @map("password_hash") @db.VarChar(255)
-  googleId           String?   @unique @map("google_id") @db.VarChar(255)
-  firstName          String    @map("first_name") @db.VarChar(100)
-  lastName           String    @map("last_name") @db.VarChar(100)
-  phoneNumber        String?   @unique @map("phone_number") @db.VarChar(20)
-  profilePictureUrl  String?   @map("profile_picture_url") @db.VarChar(2048)
-  isEmailVerified    Boolean   @default(false) @map("is_email_verified")
-  isPhoneVerified    Boolean   @default(false) @map("is_phone_verified")
-  preferredName      String?   @map("preferred_name") @db.VarChar(100)
-  birthDate          DateTime? @map("birth_date") @db.Date
-  postalSameAsHome   Boolean   @default(true) @map("postal_same_as_home")
-  postalAddress      Json?     @map("postal_address")
-  emergencyContact   Json?     @map("emergency_contact")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  deletedAt          DateTime? @map("deleted_at")
+  notifications     Notification[]
+  id                BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid              Bytes          @unique @db.Binary(16)
+  email             String         @unique @db.VarChar(255)
+  passwordHash      String?        @map("password_hash") @db.VarChar(255)
+  googleId          String?        @unique @map("google_id") @db.VarChar(255)
+  firstName         String         @map("first_name") @db.VarChar(100)
+  lastName          String         @map("last_name") @db.VarChar(100)
+  phoneNumber       String?        @unique @map("phone_number") @db.VarChar(20)
+  profilePictureUrl String?        @map("profile_picture_url") @db.VarChar(2048)
+  isEmailVerified   Boolean        @default(false) @map("is_email_verified")
+  isPhoneVerified   Boolean        @default(false) @map("is_phone_verified")
+  preferredName     String?        @map("preferred_name") @db.VarChar(100)
+  birthDate         DateTime?      @map("birth_date") @db.Date
+  postalSameAsHome  Boolean        @default(true) @map("postal_same_as_home")
+  postalAddress     Json?          @map("postal_address")
+  emergencyContact  Json?          @map("emergency_contact")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  deletedAt         DateTime?      @map("deleted_at")
+
+  // Perfil
+  about           String?   @db.Text
+  profession      String?   @db.VarChar(120)
+  school          String?   @db.VarChar(120)
+  funFact         String?   @map("fun_fact") @db.VarChar(200)
+  languages       Json?
+  interests       Json?
+  skills          Json?
+  serviceAreas    Json?     @map("service_areas")
+  yearsExperience Int?      @map("years_experience") @db.UnsignedTinyInt
+  deactivatedAt   DateTime? @map("deactivated_at")
 
   // Endereço
-  zipCode     String?   @map("zip_code") @db.VarChar(9)
-  street      String?   @map("street") @db.VarChar(255)
-  number      String?   @map("number") @db.VarChar(20)
-  complement  String?   @map("complement") @db.VarChar(100)
-  neighborhood String?  @map("neighborhood") @db.VarChar(100)
-  city        String?   @map("city") @db.VarChar(100)
-  state       String?   @map("state") @db.VarChar(2)
+  zipCode      String? @map("zip_code") @db.VarChar(9)
+  street       String? @map("street") @db.VarChar(255)
+  number       String? @map("number") @db.VarChar(20)
+  complement   String? @map("complement") @db.VarChar(100)
+  neighborhood String? @map("neighborhood") @db.VarChar(100)
+  city         String? @map("city") @db.VarChar(100)
+  state        String? @map("state") @db.VarChar(2)
 
   // Relations
-  roles               UserRole[]
-  professionalProfile ProfessionalProfile?
-  services            Service[]
-  reviewsWritten      Review[]             @relation("ReviewerRelation")
-  reviewsReceived     Review[]             @relation("ReviewedRelation")
-  passwordResetTokens PasswordResetToken[]
-  contactVerifications ContactVerification[]
+  roles                       UserRole[]
+  professionalProfile         ProfessionalProfile?
+  services                    Service[]
+  reviewsWritten              Review[]                  @relation("ReviewerRelation")
+  reviewsReceived             Review[]                  @relation("ReviewedRelation")
+  passwordResetTokens         PasswordResetToken[]
+  contactVerifications        ContactVerification[]
+  settings                    UserSettings?
+  sessions                    UserSession[]
+  blocksMade                  UserBlock[]               @relation("BlocksMade")
+  blocksReceived              UserBlock[]               @relation("BlocksReceived")
+  favoriteLists               FavoriteList[]
+  recentViews                 RecentView[]
+  supportTickets              SupportTicket[]
+  listings                    Listing[]
+  ordersAsClient              Order[]                   @relation("OrderClient")
+  ordersAsProfessional        Order[]                   @relation("OrderProfessional")
+  paymentsAsClient            Payment[]                 @relation("PaymentClient")
+  paymentsAsProfessional      Payment[]                 @relation("PaymentProfessional")
+  conversationsAsClient       Conversation[]            @relation("ConversationClient")
+  conversationsAsProfessional Conversation[]            @relation("ConversationProfessional")
+  messagesSent                Message[]
+  quickReplies                QuickReply[]
+  reportsMade                 UserReport[]              @relation("ReportReporter")
+  reportsReceived             UserReport[]              @relation("ReportReported")
+  feedbacks                   Feedback[]
+  listingReports              ListingReport[]
+  paymentEvents               PaymentEvent[]
+  verification                ProfessionalVerification?
+  recentListingViews          RecentListingView[]
 
   @@index([email])
   @@index([googleId])
@@ -128,15 +164,16 @@ model UserRole {
 }
 
 model Category {
-  id          Int        @id @default(autoincrement()) @db.UnsignedInt
-  name        String     @unique @db.VarChar(100)
-  description String?    @db.VarChar(255)
-  parentId    Int?       @map("parent_id") @db.UnsignedInt
+  id          Int     @id @default(autoincrement()) @db.UnsignedInt
+  name        String  @unique @db.VarChar(100)
+  description String? @db.VarChar(255)
+  parentId    Int?    @map("parent_id") @db.UnsignedInt
 
-  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children    Category[] @relation("CategoryTree")
-  services    Service[]
+  parent       Category?            @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Category[]           @relation("CategoryTree")
+  services     Service[]
   catalogItems ServiceCatalogItem[]
+  listings     Listing[]
 
   @@index([parentId])
   @@map("categories")
@@ -165,8 +202,9 @@ model ServiceCatalogItem {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category             Category                     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   professionalServices ProfessionalCatalogService[]
+  listings             Listing[]
 
   @@unique([categoryId, slug])
   @@index([active])
@@ -188,30 +226,32 @@ enum BillingMode {
 }
 
 model ProfessionalProfile {
-  displayName String? @map("display_name") @db.VarChar(150)
-  publicPhotoUrl String? @map("public_photo_url") @db.VarChar(2048)
-  serviceRegion String? @map("service_region") @db.VarChar(500)
-  billingMode BillingMode @default(hourly) @map("billing_mode")
-  certifications String? @db.Text
-  userId             BigInt              @id @map("user_id") @db.UnsignedBigInt
-  headline           String?             @db.VarChar(255)
-  bio                String?             @db.Text
-  hourlyRate         Decimal             @default(0.00) @map("hourly_rate") @db.Decimal(10, 2)
-  dailyRate          Decimal?            @map("daily_rate") @db.Decimal(10, 2)
-  isPublished        Boolean             @default(false) @map("is_published")
-  isVerified         Boolean             @default(false) @map("is_verified")
-  averageRating      Decimal             @default(0.00) @map("average_rating") @db.Decimal(3, 2)
-  totalReviews       Int                 @default(0) @map("total_reviews") @db.UnsignedInt
-  availabilityStatus AvailabilityStatus  @default(available) @map("availability_status")
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
+  displayName        String?            @map("display_name") @db.VarChar(150)
+  publicPhotoUrl     String?            @map("public_photo_url") @db.VarChar(2048)
+  serviceRegion      String?            @map("service_region") @db.VarChar(500)
+  billingMode        BillingMode        @default(hourly) @map("billing_mode")
+  certifications     String?            @db.Text
+  userId             BigInt             @id @map("user_id") @db.UnsignedBigInt
+  headline           String?            @db.VarChar(255)
+  bio                String?            @db.Text
+  hourlyRate         Decimal            @default(0.00) @map("hourly_rate") @db.Decimal(10, 2)
+  dailyRate          Decimal?           @map("daily_rate") @db.Decimal(10, 2)
+  isPublished        Boolean            @default(false) @map("is_published")
+  isVerified         Boolean            @default(false) @map("is_verified")
+  averageRating      Decimal            @default(0.00) @map("average_rating") @db.Decimal(3, 2)
+  totalReviews       Int                @default(0) @map("total_reviews") @db.UnsignedInt
+  availabilityStatus AvailabilityStatus @default(available) @map("availability_status")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
 
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skills    ProfileSkill[]
-  proposals Proposal[]
-  catalogServices ProfessionalCatalogService[]
+  user                User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills              ProfileSkill[]
+  proposals           Proposal[]
+  catalogServices     ProfessionalCatalogService[]
   availabilityEntries ProfessionalAvailability[]
-  portfolioImages ProfessionalPortfolioImage[]
+  portfolioImages     ProfessionalPortfolioImage[]
+  favoriteItems       FavoriteItem[]
+  recentViews         RecentView[]
 
   @@index([availabilityStatus])
   @@index([isPublished])
@@ -222,10 +262,10 @@ model ProfessionalProfile {
 
 model ProfessionalCatalogService {
   professionalId BigInt @map("professional_id") @db.UnsignedBigInt
-  catalogItemId Int    @map("catalog_item_id") @db.UnsignedInt
+  catalogItemId  Int    @map("catalog_item_id") @db.UnsignedInt
 
   professional ProfessionalProfile @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
-  catalogItem   ServiceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  catalogItem  ServiceCatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
 
   @@id([professionalId, catalogItemId])
   @@index([catalogItemId])
@@ -285,16 +325,30 @@ model Service {
   updatedAt   DateTime      @updatedAt @map("updated_at")
   deletedAt   DateTime?     @map("deleted_at")
 
-  client    User      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  client    User           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category  Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   proposals Proposal[]
   reviews   Review[]
+  images    ServiceImage[]
 
   @@index([clientId])
   @@index([categoryId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
   @@map("services")
+}
+
+// A primeira imagem (menor sortOrder) é a capa do pedido.
+model ServiceImage {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  serviceId BigInt @map("service_id") @db.UnsignedBigInt
+  url       String @db.VarChar(2048)
+  sortOrder Int    @default(0) @map("sort_order") @db.UnsignedInt
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, sortOrder])
+  @@map("service_images")
 }
 
 model Proposal {
@@ -320,37 +374,571 @@ model Proposal {
 }
 
 model Review {
-  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  serviceId  BigInt   @map("service_id") @db.UnsignedBigInt
-  reviewerId BigInt   @map("reviewer_id") @db.UnsignedBigInt
-  reviewedId BigInt   @map("reviewed_id") @db.UnsignedBigInt
-  rating     Int      @db.UnsignedTinyInt // 1–5
-  comment    String?  @db.Text
-  createdAt  DateTime @default(now()) @map("created_at")
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  serviceId  BigInt?   @map("service_id") @db.UnsignedBigInt
+  orderId    BigInt?   @map("order_id") @db.UnsignedBigInt
+  reviewerId BigInt    @map("reviewer_id") @db.UnsignedBigInt
+  reviewedId BigInt    @map("reviewed_id") @db.UnsignedBigInt
+  rating     Int       @db.UnsignedTinyInt // 1–5
+  comment    String?   @db.Text
+  reply      String?   @db.Text
+  repliedAt  DateTime? @map("replied_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
-  service  Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  reviewer User    @relation("ReviewerRelation", fields: [reviewerId], references: [id], onDelete: Restrict)
-  reviewed User    @relation("ReviewedRelation", fields: [reviewedId], references: [id], onDelete: Restrict)
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reviewer User     @relation("ReviewerRelation", fields: [reviewerId], references: [id], onDelete: Restrict)
+  reviewed User     @relation("ReviewedRelation", fields: [reviewedId], references: [id], onDelete: Restrict)
 
   @@unique([serviceId, reviewerId, reviewedId])
+  @@unique([orderId, reviewerId, reviewedId])
   @@index([reviewedId])
   @@index([rating(sort: Desc)])
   @@map("reviews")
 }
 
 model ContactVerification {
-  id String @id @db.VarChar(36)
-  userId BigInt @map("user_id") @db.UnsignedBigInt
-  type String @db.VarChar(10)
-  target String @db.VarChar(255)
-  codeHash String @map("code_hash") @db.VarChar(64)
-  expiresAt DateTime @map("expires_at")
-  attempts Int @default(0)
+  id          String    @id @db.VarChar(36)
+  userId      BigInt    @map("user_id") @db.UnsignedBigInt
+  type        String    @db.VarChar(10)
+  target      String    @db.VarChar(255)
+  codeHash    String    @map("code_hash") @db.VarChar(64)
+  expiresAt   DateTime  @map("expires_at")
+  attempts    Int       @default(0)
   deliveredAt DateTime? @map("delivered_at")
-  usedAt DateTime? @map("used_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt      DateTime? @map("used_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, type, createdAt])
   @@index([target, createdAt])
   @@map("contact_verifications")
+}
+
+// =============================================================
+// Área do usuário: configurações, sessões, bloqueios, favoritos e ajuda
+// =============================================================
+
+enum ProfileVisibility {
+  everyone
+  members
+  connections
+}
+
+enum TicketStatus {
+  open
+  answered
+  closed
+}
+
+model UserSettings {
+  userId                  BigInt            @id @map("user_id") @db.UnsignedBigInt
+  profileVisibility       ProfileVisibility @default(everyone) @map("profile_visibility")
+  readReceipts            Boolean           @default(true) @map("read_receipts")
+  searchIndexing          Boolean           @default(true) @map("search_indexing")
+  showWrittenReviews      Boolean           @default(true) @map("show_written_reviews")
+  cookiePreferences       Json?             @map("cookie_preferences")
+  notificationPreferences Json?             @map("notification_preferences")
+  language                String            @default("pt-BR") @db.VarChar(10)
+  currency                String            @default("BRL") @db.VarChar(3)
+  taxDocumentType         String?           @map("tax_document_type") @db.VarChar(4)
+  taxDocument             String?           @map("tax_document") @db.VarChar(20)
+  taxHolderName           String?           @map("tax_holder_name") @db.VarChar(150)
+  payoutKeyType           String?           @map("payout_key_type") @db.VarChar(10)
+  payoutKey               String?           @map("payout_key") @db.VarChar(140)
+  messageSuggestions      Boolean           @default(true) @map("message_suggestions")
+  acceptedPaymentMethods  String            @default("pix") @map("accepted_payment_methods") @db.VarChar(60)
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model UserSession {
+  id         String    @id @db.VarChar(36)
+  userId     BigInt    @map("user_id") @db.UnsignedBigInt
+  userAgent  String?   @map("user_agent") @db.VarChar(300)
+  ip         String?   @db.VarChar(64)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("user_sessions")
+}
+
+model UserBlock {
+  blockerId BigInt   @map("blocker_id") @db.UnsignedBigInt
+  blockedId BigInt   @map("blocked_id") @db.UnsignedBigInt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+model FavoriteList {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  name      String   @db.VarChar(60)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items FavoriteItem[]
+
+  @@unique([userId, name])
+  @@map("favorite_lists")
+}
+
+model FavoriteItem {
+  id             BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  listId         BigInt   @map("list_id") @db.UnsignedBigInt
+  professionalId BigInt?  @map("professional_id") @db.UnsignedBigInt
+  listingId      BigInt?  @map("listing_id") @db.UnsignedBigInt
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  list         FavoriteList         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile? @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+  listing      Listing?             @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, professionalId])
+  @@unique([listId, listingId])
+  @@index([professionalId])
+  @@index([listingId])
+  @@map("favorite_items")
+}
+
+model RecentView {
+  userId         BigInt   @map("user_id") @db.UnsignedBigInt
+  professionalId BigInt   @map("professional_id") @db.UnsignedBigInt
+  viewedAt       DateTime @default(now()) @map("viewed_at")
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, professionalId])
+  @@index([userId, viewedAt])
+  @@map("recent_views")
+}
+
+model HelpFeedback {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  articleSlug String   @map("article_slug") @db.VarChar(120)
+  helpful     Boolean
+  userId      BigInt?  @map("user_id") @db.UnsignedBigInt
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([articleSlug])
+  @@map("help_feedback")
+}
+
+model SupportTicket {
+  id        BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt?      @map("user_id") @db.UnsignedBigInt
+  name      String       @db.VarChar(150)
+  email     String       @db.VarChar(255)
+  category  String       @db.VarChar(60)
+  subject   String       @db.VarChar(150)
+  message   String       @db.Text
+  status    TicketStatus @default(open)
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("support_tickets")
+}
+
+// =============================================================
+// Modo profissional: anúncios, contratações e verificação
+// =============================================================
+
+enum ListingStatus {
+  draft
+  published
+  paused
+}
+
+enum PricingModel {
+  hourly
+  daily
+  fixed
+  quote
+}
+
+enum CancellationPolicy {
+  flexible
+  moderate
+  strict
+}
+
+enum OrderStatus {
+  requested
+  accepted
+  in_progress
+  completed
+  declined
+  cancelled
+}
+
+enum VerificationStatus {
+  pending
+  approved
+  rejected
+}
+
+// Serviço anunciado por um profissional. Rascunhos guardam só o que já foi preenchido no passo a passo.
+model Listing {
+  id                 BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid               Bytes               @unique @db.Binary(16)
+  ownerId            BigInt              @map("owner_id") @db.UnsignedBigInt
+  status             ListingStatus       @default(draft)
+  wizardStep         Int                 @default(1) @map("wizard_step") @db.UnsignedTinyInt
+  categoryId         Int?                @map("category_id") @db.UnsignedInt
+  catalogItemId      Int?                @map("catalog_item_id") @db.UnsignedInt
+  atClientPlace      Boolean             @default(false) @map("at_client_place")
+  atProPlace         Boolean             @default(false) @map("at_pro_place")
+  isRemote           Boolean             @default(false) @map("is_remote")
+  city               String?             @db.VarChar(100)
+  state              String?             @db.VarChar(2)
+  radiusKm           Int?                @map("radius_km") @db.UnsignedSmallInt
+  title              String?             @db.VarChar(120)
+  description        String?             @db.Text
+  included           Json?
+  excluded           Json?
+  requirements       String?             @db.Text
+  materials          String?             @db.Text
+  pricingModel       PricingModel?       @map("pricing_model")
+  price              Decimal?            @db.Decimal(10, 2)
+  travelFee          Decimal?            @map("travel_fee") @db.Decimal(10, 2)
+  packages           Json?
+  availability       Json?
+  cancellationPolicy CancellationPolicy? @map("cancellation_policy")
+  publishedAt        DateTime?           @map("published_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  deletedAt          DateTime?           @map("deleted_at")
+
+  owner         User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category      Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  catalogItem   ServiceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  images        ListingImage[]
+  orders        Order[]
+  conversations Conversation[]
+  quickReplies  QuickReply[]
+  reports       ListingReport[]
+  favoriteItems FavoriteItem[]
+  recentViews   RecentListingView[]
+
+  @@index([ownerId, status])
+  @@index([status, categoryId])
+  @@index([status, city])
+  @@index([status, publishedAt(sort: Desc)])
+  @@map("listings")
+}
+
+// A primeira imagem (menor sortOrder) é a capa.
+model ListingImage {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  listingId BigInt @map("listing_id") @db.UnsignedBigInt
+  url       String @db.VarChar(2048)
+  sortOrder Int    @default(0) @map("sort_order") @db.UnsignedInt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder])
+  @@map("listing_images")
+}
+
+model RecentListingView {
+  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  listingId BigInt   @map("listing_id") @db.UnsignedBigInt
+  viewedAt  DateTime @default(now()) @map("viewed_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([userId, viewedAt])
+  @@map("recent_listing_views")
+}
+
+// Dados de verificação do profissional. O selo "Verificado" (professional_profiles.is_verified) vem de análise manual.
+model ProfessionalVerification {
+  userId       BigInt             @id @map("user_id") @db.UnsignedBigInt
+  legalName    String             @map("legal_name") @db.VarChar(150)
+  documentType String             @map("document_type") @db.VarChar(4)
+  status       VerificationStatus @default(pending)
+  submittedAt  DateTime           @default(now()) @map("submitted_at")
+  reviewedAt   DateTime?          @map("reviewed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("professional_verifications")
+}
+
+// Contratação de um anúncio. Guarda uma cópia do título e dos valores no momento do pedido.
+model Order {
+  id                   BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid                 Bytes               @unique @db.Binary(16)
+  listingId            BigInt              @map("listing_id") @db.UnsignedBigInt
+  clientId             BigInt              @map("client_id") @db.UnsignedBigInt
+  professionalId       BigInt              @map("professional_id") @db.UnsignedBigInt
+  status               OrderStatus         @default(requested)
+  scheduledDate        DateTime            @map("scheduled_date") @db.Date
+  serviceMode          String              @map("service_mode") @db.VarChar(12)
+  packageName          String?             @map("package_name") @db.VarChar(60)
+  note                 String?             @db.Text
+  scheduledTime        String?             @map("scheduled_time") @db.VarChar(5)
+  endDate              DateTime?           @map("end_date") @db.Date
+  quantity             Int?                @db.UnsignedSmallInt
+  referenceImages      Json?               @map("reference_images")
+  titleSnapshot        String              @map("title_snapshot") @db.VarChar(120)
+  pricingModelSnapshot PricingModel?       @map("pricing_model_snapshot")
+  priceSnapshot        Decimal?            @map("price_snapshot") @db.Decimal(10, 2)
+  travelFeeSnapshot    Decimal?            @map("travel_fee_snapshot") @db.Decimal(10, 2)
+  policySnapshot       CancellationPolicy? @map("policy_snapshot")
+  platformFeePercent   Decimal             @default(0) @map("platform_fee_percent") @db.Decimal(5, 2)
+  finalAmount          Decimal?            @map("final_amount") @db.Decimal(10, 2)
+  cancelledById        BigInt?             @map("cancelled_by_id") @db.UnsignedBigInt
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  acceptedAt           DateTime?           @map("accepted_at")
+  startedAt            DateTime?           @map("started_at")
+  completedAt          DateTime?           @map("completed_at")
+  cancelledAt          DateTime?           @map("cancelled_at")
+
+  listing        Listing         @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  client         User            @relation("OrderClient", fields: [clientId], references: [id], onDelete: Restrict)
+  professional   User            @relation("OrderProfessional", fields: [professionalId], references: [id], onDelete: Restrict)
+  reviews        Review[]
+  payments       Payment[]
+  scheduledSends ScheduledSend[]
+
+  @@index([clientId, status])
+  @@index([professionalId, status])
+  @@index([listingId])
+  @@index([professionalId, scheduledDate])
+  @@map("orders")
+}
+
+enum PaymentStatus {
+  pending
+  reported
+  confirmed
+  cancelled
+  refunded
+}
+
+enum PaymentMethod {
+  pix
+  cash
+  card_in_person
+}
+
+// Cobrança de um pedido. Nunca guarda dados de cartão: o pagamento acontece fora da plataforma ou no provedor.
+model Payment {
+  id             BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           Bytes         @unique @db.Binary(16)
+  orderId        BigInt        @map("order_id") @db.UnsignedBigInt
+  clientId       BigInt        @map("client_id") @db.UnsignedBigInt
+  professionalId BigInt        @map("professional_id") @db.UnsignedBigInt
+  provider       String        @default("manual") @db.VarChar(20)
+  method         PaymentMethod
+  status         PaymentStatus @default(pending)
+  amount         Decimal       @db.Decimal(10, 2)
+  externalId     String?       @unique @map("external_id") @db.VarChar(80)
+  pixPayload     String?       @map("pix_payload") @db.Text
+  receiptNumber  String?       @unique @map("receipt_number") @db.VarChar(24)
+  note           String?       @db.VarChar(300)
+  reportedAt     DateTime?     @map("reported_at")
+  confirmedAt    DateTime?     @map("confirmed_at")
+  cancelledAt    DateTime?     @map("cancelled_at")
+  refundedAt     DateTime?     @map("refunded_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  order        Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  client       User           @relation("PaymentClient", fields: [clientId], references: [id], onDelete: Restrict)
+  professional User           @relation("PaymentProfessional", fields: [professionalId], references: [id], onDelete: Restrict)
+  events       PaymentEvent[]
+
+  @@index([orderId, status])
+  @@index([clientId, createdAt])
+  @@index([professionalId, createdAt])
+  @@map("payments")
+}
+
+// Histórico imutável de cada mudança de um pagamento.
+model PaymentEvent {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  paymentId  BigInt   @map("payment_id") @db.UnsignedBigInt
+  actorId    BigInt?  @map("actor_id") @db.UnsignedBigInt
+  type       String   @db.VarChar(30)
+  fromStatus String?  @map("from_status") @db.VarChar(20)
+  toStatus   String   @map("to_status") @db.VarChar(20)
+  detail     String?  @db.VarChar(300)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([paymentId, createdAt])
+  @@map("payment_events")
+}
+
+// Notificações já tratadas dos provedores (evita processar duas vezes o mesmo webhook).
+model WebhookEvent {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  provider    String   @db.VarChar(20)
+  eventKey    String   @map("event_key") @db.VarChar(120)
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@unique([provider, eventKey])
+  @@map("webhook_events")
+}
+
+enum QuickReplySchedule {
+  none
+  before_service
+  after_service
+  review_request
+}
+
+// Conversa entre um cliente e um profissional, ligada a um anúncio (e, por ele, aos pedidos).
+model Conversation {
+  id                     BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid                   Bytes     @unique @db.Binary(16)
+  listingId              BigInt?   @map("listing_id") @db.UnsignedBigInt
+  clientId               BigInt    @map("client_id") @db.UnsignedBigInt
+  professionalId         BigInt    @map("professional_id") @db.UnsignedBigInt
+  title                  String    @db.VarChar(120)
+  lastMessageAt          DateTime? @map("last_message_at")
+  lastMessagePreview     String?   @map("last_message_preview") @db.VarChar(140)
+  // "LastRead" alimenta o contador de não lidas. "Receipt" é o que a outra pessoa pode ver (só se a leitura for compartilhada).
+  clientLastReadAt       DateTime? @map("client_last_read_at")
+  professionalLastReadAt DateTime? @map("professional_last_read_at")
+  clientReceiptAt        DateTime? @map("client_receipt_at")
+  professionalReceiptAt  DateTime? @map("professional_receipt_at")
+  clientArchivedAt       DateTime? @map("client_archived_at")
+  professionalArchivedAt DateTime? @map("professional_archived_at")
+  clientEmailedAt        DateTime? @map("client_emailed_at")
+  professionalEmailedAt  DateTime? @map("professional_emailed_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+
+  listing      Listing?     @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  client       User         @relation("ConversationClient", fields: [clientId], references: [id], onDelete: Cascade)
+  professional User         @relation("ConversationProfessional", fields: [professionalId], references: [id], onDelete: Cascade)
+  messages     Message[]
+  reports      UserReport[]
+
+  @@unique([listingId, clientId])
+  @@index([clientId, lastMessageAt])
+  @@index([professionalId, lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           Bytes    @unique @db.Binary(16)
+  conversationId BigInt   @map("conversation_id") @db.UnsignedBigInt
+  senderId       BigInt   @map("sender_id") @db.UnsignedBigInt
+  kind           String   @default("text") @db.VarChar(10)
+  body           String   @db.Text
+  imageUrl       String?  @map("image_url") @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, id])
+  @@map("messages")
+}
+
+// Modelos de resposta do profissional, com variáveis e envio programado opcional.
+model QuickReply {
+  id          BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  userId      BigInt             @map("user_id") @db.UnsignedBigInt
+  title       String             @db.VarChar(60)
+  body        String             @db.VarChar(1000)
+  listingId   BigInt?            @map("listing_id") @db.UnsignedBigInt
+  schedule    QuickReplySchedule @default(none)
+  offsetHours Int                @default(24) @map("offset_hours")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing?        @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  sends   ScheduledSend[]
+
+  @@index([userId])
+  @@map("quick_replies")
+}
+
+// Garante que uma resposta programada seja enviada uma única vez por pedido.
+model ScheduledSend {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  quickReplyId BigInt   @map("quick_reply_id") @db.UnsignedBigInt
+  orderId      BigInt   @map("order_id") @db.UnsignedBigInt
+  sentAt       DateTime @default(now()) @map("sent_at")
+
+  quickReply QuickReply @relation(fields: [quickReplyId], references: [id], onDelete: Cascade)
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([quickReplyId, orderId])
+  @@map("scheduled_sends")
+}
+
+model UserReport {
+  id             BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  reporterId     BigInt   @map("reporter_id") @db.UnsignedBigInt
+  reportedId     BigInt   @map("reported_id") @db.UnsignedBigInt
+  conversationId BigInt?  @map("conversation_id") @db.UnsignedBigInt
+  reason         String   @db.VarChar(30)
+  details        String?  @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  reporter     User          @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported     User          @relation("ReportReported", fields: [reportedId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([reportedId])
+  @@map("user_reports")
+}
+
+model Feedback {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId    BigInt   @map("user_id") @db.UnsignedBigInt
+  kind      String   @db.VarChar(10)
+  message   String   @db.Text
+  page      String?  @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("feedbacks")
+}
+
+// Denúncia de um anúncio feita por um usuário.
+model ListingReport {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  listingId  BigInt   @map("listing_id") @db.UnsignedBigInt
+  reporterId BigInt   @map("reporter_id") @db.UnsignedBigInt
+  reason     String   @db.VarChar(30)
+  details    String?  @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporter User    @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, reporterId])
+  @@map("listing_reports")
 }

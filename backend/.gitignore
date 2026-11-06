@@ -1,4 +1,6 @@
 node_modules
+# Fotos enviadas no provedor local
+/uploads
 # Keep environment variables out of version control
 .env
 

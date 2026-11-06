@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "nodemon --exec \"node --env-file=.env\" src/app.js",
     "start": "node --env-file=.env src/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/serviceWorkflow.test.js tests/uploads.test.mjs tests/area.test.mjs tests/listings.test.mjs tests/payments.test.mjs tests/messages.test.mjs tests/booking-slots.test.mjs",
     "db:seed": "node --env-file=.env prisma/seed.js"
   },
   "dependencies": {
@@ -21,7 +21,9 @@
     "express": "^5.2.1",
     "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
     "nodemailer": "^10.0.9",
+    "ws": "^8.18.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -1,12 +1,14 @@
-export const inputClass = 'mt-2 min-h-11 w-full min-w-0 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-[#111827] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[#EDE9FE] disabled:bg-gray-50';
-export const primaryClass = 'inline-flex min-h-11 items-center justify-center rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#6D28D9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7C3AED] disabled:opacity-50';
-export const linkClass = 'inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-[#5B21B6] hover:bg-[#F5F3FF] focus-visible:outline-2 focus-visible:outline-[#7C3AED] disabled:opacity-50';
+import { buttonClass, controlClass } from '../../components/ui/styles';
+
+export const inputClass = `mt-2 ${controlClass()}`;
+export const primaryClass = buttonClass();
+export const linkClass = 'inline-flex min-h-control items-center rounded-control px-2 text-sm font-semibold text-primary-strong hover:bg-primary-softer disabled:opacity-50';
 export const addressFields = [
   ['zip_code', 'CEP', 9], ['street', 'Endereço', 255], ['number', 'Número', 20], ['complement', 'Complemento', 100, true], ['neighborhood', 'Bairro', 100], ['city', 'Cidade', 100], ['state', 'Estado (UF)', 2],
 ];
 export const sections = {
   nome: { title: 'Nome legal', fields: [['first_name', 'Nome', 100], ['last_name', 'Sobrenome', 100]] },
-  preferencia: { title: 'Nome de preferência', fields: [['preferred_name', 'Nome de preferência', 100, true]] },
+  preferencia: { title: 'Nome de exibição', fields: [['preferred_name', 'Nome de exibição', 100, true]] },
   email: { title: 'Endereço de email', fields: [['target', 'Novo email', 255, false, 'email']] },
   phone: { title: 'Número de telefone', fields: [['target', 'Telefone com DDD', 25, false, 'tel']] },
   nascimento: { title: 'Data de nascimento', fields: [['birth_date', 'Data de nascimento', 10, true, 'date']] },

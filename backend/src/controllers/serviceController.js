@@ -4,8 +4,23 @@ import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
 
 
+const imagesInclude = { images: { orderBy: { sortOrder: 'asc' }, select: { url: true } } };
+
+function serializeService(service) {
+  return {
+    ...service,
+    uuid: bufferToUuid(service.uuid),
+    images: service.images?.map((image) => image.url) ?? [],
+    ...(service.client && { client: { ...service.client, uuid: bufferToUuid(service.client.uuid) } }),
+  };
+}
+
+function imageRows(urls) {
+  return urls.map((url, sortOrder) => ({ url, sortOrder }));
+}
+
 export const createService = async (req, res) => {
-  const { title, description, category_id, budget_min, budget_max, deadline } = req.body;
+  const { title, description, category_id, budget_min, budget_max, deadline, image_urls } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -19,25 +34,29 @@ export const createService = async (req, res) => {
         budgetMin: budget_min,
         budgetMax: budget_max,
         deadline,
-        status: 'open'
+        status: 'open',
+        ...(image_urls?.length && { images: { create: imageRows(image_urls) } })
       },
-      include: { category: true }
+      include: { category: true, ...imagesInclude }
     });
 
-    res.status(201).json({ ...service, uuid: bufferToUuid(service.uuid) });
+    res.status(201).json(serializeService(service));
   } catch (err) {
-    logger.error('nome_da_função', err);
+    logger.error('createService', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const listServices = async (req, res) => {
-  const { category_id, budget_min, budget_max, page = 1, limit = 20, all } = req.query;
+  const { category_id, budget_min, budget_max } = req.query;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 20));
 
   try {
     const where = {
       deletedAt: null,
-      ...(all === 'true' ? {} : { status: 'open' }),
+      status: 'open',
+      client: { deactivatedAt: null },
       ...(category_id && { categoryId: Number(category_id) }),
       ...(budget_min && { budgetMax: { gte: Number(budget_min) } }),
       ...(budget_max && { budgetMin: { lte: Number(budget_max) } })
@@ -48,6 +67,7 @@ export const listServices = async (req, res) => {
         where,
         include: {
           category: true,
+          images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
           client: {
             select: {
               uuid: true,
@@ -58,43 +78,62 @@ export const listServices = async (req, res) => {
           }
         },
         orderBy: { createdAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit)
+        skip: (page - 1) * limit,
+        take: limit
       }),
       prisma.service.count({ where })
     ]);
 
     res.json({
-      data: services.map(s => ({
-        ...s,
-        uuid: bufferToUuid(s.uuid),
-        client: {
-          ...s.client,
-          uuid: bufferToUuid(s.client.uuid)
-        }
-      })),
-      meta: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        pages: Math.ceil(total / Number(limit))
-      }
+      data: services.map(serializeService),
+      meta: { total, page, limit, pages: Math.ceil(total / limit) }
     });
   } catch (err) {
-    logger.error('nome_da_função', err);
+    logger.error('listServices', err);
+    res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
+/** Pedidos do próprio usuário, em qualquer status. */
+export const listMyServices = async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 20));
+  const where = { clientId: BigInt(req.user.id), deletedAt: null };
+
+  try {
+    const [services, total] = await prisma.$transaction([
+      prisma.service.findMany({
+        where,
+        include: {
+          category: true,
+          images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
+          _count: { select: { proposals: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit
+      }),
+      prisma.service.count({ where })
+    ]);
+
+    res.json({
+      data: services.map(serializeService),
+      meta: { total, page, limit, pages: Math.ceil(total / limit) }
+    });
+  } catch (err) {
+    logger.error('listMyServices', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const getService = async (req, res) => {
   const { uuid } = req.params;
-  console.log('uuid recebido:', uuid);
-  console.log('buffer:', uuidToBuffer(uuid));
   try {
     const service = await prisma.service.findFirst({
       where: { uuid: uuidToBuffer(uuid), deletedAt: null },
       include: {
         category: true,
+        ...imagesInclude,
         client: {
           select: {
             uuid: true,
@@ -105,28 +144,20 @@ export const getService = async (req, res) => {
         }
       }
     });
-    console.log('service:', service);
     if (!service) {
       return res.status(404).json({ message: 'Serviço não encontrado' });
     }
 
-    res.json({
-      ...service,
-      uuid: bufferToUuid(service.uuid),
-      client: {
-        ...service.client,
-        uuid: bufferToUuid(service.client.uuid)
-      }
-    });
+    res.json(serializeService(service));
   } catch (err) {
-    logger.error('nome_da_função', err);
+    logger.error('getService', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
 
 export const updateService = async (req, res) => {
   const { uuid } = req.params;
-  const { title, description, category_id, budget_min, budget_max, deadline } = req.body;
+  const { title, description, category_id, budget_min, budget_max, deadline, image_urls } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -154,14 +185,15 @@ export const updateService = async (req, res) => {
         categoryId: category_id,
         budgetMin: budget_min,
         budgetMax: budget_max,
-        deadline
+        deadline,
+        ...(image_urls !== undefined && { images: { deleteMany: {}, create: imageRows(image_urls) } })
       },
-      include: { category: true }
+      include: { category: true, ...imagesInclude }
     });
 
-    res.json({ ...updated, uuid: bufferToUuid(updated.uuid) });
+    res.json(serializeService(updated));
   } catch (err) {
-    logger.error('nome_da_função', err);
+    logger.error('updateService', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };
@@ -196,7 +228,7 @@ export const deleteService = async (req, res) => {
 
     res.status(204).send();
   } catch (err) {
-    logger.error('nome_da_função', err);
+    logger.error('deleteService', err);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 };

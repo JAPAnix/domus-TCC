@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const imageUrl = z.string().url("Link de imagem inválido").max(2048).regex(/^https?:\/\//, "Link de imagem inválido");
+
 const serviceBaseSchema = z.object({
   title: z.string().min(5, "Título deve ter pelo menos 5 caracteres").max(255),
   description: z
@@ -11,6 +13,7 @@ const serviceBaseSchema = z.object({
   deadline: z.string().date("Data inválida")
     .transform(value => new Date(value + "T00:00:00.000Z"))
     .optional(),
+  image_urls: z.array(imageUrl).max(10, "Envie no máximo 10 fotos").optional(),
 });
 
 export const createServiceSchema = serviceBaseSchema.refine(

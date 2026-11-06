@@ -1,208 +1,117 @@
-import { useCallback, useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useApiResource } from '../hooks/useApiResource';
+import { useAuth } from '../context/useAuth';
+import api, { apiError } from '../services/api';
+import { formatMoney, fullName } from '../utils/format';
+import { proposalStatus } from '../utils/status';
+import StatusBadge from '../components/StatusBadge';
+import { Avatar, Breadcrumb, Button, Card, ConfirmDialog, EmptyState, ErrorState, SkeletonList, useToast } from '../components/ui';
 
-const STATUS_LABELS = {
-  pending: "Pendente",
-  accepted: "Aceita",
-  rejected: "Rejeitada",
-  withdrawn: "Retirada"
+const actions = {
+  accepted: { title: 'Aceitar proposta', confirmLabel: 'Aceitar proposta', danger: false, success: 'Proposta aceita. O serviço está em andamento.', message: (name) => `Ao aceitar a proposta de ${name}, as outras propostas pendentes serão recusadas e o serviço ficará em andamento.` },
+  rejected: { title: 'Recusar proposta', confirmLabel: 'Recusar proposta', danger: true, success: 'Proposta recusada.', message: (name) => `A proposta de ${name} será recusada. Essa ação não pode ser desfeita.` },
 };
-
-const STATUS_STYLES = {
-  pending: "bg-amber-100 text-amber-700",
-  accepted: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-600",
-  withdrawn: "bg-slate-100 text-slate-500"
-};
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
-}
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-4">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-[#E5E7EB] p-6 animate-pulse">
-          <div className="flex justify-between gap-4">
-            <div className="space-y-2 flex-1">
-              <div className="h-4 bg-slate-200 rounded w-1/4" />
-              <div className="h-5 bg-slate-200 rounded w-1/3" />
-              <div className="h-4 bg-slate-100 rounded w-1/2" />
-            </div>
-            <div className="flex gap-2">
-              <div className="h-9 w-20 bg-slate-100 rounded-lg" />
-              <div className="h-9 w-20 bg-slate-100 rounded-lg" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export default function ServiceProposals() {
   const { uuid } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
+  const proposalsResource = useApiResource(`/services/${uuid}/proposals`, undefined, { keepPrevious: true });
+  const serviceResource = useApiResource(`/services/${uuid}`, undefined, { keepPrevious: true });
+  const [pending, setPending] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  const [proposals, setProposals] = useState([]);
-  const [service, setService] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [actionError, setActionError] = useState("");
-  const [actionLoading, setActionLoading] = useState(null);
+  const proposals = proposalsResource.data;
+  const service = serviceResource.data;
+  const error = proposalsResource.error ?? serviceResource.error;
+  const loading = !error && (!proposals || !service);
 
-  const loadProposals = useCallback((signal) =>
-    Promise.all([
-      api.get('/services/' + uuid + '/proposals', { signal }),
-      api.get('/services/' + uuid, { signal })
-    ]).then(([{ data }, { data: currentService }]) => {
-      if (signal?.aborted) return;
-      setError('');
-      setService(currentService);
-      setProposals(Array.isArray(data) ? data : data?.data ?? []);
-    }).catch(err => {
-      if (!signal?.aborted) setError(err.response?.data?.message || 'Erro ao carregar propostas.');
-    }).finally(() => {
-      if (!signal?.aborted) setLoading(false);
-    }), [uuid]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    loadProposals(controller.signal);
-    return () => controller.abort();
-  }, [loadProposals, uuid]);
-
-  async function updateProposalStatus(proposalUuid, status) {
+  async function confirmDecision() {
+    const { proposal, status } = pending;
+    setBusy(true);
     try {
-      setActionError("");
-      setActionLoading(proposalUuid);
-      await api.patch(`/proposals/${proposalUuid}/status`, { status });
-      await loadProposals();
+      await api.patch(`/proposals/${proposal.uuid}/status`, { status });
+      toast.success(actions[status].success);
     } catch (err) {
-      setActionError(err.response?.data?.message || "Não foi possível atualizar o status da proposta.");
-      if (err.response?.status === 409) await loadProposals();
+      toast.error(apiError(err, 'Não foi possível atualizar a proposta.'));
     } finally {
-      setActionLoading(null);
+      setBusy(false);
+      setPending(null);
+      proposalsResource.retry();
+      serviceResource.retry();
     }
   }
 
+  const action = pending && actions[pending.status];
+
   return (
-    <div className="min-h-screen bg-[#F9FAFB] px-4 py-10">
-      <div className="max-w-4xl mx-auto">
+    <main className="mx-auto max-w-content px-4 py-10 sm:px-6">
+      <Breadcrumb items={[
+        { label: 'Pedidos e contratações', to: '/meus-servicos' },
+        { label: service?.title ?? 'Pedido', to: `/servicos/${uuid}` },
+        { label: 'Propostas' },
+      ]} />
+      <h1 className="mb-8 text-2xl font-bold sm:text-3xl">Propostas recebidas</h1>
 
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold text-[#111827]">Propostas recebidas</h1>
-            <Link to={"/servicos/" + uuid} className="mt-2 inline-block text-sm font-semibold text-violet-700">Ver serviço e acompanhar conclusão</Link>
-            <p className="text-[#6B7280] mt-1 text-sm">Gerencie as propostas do seu serviço</p>
-          </div>
-          <p className="text-xs text-[#6B7280]">Apenas o dono do serviço pode aceitar ou rejeitar</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        {actionError && (
-          <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 text-sm">
-            {actionError}
-          </div>
-        )}
-
-        {loading ? (
-          <LoadingSkeleton />
-        ) : proposals.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#EDE9FE] flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-[#7C3AED]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-1">Nenhuma proposta ainda</h3>
-            <p className="text-[#6B7280] text-sm">As propostas dos profissionais aparecerão aqui.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {proposals.map((proposal) => {
-              const isFinal = proposal.status !== "pending" || service?.status !== "open" || service?.client?.uuid !== user?.uuid;
-              const isLoading = actionLoading === proposal.uuid;
-              const professional = proposal.professional?.user;
-
-              return (
-                <article key={proposal.uuid} className="bg-white rounded-2xl border border-[#E5E7EB] p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="space-y-3 flex-1">
-
-                      {/* Profissional */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7C3AED] font-bold text-sm flex-shrink-0">
-                          {(professional?.firstName ?? "?")[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[#111827] text-sm">
-                            {professional?.firstName} {professional?.lastName}
-                          </p>
-                          <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[proposal.status]}`}>
-                            {STATUS_LABELS[proposal.status] ?? proposal.status}
-                          </span>
-                        </div>
+      {loading ? (
+        <SkeletonList count={3} label="Carregando propostas" itemClassName="h-40" />
+      ) : error ? (
+        <ErrorState
+          title={error.response?.status === 403 ? 'Este pedido não é seu' : 'Não foi possível carregar as propostas'}
+          message={error.response?.status === 403 ? 'Só quem publicou o pedido pode ver as propostas.' : apiError(error)}
+          onRetry={error.response?.status === 403 ? undefined : () => { proposalsResource.retry(); serviceResource.retry(); }}
+          action={<Button to="/meus-servicos" variant="secondary">Ver meus pedidos</Button>}
+        />
+      ) : proposals.length === 0 ? (
+        <EmptyState icon="list" title="Nenhuma proposta ainda" description="As propostas dos profissionais aparecerão aqui. Avisaremos você nas notificações." action={<Button to={`/servicos/${uuid}`} variant="secondary">Ver o pedido</Button>} />
+      ) : (
+        <ul className="space-y-4">
+          {proposals.map((proposal) => {
+            const professional = proposal.professional?.user;
+            const name = proposal.professional?.displayName || fullName(professional);
+            const canDecide = proposal.status === 'pending' && service.status === 'open' && service.client?.uuid === user?.uuid;
+            return (
+              <li key={proposal.uuid}>
+                <Card as="article">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar src={proposal.professional?.publicPhotoUrl ?? professional?.profilePictureUrl} name={name} decorative />
+                      <div className="min-w-0">
+                        <Link to={`/usuarios/${professional?.uuid}`} className="font-semibold text-primary-strong underline-offset-2 hover:underline">{name}</Link>
+                        {proposal.professional?.headline && <p className="truncate text-sm text-ink-muted">{proposal.professional.headline}</p>}
                       </div>
-
-                      {/* Detalhes */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div className="bg-[#F9FAFB] rounded-lg p-3">
-                          <p className="text-xs text-[#6B7280] mb-0.5">Valor proposto</p>
-                          <p className="text-sm font-semibold text-[#111827]">{formatCurrency(proposal.proposedPrice)}</p>
-                        </div>
-                        <div className="bg-[#F9FAFB] rounded-lg p-3">
-                          <p className="text-xs text-[#6B7280] mb-0.5">Prazo</p>
-                          <p className="text-sm font-semibold text-[#111827]">{proposal.deliveryTimeDays ?? "—"} dias</p>
-                        </div>
-                      </div>
-
-                      {/* Carta */}
-                      {proposal.coverLetter && (
-                        <div className="bg-[#F9FAFB] rounded-lg p-4 text-sm text-[#6B7280] leading-relaxed">
-                          {proposal.coverLetter}
-                        </div>
-                      )}
                     </div>
-
-                    {/* Ações */}
-                    {!isFinal && (
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          type="button"
-                          disabled={actionLoading !== null}
-                          onClick={() => updateProposalStatus(proposal.uuid, "accepted")}
-                          className="rounded-lg bg-emerald-500 hover:bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                        >
-                          {isLoading ? (
-                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : "✓ Aceitar"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={actionLoading !== null}
-                          onClick={() => updateProposalStatus(proposal.uuid, "rejected")}
-                          className="rounded-lg bg-red-500 hover:bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          ✕ Rejeitar
-                        </button>
-                      </div>
-                    )}
+                    <StatusBadge status={proposal.status} map={proposalStatus} />
                   </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+                  <dl className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-control bg-surface-muted p-3"><dt className="text-xs text-ink-muted">Valor proposto</dt><dd className="mt-0.5 text-sm font-semibold">{formatMoney(proposal.proposedPrice)}</dd></div>
+                    <div className="rounded-control bg-surface-muted p-3"><dt className="text-xs text-ink-muted">Prazo</dt><dd className="mt-0.5 text-sm font-semibold">{proposal.deliveryTimeDays != null ? `${proposal.deliveryTimeDays} ${proposal.deliveryTimeDays === 1 ? 'dia' : 'dias'}` : 'A combinar'}</dd></div>
+                  </dl>
+                  {proposal.coverLetter && <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-ink-soft">{proposal.coverLetter}</p>}
+                  {canDecide && (
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Button onClick={() => setPending({ proposal, status: 'accepted', name })}>Aceitar</Button>
+                      <Button variant="dangerOutline" onClick={() => setPending({ proposal, status: 'rejected', name })}>Recusar</Button>
+                    </div>
+                  )}
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <ConfirmDialog
+        open={!!pending}
+        busy={busy}
+        danger={action?.danger}
+        title={action?.title}
+        confirmLabel={action?.confirmLabel}
+        message={action?.message(pending?.name)}
+        onConfirm={confirmDecision}
+        onCancel={() => setPending(null)}
+      />
+    </main>
   );
 }

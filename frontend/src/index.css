@@ -1,23 +1,232 @@
 @import "tailwindcss";
 
+/*
+ * Tokens do Dommos. Use sempre estes nomes nas classes (bg-primary, text-ink-muted,
+ * border-line, rounded-control, shadow-card). Não use hex nem as paletas padrão do Tailwind.
+ */
 @theme {
-  --color-primary: #7C3AED;
-  --color-primary-dark: #6D28D9;
-  --color-primary-light: #EDE9FE;
-  --color-secondary: #10B981;
-  --color-background: #F9FAFB;
-  --color-surface: #FFFFFF;
-  --color-text: #111827;
-  --color-text-muted: #6B7280;
-  --color-border: #E5E7EB;
-  --color-error: #EF4444;
-  --color-success: #10B981;
+  /* Remove a paleta padrão do Tailwind: só os tokens abaixo existem. */
+  --color-*: initial;
+  --color-white: #FFFFFF;
+  --color-black: #000000;
 
-  --font-sans: 'Inter', sans-serif;
+  /* Primária: ações principais */
+  --color-primary: #6D28D9;
+  --color-primary-hover: #5B21B6;
+  --color-primary-strong: #4C1D95;
+  --color-primary-deep: #3B1778;
+  --color-primary-line: #CDBDF2;
+  --color-primary-soft: #F1ECFB;
+  --color-primary-softer: #F8F5FE;
+
+  /* Secundária: apoio e destaques que não são ação principal */
+  --color-secondary: #0F766E;
+  --color-secondary-strong: #115E59;
+  --color-secondary-soft: #E6F4F2;
+
+  /* Neutros */
+  --color-ink: #1C1730;
+  --color-ink-soft: #413B55;
+  --color-ink-muted: #615B75;
+  --color-line-strong: #8A849C;
+  --color-line: #E4E1EB;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F3F1F7;
+  --color-canvas: #FAF9FC;
+  --color-overlay: rgb(28 23 48 / 0.5);
+
+  /* Semânticas */
+  --color-success: #166534;
+  --color-success-soft: #E8F6EC;
+  --color-success-line: #B7E0C4;
+  --color-warning: #92400E;
+  --color-warning-soft: #FDF3E1;
+  --color-warning-line: #F2D7A5;
+  --color-danger: #B91C1C;
+  --color-danger-hover: #991B1B;
+  --color-danger-soft: #FCECEC;
+  --color-danger-line: #F2C4C4;
+  --color-info: #1D4ED8;
+  --color-info-soft: #E9F0FE;
+  --color-info-line: #BCD0F8;
+  --color-rating: #B45309;
+
+  /* Escala da primária (violeta). Os nomes primary, primary-soft etc. acima continuam valendo. */
+  --color-primary-50: #F8F5FE;
+  --color-primary-100: #F1ECFB;
+  --color-primary-200: #E0D5F7;
+  --color-primary-300: #C6B0EF;
+  --color-primary-400: #A683E6;
+  --color-primary-500: #8B5CF6;
+  --color-primary-600: #6D28D9;
+  --color-primary-700: #5B21B6;
+  --color-primary-800: #4C1D95;
+  --color-primary-900: #3B1778;
+
+  /* Escala da secundária (verde-azulado). */
+  --color-secondary-50: #F0FAF8;
+  --color-secondary-100: #E6F4F2;
+  --color-secondary-200: #C2E8E3;
+  --color-secondary-300: #8FD3CB;
+  --color-secondary-400: #4FB5AB;
+  --color-secondary-500: #1F9488;
+  --color-secondary-600: #0F766E;
+  --color-secondary-700: #115E59;
+  --color-secondary-800: #134E4A;
+  --color-secondary-900: #0F3F3C;
+
+  /* Destaque (coral): para chamar atenção sem competir com a primária. Texto branco só do 600 em diante. */
+  --color-accent-50: #FFF4EC;
+  --color-accent-100: #FFE6D5;
+  --color-accent-200: #FFCBA8;
+  --color-accent-300: #FFA56E;
+  --color-accent-400: #FB8236;
+  --color-accent-500: #EA6A1C;
+  --color-accent-600: #C2410C;
+  --color-accent-700: #9A3412;
+  --color-accent-800: #7C2D12;
+  --color-accent-900: #5F240F;
+
+  /* Neutros com um toque da primária, para fundos e bordas menos frios. */
+  --color-canvas-tint: #F5F1FC;
+  --color-line-tint: #DDD6EC;
+
+  /* Semânticas fortes (texto e ícone). As versões -soft e -line ficam acima, para fundo e borda. */
+  --color-success-strong: #14532D;
+  --color-warning-strong: #78350F;
+  --color-danger-strong: #7F1D1D;
+  --color-info-strong: #1E3A8A;
+
+  /* Cores das categorias: solid (ponto, ícone, barra), soft (fundo) e ink (texto sobre o soft, AA). */
+  --color-cat-violet-solid: #7C3AED; --color-cat-violet-soft: #F1ECFB; --color-cat-violet-ink: #5B21B6;
+  --color-cat-teal-solid: #0D9488; --color-cat-teal-soft: #E6F4F2; --color-cat-teal-ink: #115E59;
+  --color-cat-coral-solid: #EA580C; --color-cat-coral-soft: #FFF1E8; --color-cat-coral-ink: #9A3412;
+  --color-cat-rose-solid: #E11D48; --color-cat-rose-soft: #FFF0F3; --color-cat-rose-ink: #9F1239;
+  --color-cat-amber-solid: #D97706; --color-cat-amber-soft: #FEF6E4; --color-cat-amber-ink: #92400E;
+  --color-cat-lime-solid: #65A30D; --color-cat-lime-soft: #F1F9E3; --color-cat-lime-ink: #3F6212;
+  --color-cat-sky-solid: #0284C7; --color-cat-sky-soft: #E8F5FD; --color-cat-sky-ink: #075985;
+  --color-cat-indigo-solid: #4F46E5; --color-cat-indigo-soft: #EEF0FE; --color-cat-indigo-ink: #3730A3;
+  --color-cat-fuchsia-solid: #C026D3; --color-cat-fuchsia-soft: #FCEFFD; --color-cat-fuchsia-ink: #86198F;
+  --color-cat-emerald-solid: #059669; --color-cat-emerald-soft: #E6F7F0; --color-cat-emerald-ink: #065F46;
+  --color-cat-cyan-solid: #0891B2; --color-cat-cyan-soft: #E5F7FA; --color-cat-cyan-ink: #155E75;
+  --color-cat-slate-solid: #475569; --color-cat-slate-soft: #EEF1F5; --color-cat-slate-ink: #334155;
+
+  /* Tipografia */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Raios */
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.5rem;
+
+  /* Sombras */
+  --shadow-card: 0 1px 2px rgb(28 23 48 / 0.06), 0 1px 3px rgb(28 23 48 / 0.05);
+  --shadow-raised: 0 8px 24px rgb(28 23 48 / 0.10);
+  --shadow-overlay: 0 20px 60px rgb(28 23 48 / 0.22);
+
+  /* Espaçamentos e medidas (a escala base do Tailwind continua valendo: --spacing = 0.25rem) */
+  --spacing-control: 2.75rem;
+  --spacing-control-sm: 2.25rem;
+  --spacing-bottom-nav: 4rem;
+  --container-page: 80rem;
+  --container-content: 56rem;
+  --container-form: 42rem;
 }
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-text);
-  font-family: var(--font-sans);
+/*
+ * Degradês: direção e paradas definidas aqui, num lugar só.
+ * Regra de contraste: texto branco só sobre degradês cujas paradas são escuras (primary-600 em diante,
+ * accent-600 em diante). Fundos suaves (soft, warm, cool) levam texto escuro.
+ */
+:root {
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 100%);
+  --gradient-primary-hover: linear-gradient(135deg, var(--color-primary-700) 0%, var(--color-primary-900) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--color-accent-600) 0%, var(--color-accent-700) 100%);
+  --gradient-accent-hover: linear-gradient(135deg, var(--color-accent-700) 0%, var(--color-accent-800) 100%);
+  --gradient-hero: linear-gradient(135deg, var(--color-primary-900) 0%, var(--color-primary-700) 58%, var(--color-secondary-700) 130%);
+  --gradient-soft: linear-gradient(180deg, var(--color-primary-50) 0%, var(--color-canvas) 100%);
+  --gradient-warm: linear-gradient(180deg, var(--color-accent-50) 0%, var(--color-canvas) 100%);
+  --gradient-cool: linear-gradient(180deg, var(--color-secondary-50) 0%, var(--color-canvas) 100%);
+}
+
+@utility bg-gradient-primary { background-image: var(--gradient-primary); }
+@utility bg-gradient-primary-hover { background-image: var(--gradient-primary-hover); }
+@utility bg-gradient-accent { background-image: var(--gradient-accent); }
+@utility bg-gradient-accent-hover { background-image: var(--gradient-accent-hover); }
+@utility bg-gradient-hero { background-image: var(--gradient-hero); }
+@utility bg-gradient-soft { background-image: var(--gradient-soft); }
+@utility bg-gradient-warm { background-image: var(--gradient-warm); }
+@utility bg-gradient-cool { background-image: var(--gradient-cool); }
+
+/* Avatar sem foto: degradê escuro (texto branco com contraste AA) escolhido pelo nome. */
+@utility bg-avatar-0 { background-image: linear-gradient(135deg, var(--color-cat-violet-ink), var(--color-cat-indigo-ink)); }
+@utility bg-avatar-1 { background-image: linear-gradient(135deg, var(--color-cat-teal-ink), var(--color-cat-sky-ink)); }
+@utility bg-avatar-2 { background-image: linear-gradient(135deg, var(--color-cat-coral-ink), var(--color-cat-rose-ink)); }
+@utility bg-avatar-3 { background-image: linear-gradient(135deg, var(--color-cat-fuchsia-ink), var(--color-cat-violet-ink)); }
+@utility bg-avatar-4 { background-image: linear-gradient(135deg, var(--color-cat-emerald-ink), var(--color-cat-teal-ink)); }
+@utility bg-avatar-5 { background-image: linear-gradient(135deg, var(--color-cat-indigo-ink), var(--color-cat-cyan-ink)); }
+@utility bg-avatar-6 { background-image: linear-gradient(135deg, var(--color-cat-amber-ink), var(--color-cat-coral-ink)); }
+@utility bg-avatar-7 { background-image: linear-gradient(135deg, var(--color-cat-slate-ink), var(--color-cat-violet-ink)); }
+
+/* Carregando: brilho suave na cor da paleta. Sem movimento para quem desativou animações (regra global abaixo). */
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@utility animate-shimmer {
+  background-image: linear-gradient(90deg, var(--color-surface-muted) 0%, var(--color-primary-100) 50%, var(--color-surface-muted) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+@layer base {
+  /* Tailwind 4 usa currentColor em "border" sem cor: padroniza para o neutro. */
+  *, ::before, ::after, ::backdrop, ::file-selector-button {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  button:not(:disabled), [role="button"]:not(:disabled), summary, label[for], select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--color-ink-muted);
+  }
+
+  input[type="checkbox"], input[type="radio"], input[type="range"] {
+    accent-color: var(--color-primary);
+  }
+
+  /* Foco visível em toda a aplicação. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  dialog::backdrop {
+    background-color: var(--color-overlay);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

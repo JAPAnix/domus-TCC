@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMatch, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 
 const BRAZILIAN_STATES = [
@@ -61,61 +61,6 @@ function buildCalendarDays(viewDate) {
   ];
 }
 
-export function SearchOptionList({ title, query, onQueryChange, options, onSelect, emptyLabel, selectedValue }) {
-  const filteredOptions = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return options;
-    }
-
-    return options.filter((option) => option.toLowerCase().includes(normalizedQuery));
-  }, [options, query]);
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-sm font-semibold text-[#111827]">{title}</p>
-        <p className="text-xs text-[#6B7280] mt-1">Digite para filtrar ou escolha uma sugestão.</p>
-      </div>
-
-      <label className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 focus-within:ring-2 focus-within:ring-[#7C3AED]">
-        <svg className="h-4 w-4 flex-shrink-0 text-[#6B7280]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
-        </svg>
-        <input
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          type="text"
-          placeholder={emptyLabel}
-          className="w-full bg-transparent text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none"
-        />
-      </label>
-
-      <div className="grid gap-2 max-h-[280px] overflow-y-auto pr-1">
-        {filteredOptions.length > 0 ? filteredOptions.map((option) => {
-          const isSelected = selectedValue === option;
-
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onSelect(option)}
-              className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${isSelected ? 'border-[#DDD6FE] bg-[#EDE9FE] text-[#5B21B6]' : 'border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F9FAFB]'}`}
-            >
-              <span>{option}</span>
-              {isSelected && <span className="text-xs font-semibold uppercase tracking-wide">Selecionado</span>}
-            </button>
-          );
-        }) : (
-          <p className="rounded-2xl border border-dashed border-[#E5E7EB] px-4 py-6 text-center text-sm text-[#6B7280]">
-            Nenhuma opção encontrada.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function isSameMonth(firstDate, secondDate) {
   return firstDate.getFullYear() === secondDate.getFullYear()
     && firstDate.getMonth() === secondDate.getMonth();
@@ -146,17 +91,17 @@ function CatalogServicePicker({ items, loading, error, query, onQueryChange, cat
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
-        <div><p className="text-sm font-semibold text-[#111827]">Qual serviço você procura?</p><p className="mt-1 text-xs text-[#6B7280]">Busque um serviço ou explore por categoria.</p></div>
-        {category && !query && <button type="button" onClick={() => onCategoryChange(null)} className="text-sm font-medium text-[#7C3AED] hover:text-[#6D28D9]">Voltar</button>}
+        <div><p className="text-sm font-semibold text-ink">Qual serviço você procura?</p><p className="mt-1 text-xs text-ink-muted">Busque um serviço ou explore por categoria.</p></div>
+        {category && !query && <button type="button" onClick={() => onCategoryChange(null)} className="text-sm font-medium text-primary hover:text-primary-hover">Voltar</button>}
       </div>
-      <label className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 focus-within:ring-2 focus-within:ring-[#7C3AED]">
-        <svg className="h-4 w-4 flex-shrink-0 text-[#6B7280]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" /></svg>
-        <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Busque um serviço" className="w-full bg-transparent text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none" />
+      <label className="flex items-center gap-3 rounded-card border border-line bg-canvas px-4 py-3 focus-within:ring-2 focus-within:ring-primary">
+        <svg className="h-4 w-4 flex-shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" /></svg>
+        <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Busque um serviço" className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted outline-none" />
       </label>
-      {loading && <p className="py-6 text-center text-sm text-[#6B7280]">Carregando serviços...</p>}
-      {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      {!loading && !error && !query && !category && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#6B7280]">Categorias</p><div className="grid gap-2 sm:grid-cols-2">{categories.map((item) => <button key={item.id} type="button" onClick={() => onCategoryChange(item)} className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-left text-sm font-medium text-[#111827] transition-colors hover:bg-[#F5F3FF] hover:text-[#7C3AED]">{item.name}</button>)}</div></div>}
-      {!loading && !error && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#6B7280]">{title}</p><div className="grid max-h-[220px] gap-2 overflow-y-auto pr-1">{results.map((item) => <button key={item.id} type="button" onClick={() => onSelect(item)} className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${selectedService?.id === item.id ? 'border-[#DDD6FE] bg-[#EDE9FE] text-[#5B21B6]' : 'border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F9FAFB]'}`}><span>{item.name}</span>{query && <span className="ml-3 text-xs text-[#6B7280]">{item.category.name}</span>}</button>)}{results.length === 0 && <p className="rounded-2xl border border-dashed border-[#E5E7EB] px-4 py-6 text-center text-sm text-[#6B7280]">Nenhum serviço encontrado.</p>}</div></div>}
+      {loading && <p className="py-6 text-center text-sm text-ink-muted">Carregando serviços...</p>}
+      {error && <p className="rounded-card border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p>}
+      {!loading && !error && !query && !category && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Categorias</p><div className="grid gap-2 sm:grid-cols-2">{categories.map((item) => <button key={item.id} type="button" onClick={() => onCategoryChange(item)} className="rounded-card border border-line bg-white px-4 py-3 text-left text-sm font-medium text-ink transition-colors hover:bg-primary-softer hover:text-primary">{item.name}</button>)}</div></div>}
+      {!loading && !error && <div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">{title}</p><div className="grid max-h-[220px] gap-2 overflow-y-auto pr-1">{results.map((item) => <button key={item.id} type="button" onClick={() => onSelect(item)} className={`flex items-center justify-between rounded-card border px-4 py-3 text-left text-sm transition-colors ${selectedService?.id === item.id ? 'border-primary-line bg-primary-soft text-primary-strong' : 'border-line bg-white text-ink hover:bg-canvas'}`}><span>{item.name}</span>{query && <span className="ml-3 text-xs text-ink-muted">{item.category.name}</span>}</button>)}{results.length === 0 && <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-sm text-ink-muted">Nenhum serviço encontrado.</p>}</div></div>}
     </div>
   );
 }
@@ -212,57 +157,33 @@ function LocationPicker({ selectedLocation, onSelect }) {
     setCityQuery('');
   }
 
-  function useCurrentLocation() {
-    if (!navigator.geolocation) {
-      setLocationStatus('Seu navegador não oferece suporte à localização. Escolha um estado e uma cidade.');
-      return;
-    }
-
-    setLocationStatus('Solicitando permissão para acessar sua localização...');
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        onSelect('Perto de você', {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        const message = error.code === error.PERMISSION_DENIED
-          ? 'Permissão de localização negada. Escolha um estado e uma cidade.'
-          : 'Não foi possível identificar sua localização. Tente novamente ou escolha uma cidade.';
-        setLocationStatus(message);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
-    );
-  }
-
   if (selectedState) {
     return (
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-[#111827]">Escolha a cidade em {selectedState.name}</p>
-            <p className="mt-1 text-xs text-[#6B7280]">Cidades fornecidas pelo IBGE.</p>
+            <p className="text-sm font-semibold text-ink">Escolha a cidade em {selectedState.name}</p>
+            <p className="mt-1 text-xs text-ink-muted">Cidades fornecidas pelo IBGE.</p>
           </div>
-          <button type="button" onClick={() => { setSelectedState(null); setCityQuery(''); }} className="text-sm font-medium text-[#7C3AED] hover:text-[#6D28D9]">
+          <button type="button" onClick={() => { setSelectedState(null); setCityQuery(''); }} className="text-sm font-medium text-primary hover:text-primary-hover">
             Trocar estado
           </button>
         </div>
 
-        <label className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 focus-within:ring-2 focus-within:ring-[#7C3AED]">
-          <svg className="h-4 w-4 flex-shrink-0 text-[#6B7280]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" /></svg>
-          <input value={cityQuery} onChange={(event) => setCityQuery(event.target.value)} type="text" placeholder="Buscar cidade" className="w-full bg-transparent text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none" />
+        <label className="flex items-center gap-3 rounded-card border border-line bg-canvas px-4 py-3 focus-within:ring-2 focus-within:ring-primary">
+          <svg className="h-4 w-4 flex-shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" /></svg>
+          <input value={cityQuery} onChange={(event) => setCityQuery(event.target.value)} type="text" placeholder="Buscar cidade" className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted outline-none" />
         </label>
 
-        {loadingCities ? <p className="py-6 text-center text-sm text-[#6B7280]">Carregando cidades...</p> : (
+        {loadingCities ? <p className="py-6 text-center text-sm text-ink-muted">Carregando cidades...</p> : (
           <div className="grid max-h-[280px] gap-2 overflow-y-auto pr-1">
             {filteredCities.map((city) => {
               const label = `${city}, ${selectedState.code}`;
-              return <button key={city} type="button" onClick={() => onSelect(label)} className={`rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${selectedLocation === label ? 'border-[#DDD6FE] bg-[#EDE9FE] text-[#5B21B6]' : 'border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F9FAFB]'}`}>{label}</button>;
+              return <button key={city} type="button" onClick={() => onSelect(city)} className={`rounded-card border px-4 py-3 text-left text-sm transition-colors ${selectedLocation === city ? 'border-primary-line bg-primary-soft text-primary-strong' : 'border-line bg-white text-ink hover:bg-canvas'}`}>{label}</button>;
             })}
           </div>
         )}
-        {locationStatus && <p className="text-sm text-[#DC2626]">{locationStatus}</p>}
+        {locationStatus && <p className="text-sm text-danger">{locationStatus}</p>}
       </div>
     );
   }
@@ -270,20 +191,16 @@ function LocationPicker({ selectedLocation, onSelect }) {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm font-semibold text-[#111827]">Onde você precisa do serviço?</p>
-        <p className="mt-1 text-xs text-[#6B7280]">Use sua localização atual ou selecione um estado e uma cidade.</p>
+        <p className="text-sm font-semibold text-ink">Onde você precisa do serviço?</p>
+        <p className="mt-1 text-xs text-ink-muted">Selecione o estado e depois a cidade.</p>
       </div>
-      <button type="button" onClick={useCurrentLocation} className="flex w-full items-center gap-3 rounded-2xl border border-[#C4B5FD] bg-[#F5F3FF] px-4 py-3 text-left text-sm font-medium text-[#5B21B6] transition-colors hover:bg-[#EDE9FE]">
-        <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v4l2.5 2.5" /></svg>
-        Usar minha localização atual
-      </button>
-      {locationStatus && <p className="text-sm text-[#DC2626]">{locationStatus}</p>}
-      <label className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 focus-within:ring-2 focus-within:ring-[#7C3AED]">
-        <svg className="h-4 w-4 flex-shrink-0 text-[#6B7280]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" /></svg>
-        <input value={cityQuery} onChange={(event) => setCityQuery(event.target.value)} type="text" placeholder="Buscar estado" className="w-full bg-transparent text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none" />
+      {locationStatus && <p className="text-sm text-danger">{locationStatus}</p>}
+      <label className="flex items-center gap-3 rounded-card border border-line bg-canvas px-4 py-3 focus-within:ring-2 focus-within:ring-primary">
+        <svg className="h-4 w-4 flex-shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" /></svg>
+        <input value={cityQuery} onChange={(event) => setCityQuery(event.target.value)} type="text" placeholder="Buscar estado" className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted outline-none" />
       </label>
       <div className="grid max-h-[280px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-        {filteredStates.map((state) => <button key={state.code} type="button" onClick={() => chooseState(state)} className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-left text-sm text-[#111827] transition-colors hover:bg-[#F9FAFB]"><span className="font-semibold">{state.code}</span><span className="ml-2">{state.name}</span></button>)}
+        {filteredStates.map((state) => <button key={state.code} type="button" onClick={() => chooseState(state)} className="rounded-card border border-line bg-white px-4 py-3 text-left text-sm text-ink transition-colors hover:bg-canvas"><span className="font-semibold">{state.code}</span><span className="ml-2">{state.name}</span></button>)}
       </div>
     </div>
   );
@@ -313,8 +230,8 @@ function DateCalendar({ currentMonth, selectedDate, onMonthChange, onSelectDate 
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#111827]">Escolha uma data</p>
-          <p className="text-xs text-[#6B7280] mt-1">Datas anteriores ao dia atual permanecem indisponíveis.</p>
+          <p className="text-sm font-semibold text-ink">Escolha uma data</p>
+          <p className="text-xs text-ink-muted mt-1">Datas anteriores ao dia atual permanecem indisponíveis.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -322,20 +239,20 @@ function DateCalendar({ currentMonth, selectedDate, onMonthChange, onSelectDate 
             type="button"
             disabled={!canGoBack}
             onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E5E7EB] text-[#374151] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:border-transparent disabled:text-[#D1D5DB] disabled:hover:bg-transparent"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-ink-soft transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:border-transparent disabled:text-line-strong disabled:hover:bg-transparent"
             aria-label="Mês anterior"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m15 19-7-7 7-7" />
             </svg>
           </button>
-          <button type="button" onClick={() => setShowMonthPicker((current) => !current)} className="min-w-36 rounded-xl px-3 py-2 text-center text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F5F3FF]" aria-expanded={showMonthPicker}>
+          <button type="button" onClick={() => setShowMonthPicker((current) => !current)} className="min-w-36 rounded-control px-3 py-2 text-center text-sm font-semibold text-ink transition-colors hover:bg-primary-softer" aria-expanded={showMonthPicker}>
             {formatMonthTitle(currentMonth)}
           </button>
           <button
             type="button"
             onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E5E7EB] text-[#374151] transition-colors hover:bg-[#F9FAFB]"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-ink-soft transition-colors hover:bg-canvas"
             aria-label="Próximo mês"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -346,21 +263,21 @@ function DateCalendar({ currentMonth, selectedDate, onMonthChange, onSelectDate 
       </div>
 
       {showMonthPicker && (
-        <div className="grid grid-cols-1 gap-3 rounded-2xl bg-[#F9FAFB] p-4 sm:grid-cols-2">
-          <label className="text-xs font-medium text-[#6B7280]">Mês
-            <select value={currentMonth.getMonth()} onChange={(event) => changeMonth(Number(event.target.value))} className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:ring-2 focus:ring-[#7C3AED]">
+        <div className="grid grid-cols-1 gap-3 rounded-card bg-canvas p-4 sm:grid-cols-2">
+          <label className="text-xs font-medium text-ink-muted">Mês
+            <select value={currentMonth.getMonth()} onChange={(event) => changeMonth(Number(event.target.value))} className="mt-1.5 w-full rounded-control border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-primary">
               {MONTH_LABELS.map((month, index) => <option key={month} value={index} disabled={currentMonth.getFullYear() === firstAllowedMonth.getFullYear() && index < firstAllowedMonth.getMonth()}>{month}</option>)}
             </select>
           </label>
-          <label className="text-xs font-medium text-[#6B7280]">Ano
-            <select value={currentMonth.getFullYear()} onChange={(event) => changeYear(Number(event.target.value))} className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] outline-none focus:ring-2 focus:ring-[#7C3AED]">
+          <label className="text-xs font-medium text-ink-muted">Ano
+            <select value={currentMonth.getFullYear()} onChange={(event) => changeYear(Number(event.target.value))} className="mt-1.5 w-full rounded-control border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-primary">
               {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
             </select>
           </label>
         </div>
       )}
 
-      <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6B7280]">
+      <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-muted">
         {WEEKDAY_LABELS.map((weekday, index) => (
           <span key={`${weekday}-${index}`}>{weekday}</span>
         ))}
@@ -369,7 +286,7 @@ function DateCalendar({ currentMonth, selectedDate, onMonthChange, onSelectDate 
       <div className="grid grid-cols-7 gap-2">
         {calendarDays.map((date, index) => {
           if (!date) {
-            return <div key={`empty-${index}`} className="h-11 rounded-2xl" />;
+            return <div key={`empty-${index}`} className="h-11 rounded-card" />;
           }
 
           const disabled = isBeforeToday(date);
@@ -382,11 +299,11 @@ function DateCalendar({ currentMonth, selectedDate, onMonthChange, onSelectDate 
               type="button"
               disabled={disabled}
               onClick={() => onSelectDate(date)}
-              className={`h-11 rounded-2xl text-sm font-medium transition-all ${active
-                ? 'bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/25'
+              className={`h-11 rounded-card text-sm font-medium transition-all ${active
+                ? 'bg-primary text-white shadow-raised shadow-primary/25'
                 : disabled
-                  ? 'cursor-not-allowed bg-[#F9FAFB] text-[#D1D5DB]'
-                  : `border bg-white text-[#111827] hover:bg-[#F5F3FF] hover:text-[#7C3AED] ${today ? 'border-[#A78BFA] ring-1 ring-[#DDD6FE]' : 'border-[#E5E7EB]'}`}`}
+                  ? 'cursor-not-allowed bg-canvas text-line-strong'
+                  : `border bg-white text-ink hover:bg-primary-softer hover:text-primary ${today ? 'border-primary-line ring-1 ring-primary-line' : 'border-line'}`}`}
             >
               {date.getDate()}
             </button>
@@ -403,40 +320,41 @@ function SearchFieldButton({ title, value, placeholder, active, onClick }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`group flex w-full min-w-0 items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors md:h-[62px] md:flex-1 md:rounded-none md:px-5 md:py-0 ${active ? 'bg-[#F5F3FF]' : 'hover:bg-[#F9FAFB]'}`}
+      className={`group flex w-full min-w-0 items-center justify-between rounded-card px-4 py-3 text-left transition-colors md:h-14 md:flex-1 md:rounded-none md:px-5 md:py-0 ${active ? 'bg-primary-softer' : 'hover:bg-canvas'}`}
     >
       <span className="flex min-w-0 flex-col">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#111827]">{title}</span>
-        <span className={`mt-1 truncate text-sm ${value ? 'text-[#111827]' : 'text-[#6B7280]'}`}>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink">{title}</span>
+        <span className={`mt-1 truncate text-sm ${value ? 'text-ink' : 'text-ink-muted'}`}>
           {value || placeholder}
         </span>
       </span>
 
-      <svg className="ml-3 h-4 w-4 flex-shrink-0 text-[#7C3AED] opacity-70 transition-transform group-hover:translate-x-0.5 md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg className="ml-3 h-4 w-4 flex-shrink-0 text-primary opacity-70 transition-transform group-hover:translate-x-0.5 md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m9 5 7 7-7 7" />
       </svg>
     </button>
   );
 }
 
-export default function SearchBar() {
+export default function SearchBar({ onSearched }) {
   const navigate = useNavigate();
+  const onSearchPage = !!useMatch('/buscar');
+  const [params] = useSearchParams();
+  const urlParam = (name) => (onSearchPage ? params.get(name) ?? '' : '');
   const wrapperRef = useRef(null);
   const [activeField, setActiveField] = useState(null);
   const [serviceQuery, setServiceQuery] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [locationCoordinates, setLocationCoordinates] = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(() => urlParam('cidade'));
+  const [selectedService, setSelectedService] = useState(() => (urlParam('serviceId') ? { id: urlParam('serviceId'), name: urlParam('servico') } : null));
   const [catalogItems, setCatalogItems] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState('');
   const [selectedServiceCategory, setSelectedServiceCategory] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(() => (urlParam('data') ? new Date(`${urlParam('data')}T12:00:00`) : null));
   const [currentMonth, setCurrentMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
-  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   useEffect(() => {
     function handleOutsideClick(event) {
@@ -477,8 +395,6 @@ export default function SearchBar() {
   }, [activeField, catalogItems.length]);
 
   function openField(field) {
-    setFeedbackMessage('');
-
     if (field === 'date' && !selectedDate) {
       const today = new Date();
       setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -491,17 +407,14 @@ export default function SearchBar() {
     setActiveField((current) => (current === field ? null : field));
   }
 
-  function selectLocation(location, coordinates = null) {
+  function selectLocation(location) {
     setSelectedLocation(location);
-    setLocationCoordinates(coordinates);
-    setFeedbackMessage('');
     setActiveField(null);
   }
 
   function selectService(service) {
     setSelectedService({ id: service.id, name: service.name, category: service.category });
     setServiceQuery('');
-    setFeedbackMessage('');
     setActiveField(null);
   }
 
@@ -511,38 +424,24 @@ export default function SearchBar() {
     }
 
     setSelectedDate(date);
-    setFeedbackMessage('');
     setActiveField(null);
   }
 
   function handleSearch() {
-    if (!selectedLocation) {
-      setFeedbackMessage('Selecione onde o serviço será realizado.');
-      setActiveField('location');
-      return;
+    // Todos os campos são opcionais: sem filtros, a busca lista todos os profissionais publicados.
+    const next = new URLSearchParams();
+    const category = urlParam('categoria');
+    if (selectedLocation) next.set('cidade', selectedLocation);
+    if (selectedDate) next.set('data', toDateKey(selectedDate));
+    if (selectedService) {
+      next.set('serviceId', String(selectedService.id));
+      next.set('servico', selectedService.name);
     }
-
-    if (!selectedDate) {
-      setFeedbackMessage('Escolha uma data.');
-      setActiveField('date');
-      return;
-    }
-
-    const preparedSearch = {
-      location: selectedLocation,
-      coordinates: locationCoordinates,
-      date: toDateKey(selectedDate),
-      serviceId: selectedService?.id,
-      service: selectedService?.name,
-      serviceCategory: selectedService?.category.name,
-    };
-
-    const params = new URLSearchParams({ cidade: selectedLocation.split(',')[0].trim(), data: preparedSearch.date });
-    if (preparedSearch.serviceId) {
-      params.set('serviceId', String(preparedSearch.serviceId));
-      params.set('servico', preparedSearch.service);
-    }
-    navigate(`/buscar?${params.toString()}`, { state: { search: preparedSearch } });
+    if (category) next.set('categoria', category);
+    const query = next.toString();
+    setActiveField(null);
+    navigate(query ? `/buscar?${query}` : '/buscar');
+    onSearched?.();
   }
 
   const activeValue =
@@ -555,32 +454,32 @@ export default function SearchBar() {
 
   return (
     <div ref={wrapperRef} className="relative w-full min-w-0">
-      <div className="flex flex-col overflow-hidden rounded-[32px] border border-[#E5E7EB] bg-white shadow-[0_16px_45px_rgba(17,24,39,0.08)] md:flex-row md:items-stretch">
-        <div className="md:flex-1 md:min-w-0 md:border-r md:border-[#E5E7EB]">
+      <div className="flex flex-col overflow-hidden rounded-panel border border-line-strong bg-surface shadow-card md:flex-row md:items-stretch">
+        <div className="md:flex-1 md:min-w-0 md:border-r md:border-line">
           <SearchFieldButton
             title="Onde"
             value={selectedLocation}
-            placeholder="Buscar localização"
+            placeholder="Qualquer cidade"
             active={activeField === 'location'}
             onClick={() => openField('location')}
           />
         </div>
 
-        <div className="md:flex-1 md:min-w-0 md:border-r md:border-[#E5E7EB]">
+        <div className="md:flex-1 md:min-w-0 md:border-r md:border-line">
           <SearchFieldButton
             title="Quando"
             value={selectedDate ? formatShortDate(selectedDate) : ''}
-            placeholder="Escolha uma data"
+            placeholder="Qualquer data"
             active={activeField === 'date'}
             onClick={() => openField('date')}
           />
         </div>
 
-        <div className="md:flex-1 md:min-w-0 md:border-r md:border-[#E5E7EB]">
+        <div className="md:flex-1 md:min-w-0 md:border-r md:border-line">
           <SearchFieldButton
-            title="Qual serviço"
+            title="Que tipo de serviço"
             value={selectedService?.name}
-            placeholder="O que procura?"
+            placeholder="Qualquer serviço"
             active={activeField === 'service'}
             onClick={() => openField('service')}
           />
@@ -590,8 +489,8 @@ export default function SearchBar() {
           <button
             type="button"
             onClick={handleSearch}
-            aria-label="Pesquisar serviços"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-[#7C3AED] text-white transition-colors hover:bg-[#6D28D9] md:h-14 md:w-14"
+            aria-label="Buscar profissionais"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary-hover"
           >
             <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
@@ -600,18 +499,11 @@ export default function SearchBar() {
         </div>
       </div>
 
-      {feedbackMessage && (
-        <p className="mt-2 px-1 text-sm text-[#DC2626]">
-          {feedbackMessage}
-        </p>
-      )}
-
       {activeField && (
-        <div className={`absolute left-0 top-full z-50 mt-3 w-full max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] border border-[#E5E7EB] bg-white p-5 shadow-[0_24px_70px_rgba(17,24,39,0.16)] ${panelPosition}`}>
+        <div className={`left-0 top-full z-50 mt-3 w-full max-h-[70dvh] overflow-y-auto rounded-panel md:absolute md:max-w-[calc(100vw-2rem)] border border-line bg-white p-5 shadow-overlay ${panelPosition}`}>
           {activeField === 'location' && (
             <LocationPicker
-              selectedValue={selectedLocation}
-              selectedLocation={selectedLocation}
+                            selectedLocation={selectedLocation}
               onSelect={selectLocation}
             />
           )}
@@ -643,7 +535,7 @@ export default function SearchBar() {
             <button
               type="button"
               onClick={() => setActiveField(null)}
-              className="mt-5 text-sm font-medium text-[#7C3AED] hover:text-[#6D28D9]"
+              className="mt-5 text-sm font-medium text-primary hover:text-primary-hover"
             >
               Fechar
             </button>

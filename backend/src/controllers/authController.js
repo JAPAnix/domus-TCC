@@ -8,12 +8,14 @@ import { normalizeBrazilianPhone, normalizeEmail } from '../utils/userData.js';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import { sendPasswordResetEmail } from '../services/emailService.js';
+import { createSession } from '../services/sessionService.js';
 
 const googleClient = new OAuth2Client();
 const genericResetResponse = { message: 'Se existir uma conta com este e-mail, enviaremos as instruções para redefinir sua senha.' };
 
-function createToken(user, roles) {
-  return jwt.sign({ id: user.id.toString(), uuid: bufferToUuid(user.uuid), email: user.email, roles }, process.env.JWT_SECRET, { expiresIn: '1d' });
+async function issueToken(req, user, roles) {
+  const sid = await createSession(req, user.id);
+  return jwt.sign({ id: user.id.toString(), uuid: bufferToUuid(user.uuid), email: user.email, roles, sid }, process.env.JWT_SECRET, { expiresIn: '1d' });
 }
 
 export const register = async (req, res) => {
@@ -94,15 +96,19 @@ export const login = async (req, res) => {
 
     const roles = user.roles.map(ur => ur.role.name);
 
-    const token = createToken(user, roles);
+    const reactivated = !!user.deactivatedAt;
+    if (reactivated) await prisma.user.update({ where: { id: user.id }, data: { deactivatedAt: null } });
+    const token = await issueToken(req, user, roles);
 
     res.json({
       token,
+      reactivated,
       user: {
         uuid: bufferToUuid(user.uuid),
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        profilePictureUrl: user.profilePictureUrl,
         roles
       }
     });
@@ -168,6 +174,8 @@ export const googleLogin = async (req, res) => {
       user = await prisma.user.update({ where: { id: user.id }, data: { googleId: payload.sub, isEmailVerified: true }, include: { roles: { include: { role: true } } } });
     }
     const roles = user.roles.map((item) => item.role.name);
-    res.json({ token: createToken(user, roles), user: { uuid: bufferToUuid(user.uuid), firstName: user.firstName, lastName: user.lastName, email: user.email, roles } });
+    if (user.deactivatedAt) await prisma.user.update({ where: { id: user.id }, data: { deactivatedAt: null } });
+    const token = await issueToken(req, user, roles);
+    res.json({ token, reactivated: !!user.deactivatedAt, user: { uuid: bufferToUuid(user.uuid), firstName: user.firstName, lastName: user.lastName, email: user.email, profilePictureUrl: user.profilePictureUrl, roles } });
   } catch (err) { logger.error('googleLogin', err); res.status(401).json({ message: 'Não foi possível entrar com o Google.' }); }
 };

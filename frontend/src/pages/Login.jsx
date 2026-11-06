@@ -1,128 +1,71 @@
 import { useCallback, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import BrandLogo from '../components/BrandLogo';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import api, { apiError } from '../services/api';
+import { useAuth } from '../context/useAuth';
+import { PRO_START_PATH } from '../utils/routes';
 import GoogleSignInButton from '../components/GoogleSignInButton';
+import { Button, Input } from '../components/ui';
+import AuthLayout from './AuthLayout';
 
-const Login = () => {
+const linkClass = 'font-medium text-primary-strong underline-offset-2 hover:underline';
+
+export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { user, login } = useAuth();
   const [params] = useSearchParams();
-  const destination = params.get('profissional') === '1' ? '/perfil/profissional' : '/';
+  const destination = location.state?.from ?? (params.get('profissional') === '1' ? PRO_START_PATH : '/');
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const change = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const finish = useCallback((data) => {
+    login(data.token, data.user);
+    navigate(destination, { replace: true });
+  }, [login, navigate, destination]);
+
+  async function submit(event) {
+    event.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const { data } = await api.post('/auth/login', form);
-      login(data.token, data.user);
-      navigate(destination);
+      finish(data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao fazer login');
-    } finally {
+      setError(err.response?.status === 401 ? 'E-mail ou senha incorretos.' : apiError(err, 'Não foi possível entrar.'));
       setLoading(false);
     }
-  };
+  }
 
-  const handleGoogleCredential = useCallback(async (credential) => {
+  const onGoogle = useCallback(async (credential) => {
     setError('');
     setLoading(true);
     try {
       const { data } = await api.post('/auth/google', { credential });
-      login(data.token, data.user);
-      navigate(destination);
+      finish(data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Não foi possível entrar com o Google.');
-    } finally {
+      setError(apiError(err, 'Não foi possível entrar com o Google.'));
       setLoading(false);
     }
-  }, [login, navigate, destination]);
+  }, [finish]);
+
+  if (user && !loading) return <Navigate to={destination} replace />;
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1><BrandLogo className="mx-auto" /></h1>
-          <p className="text-[#6B7280] mt-2">Conectamos talentos com oportunidades</p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-8">
-          <h2 className="text-xl font-semibold text-[#111827] mb-6">Bem-vindo de volta!</h2>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                E-mail
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="seu@email.com"
-                required
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Senha
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                required
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-            <Link to="/forgot-password" className="block text-right text-sm text-[#7C3AED] hover:underline">Esqueceu sua senha?</Link>
-
-            <div className="flex items-center gap-3 py-1 text-xs text-[#9CA3AF]"><span className="h-px flex-1 bg-[#E5E7EB]" />ou<span className="h-px flex-1 bg-[#E5E7EB]" /></div>
-            <GoogleSignInButton onCredential={handleGoogleCredential} disabled={loading} />
-          </form>
-
-          <p className="text-center text-sm text-[#6B7280] mt-6">
-            Não tem uma conta?{' '}
-            <Link to="/cadastro" className="text-[#7C3AED] font-medium hover:underline">
-              Cadastre-se
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+    <AuthLayout title="Bem-vindo de volta">
+      {error && <p role="alert" className="mb-4 rounded-control border border-danger-line bg-danger-soft p-3 text-sm text-danger">{error}</p>}
+      <form onSubmit={submit} className="space-y-4">
+        <Input label="E-mail" type="email" name="email" autoComplete="email" required value={form.email} onChange={change} />
+        <Input label="Senha" type="password" name="password" autoComplete="current-password" required value={form.password} onChange={change} />
+        <Button type="submit" block loading={loading}>{loading ? 'Entrando...' : 'Entrar'}</Button>
+      </form>
+      <p className="mt-3 text-right text-sm"><Link to="/forgot-password" className={linkClass}>Esqueceu sua senha?</Link></p>
+      <div className="flex items-center gap-3 py-4 text-xs text-ink-muted"><span className="h-px flex-1 bg-line" />ou<span className="h-px flex-1 bg-line" /></div>
+      <GoogleSignInButton onCredential={onGoogle} disabled={loading} />
+      <p className="mt-6 text-center text-sm text-ink-muted">Não tem uma conta? <Link to="/cadastro" className={linkClass}>Cadastre-se</Link></p>
+    </AuthLayout>
   );
-};
-
-export default Login;
+}

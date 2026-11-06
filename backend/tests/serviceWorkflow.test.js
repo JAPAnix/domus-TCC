@@ -104,3 +104,31 @@ test('notification failure rolls back review so it can be retried',async()=>{
   assert.equal(state.reviews.length,1);
   assert.equal(state.notifications.at(-1).userId,1n);
 });
+
+test('notification preferences are respected and e-mails go out only after commit',async()=>{
+  reset();
+  const sent=[]; flow.setEmailDispatcher(async jobs=>{sent.push(...jobs);});
+  tx.userSettings={findUnique:async({where})=>({notificationPreferences:where.userId===1n?{proposal_received:{app:false,email:true}}:null})};
+  await flow.submitProposal(uuid,2n,{proposed_price:100});
+  assert.equal(state.notifications.length,0,'in-app notification disabled by the client');
+  assert.deepEqual(sent.map(job=>[job.userId,job.type]),[[1n,'proposal_received']]);
+  reset(); sent.length=0;
+  tx.userSettings={findUnique:async()=>({notificationPreferences:{proposal_received:{app:true,email:false}}})};
+  await flow.submitProposal(uuid,2n,{proposed_price:100});
+  assert.equal(state.notifications.length,1);
+  assert.equal(sent.length,0,'e-mail disabled by the client');
+  reset(); sent.length=0; state.failNotification=true; delete tx.userSettings;
+  await assert.rejects(()=>flow.submitProposal(uuid,2n,{proposed_price:100}));
+  assert.equal(sent.length,0,'no e-mail when the transaction rolls back');
+  flow.setEmailDispatcher(async()=>{});
+});
+
+test('blocked users cannot send proposals',async()=>{
+  reset();
+  tx.userBlock={findFirst:async()=>({blockerId:1n})};
+  await assert.rejects(()=>flow.submitProposal(uuid,2n,{proposed_price:100}),e=>e.status===403);
+  assert.equal(state.proposals.length,0);
+  delete tx.userBlock;
+  await flow.submitProposal(uuid,2n,{proposed_price:100});
+  assert.equal(state.proposals.length,1);
+});

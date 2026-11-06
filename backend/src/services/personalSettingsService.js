@@ -19,6 +19,7 @@ export async function getPersonalSettings(userId) {
     zipCode: user.zipCode, street: user.street, number: user.number, complement: user.complement, neighborhood: user.neighborhood, city: user.city, state: user.state,
     postalSameAsHome: user.postalSameAsHome, postalAddress: user.postalAddress, emergencyContact: user.emergencyContact,
     roles: user.roles.map(({ role }) => role.name), hasProfessionalProfile: !!user.professionalProfile,
+    hasPassword: !!user.passwordHash, googleLinked: !!user.googleId,
     pending: Object.fromEntries(pending.map((item) => [item.type, { ...item, resendAt: new Date(item.createdAt.getTime() + 60000) }])),
   };
 }

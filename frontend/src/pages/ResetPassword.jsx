@@ -1,69 +1,66 @@
-import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import api from "../services/api";
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import api, { apiError } from '../services/api';
+import { Button, Input } from '../components/ui';
+import AuthLayout from './AuthLayout';
+
+const linkClass = 'font-medium text-primary-strong underline-offset-2 hover:underline';
+
 export default function ResetPassword() {
   const [params] = useSearchParams();
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [message, setMessage] = useState("");
+  const token = params.get('token');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [errors, setErrors] = useState({});
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+
   async function submit(event) {
     event.preventDefault();
-    if (password !== confirm) return setMessage("As senhas não coincidem.");
+    setError('');
+    const nextErrors = {};
+    if (password.length < 8) nextErrors.password = 'A senha precisa ter pelo menos 8 caracteres.';
+    if (password !== confirm) nextErrors.confirm = 'As senhas não coincidem.';
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/reset-password", {
-        token: params.get("token"),
-        newPassword: password,
-      });
-      setMessage(data.message);
+      await api.post('/auth/reset-password', { token, newPassword: password });
+      setDone(true);
     } catch (err) {
-      setMessage(
-        err.response?.data?.message || "Não foi possível redefinir sua senha.",
-      );
+      setError(apiError(err, 'Não foi possível redefinir sua senha.'));
     } finally {
       setLoading(false);
     }
   }
+
+  if (!token) {
+    return (
+      <AuthLayout title="Link inválido" subtitle="Este link de redefinição está incompleto. Peça um novo para continuar.">
+        <Button to="/forgot-password" block>Pedir novo link</Button>
+      </AuthLayout>
+    );
+  }
+
+  if (done) {
+    return (
+      <AuthLayout title="Senha redefinida" subtitle="Sua nova senha já está valendo.">
+        <Button to="/login" block>Entrar</Button>
+      </AuthLayout>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-[#F9FAFB] flex items-center justify-center px-4">
-      <form
-        onSubmit={submit}
-        className="w-full max-w-md rounded-2xl border bg-white p-8"
-      >
-        <h1 className="text-xl font-semibold">Crie uma nova senha</h1>
-        <input
-          required
-          minLength="8"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Nova senha"
-          className="mt-5 w-full rounded-lg border px-4 py-2.5"
-        />
-        <input
-          required
-          minLength="8"
-          type="password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          placeholder="Confirmar nova senha"
-          className="mt-3 w-full rounded-lg border px-4 py-2.5"
-        />
-        {message && <p className="mt-3 text-sm text-[#6B7280]">{message}</p>}
-        <button
-          disabled={loading}
-          className="mt-4 w-full rounded-lg bg-[#7C3AED] py-2.5 font-semibold text-white"
-        >
-          {loading ? "Redefinindo..." : "Redefinir senha"}
-        </button>
-        <Link
-          to="/login"
-          className="mt-5 block text-center text-sm text-[#7C3AED]"
-        >
-          Voltar para o login
-        </Link>
+    <AuthLayout title="Crie uma nova senha">
+      <form onSubmit={submit} noValidate className="space-y-4">
+        {error && <p role="alert" className="rounded-control border border-danger-line bg-danger-soft p-3 text-sm text-danger">{error} <Link to="/forgot-password" className="font-semibold underline">Pedir novo link</Link></p>}
+        <Input label="Nova senha" type="password" autoComplete="new-password" required hint="Use pelo menos 8 caracteres." value={password} onChange={(event) => setPassword(event.target.value)} error={errors.password} />
+        <Input label="Confirmar nova senha" type="password" autoComplete="new-password" required value={confirm} onChange={(event) => setConfirm(event.target.value)} error={errors.confirm} />
+        <Button type="submit" block loading={loading}>{loading ? 'Redefinindo...' : 'Redefinir senha'}</Button>
       </form>
-    </main>
+      <p className="mt-5 text-center text-sm"><Link to="/login" className={linkClass}>Voltar para o login</Link></p>
+    </AuthLayout>
   );
 }

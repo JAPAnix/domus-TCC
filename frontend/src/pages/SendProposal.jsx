@@ -1,169 +1,73 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
-
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import api, { apiError, apiFieldErrors } from '../services/api';
 import ServiceProposalActions from '../components/ServiceProposalActions';
+import { Breadcrumb, Button, Card, Input, Textarea, useToast } from '../components/ui';
 
-export default function SendProposal() {
-  const { uuid } = useParams();
-  return <div className="mx-auto max-w-2xl px-4 py-8"><ServiceProposalActions uuid={uuid}><ProposalForm /></ServiceProposalActions></div>;
-}
-
-function ProposalForm() {
-  const { uuid } = useParams();
+function ProposalForm({ uuid }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
-
-  const [form, setForm] = useState({
-    proposed_price: "",
-    cover_letter: "",
-    delivery_time_days: ""
-  });
+  const toast = useToast();
+  const [form, setForm] = useState({ proposed_price: '', cover_letter: '', delivery_time_days: '' });
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const isProfessional = user?.roles?.includes("professional");
-
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+  function change(event) {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+    setErrors((current) => ({ ...current, [name]: undefined }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (!isProfessional) {
-      setError("Apenas profissionais podem enviar propostas.");
+  async function submit(event) {
+    event.preventDefault();
+    setSubmitError('');
+    const letter = form.cover_letter.trim();
+    const nextErrors = {};
+    if (!(Number(form.proposed_price) > 0)) nextErrors.proposed_price = 'Informe um valor maior que zero.';
+    if (letter && letter.length < 20) nextErrors.cover_letter = 'A apresentação precisa ter pelo menos 20 caracteres, ou deixe o campo em branco.';
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      event.currentTarget.elements[Object.keys(nextErrors)[0]]?.focus();
       return;
     }
-
+    setLoading(true);
     try {
-      setLoading(true);
       await api.post(`/services/${uuid}/proposals`, {
         proposed_price: Number(form.proposed_price),
-        cover_letter: form.cover_letter,
-        ...(form.delivery_time_days && { delivery_time_days: Number(form.delivery_time_days) })
+        ...(letter && { cover_letter: letter }),
+        ...(form.delivery_time_days && { delivery_time_days: Number(form.delivery_time_days) }),
       });
-      setSuccess("Proposta enviada com sucesso.");
-      navigate("/painel-profissional");
-      setForm({ proposed_price: "", cover_letter: "", delivery_time_days: "" });
+      toast.success('Proposta enviada. Avisaremos quando o cliente responder.');
+      navigate('/pro/pedidos');
     } catch (err) {
-      setError(err.response?.data?.message || "Não foi possível enviar a proposta.");
-    } finally {
+      setErrors(apiFieldErrors(err));
+      setSubmitError(apiError(err, 'Não foi possível enviar a proposta.'));
       setLoading(false);
     }
   }
 
-  if (!isProfessional) {
-    return (
-      <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center text-center px-4">
-        <div className="mb-4 text-4xl">🔒</div>
-        <h2 className="text-xl font-semibold text-[#111827] mb-2">Acesso restrito</h2>
-        <p className="text-[#6B7280] text-sm mb-6">Apenas profissionais podem enviar propostas.</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="rounded-lg bg-[#7C3AED] px-4 py-2 text-sm font-medium text-white hover:bg-[#6D28D9] transition-colors"
-        >
-          ← Voltar
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#F9FAFB] px-4 py-10">
-      <div className="max-w-2xl mx-auto">
-
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#111827]">Enviar proposta</h1>
-          <p className="text-[#6B7280] mt-1">Apresente sua proposta para esse serviço</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 text-sm">
-            {success}
-          </div>
-        )}
-
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Valor proposto (R$)
-              </label>
-              <input
-                type="number"
-                name="proposed_price"
-                min="0.01"
-                step="0.01"
-                value={form.proposed_price}
-                onChange={handleChange}
-                required
-                placeholder="0,00"
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Prazo de entrega (dias)
-              </label>
-              <input
-                type="number"
-                name="delivery_time_days"
-                min="1"
-                step="1"
-                value={form.delivery_time_days}
-                onChange={handleChange}
-                placeholder="Ex.: 7"
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#111827] mb-1">
-                Carta de apresentação
-              </label>
-              <textarea
-                name="cover_letter"
-                rows={6}
-                value={form.cover_letter}
-                onChange={handleChange}
-                placeholder="Explique sua experiência, proposta de valor e como pretende entregar o trabalho."
-                className="w-full border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent resize-none"
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="flex-1 border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F9FAFB] font-semibold rounded-lg py-2.5 text-sm transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Enviando..." : "Enviar proposta"}
-              </button>
-            </div>
-          </form>
-        </div>
+    <Card as="form" onSubmit={submit} noValidate className="space-y-5">
+      {submitError && <p role="alert" className="rounded-control border border-danger-line bg-danger-soft p-3 text-sm text-danger">{submitError}</p>}
+      <Input label="Valor proposto (R$)" name="proposed_price" type="number" min="0.01" step="0.01" inputMode="decimal" required value={form.proposed_price} onChange={change} error={errors.proposed_price} />
+      <Input label="Prazo de entrega (dias)" name="delivery_time_days" type="number" min="1" step="1" inputMode="numeric" optional value={form.delivery_time_days} onChange={change} error={errors.delivery_time_days} />
+      <Textarea label="Apresentação" name="cover_letter" optional rows={6} value={form.cover_letter} onChange={change} error={errors.cover_letter} hint="Conte sua experiência e como pretende fazer o trabalho. Se escrever, use pelo menos 20 caracteres." />
+      <div className="flex flex-wrap justify-end gap-3">
+        <Button to={`/servicos/${uuid}`} variant="secondary">Cancelar</Button>
+        <Button type="submit" loading={loading}>{loading ? 'Enviando...' : 'Enviar proposta'}</Button>
       </div>
-    </div>
+    </Card>
+  );
+}
+
+export default function SendProposal() {
+  const { uuid } = useParams();
+  return (
+    <main className="mx-auto max-w-form px-4 py-10 sm:px-6">
+      <Breadcrumb items={[{ label: 'Pedidos abertos', to: '/servicos' }, { label: 'Pedido', to: `/servicos/${uuid}` }, { label: 'Enviar proposta' }]} />
+      <h1 className="text-2xl font-bold sm:text-3xl">Enviar proposta</h1>
+      <p className="mb-6 mt-2 text-ink-muted">Apresente sua proposta para este pedido.</p>
+      <ServiceProposalActions uuid={uuid}><ProposalForm uuid={uuid} /></ServiceProposalActions>
+    </main>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Photo } from '../ui';
 
 /** Visualizador de fotos em tela cheia: setas do teclado, Esc, zoom por clique e contador. */
 function PhotoViewer({ images, title, start, onClose }) {
@@ -33,7 +34,7 @@ function PhotoViewer({ images, title, start, onClose }) {
           </div>
         </div>
         <div className={`relative flex min-h-0 flex-1 items-center justify-center ${zoomed ? 'overflow-auto' : 'overflow-hidden'}`}>
-          <img
+          <Photo
             src={images[index]} alt={`Foto ${index + 1} de ${images.length}: ${title}`} onClick={() => setZoomed((value) => !value)}
             className={zoomed ? 'max-w-none cursor-zoom-out' : 'max-h-full max-w-full cursor-zoom-in object-contain'} style={zoomed ? { width: '180%' } : undefined}
           />
@@ -48,7 +49,7 @@ function PhotoViewer({ images, title, start, onClose }) {
           {images.map((url, position) => (
             <li key={url}>
               <button type="button" onClick={() => { setZoomed(false); setIndex(position); }} aria-label={`Ver foto ${position + 1}`} aria-current={position === index} className={`h-14 w-20 overflow-hidden rounded-control border-2 ${position === index ? 'border-white' : 'border-transparent opacity-60'}`}>
-                <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                <Photo src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
               </button>
             </li>
           ))}
@@ -74,7 +75,7 @@ export default function Gallery({ images, title }) {
         <div ref={track} onScroll={(event) => setSlide(Math.round(event.currentTarget.scrollLeft / event.currentTarget.clientWidth))} className="flex snap-x snap-mandatory overflow-x-auto rounded-card [scrollbar-width:none]" tabIndex={0} aria-label="Fotos do serviço, deslize para ver mais">
           {images.map((url, position) => (
             <button key={url} type="button" onClick={() => open(position)} aria-label={`Ampliar foto ${position + 1} de ${images.length}`} className="w-full shrink-0 snap-center">
-              <img src={url} alt={`Foto ${position + 1}: ${title}`} loading={position === 0 ? 'eager' : 'lazy'} className="aspect-[4/3] w-full object-cover" />
+              <Photo src={url} alt={`Foto ${position + 1}: ${title}`} loading={position === 0 ? 'eager' : 'lazy'} className="aspect-[4/3] w-full object-cover" />
             </button>
           ))}
         </div>
@@ -84,13 +85,13 @@ export default function Gallery({ images, title }) {
       {/* Desktop */}
       <div className={`relative hidden gap-2 overflow-hidden rounded-card sm:grid ${side.length ? 'grid-cols-2 sm:h-[26rem]' : 'grid-cols-1'}`}>
         <button type="button" onClick={() => open(0)} aria-label="Ampliar a foto de capa" className="h-full overflow-hidden">
-          <img src={images[0]} alt={`Foto de capa: ${title}`} className="h-full w-full object-cover transition-transform hover:scale-[1.02]" />
+          <Photo src={images[0]} alt={`Foto de capa: ${title}`} className="h-full w-full object-cover transition-transform hover:scale-[1.02]" />
         </button>
         {side.length > 0 && (
           <div className={`grid gap-2 ${side.length > 1 ? 'grid-cols-2 grid-rows-2' : ''}`}>
             {side.map((url, position) => (
               <button key={url} type="button" onClick={() => open(position + 1)} aria-label={`Ampliar foto ${position + 2}`} className="overflow-hidden">
-                <img src={url} alt={`Foto ${position + 2}: ${title}`} loading="lazy" className="h-full w-full object-cover transition-transform hover:scale-[1.03]" />
+                <Photo src={url} alt={`Foto ${position + 2}: ${title}`} loading="lazy" className="h-full w-full object-cover transition-transform hover:scale-[1.03]" />
               </button>
             ))}
           </div>

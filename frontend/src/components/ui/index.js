@@ -6,6 +6,7 @@ export { ToastProvider } from './Toast';
 export { useToast } from './toastContext';
 export { default as Card } from './Card';
 export { default as Avatar } from './Avatar';
+export { default as Photo } from './Photo';
 export { default as Skeleton, SkeletonList } from './Skeleton';
 export { default as EmptyState, ErrorState } from './EmptyState';
 export { default as Breadcrumb } from './Breadcrumb';

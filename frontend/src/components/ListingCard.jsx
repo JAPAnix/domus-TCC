@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { locationLabel, priceLabel } from '../utils/listingText';
 import Avatar from './ui/Avatar';
+import Photo from './ui/Photo';
 import FavoriteButton from './FavoriteButton';
 import { categoryStyle } from '../utils/categoryColors';
 
@@ -12,7 +13,7 @@ export default function ListingCard({ listing, saved, onSavedChange }) {
       <Link to={`/anuncios/${listing.uuid}`} className="flex flex-1 flex-col">
         <div className="aspect-[4/3] bg-primary-soft">
           {listing.cover
-            ? <img src={listing.cover} alt="" loading="lazy" className="h-full w-full object-cover" />
+            ? <Photo src={listing.cover} alt="" loading="lazy" className="h-full w-full object-cover" />
             : <div className="flex h-full items-center justify-center text-sm text-ink-muted">Sem foto</div>}
         </div>
         <div className="flex flex-1 flex-col p-4">

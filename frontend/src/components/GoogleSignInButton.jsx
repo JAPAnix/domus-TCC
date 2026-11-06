@@ -28,14 +28,23 @@ export default function GoogleSignInButton({ onCredential, disabled }) {
   useEffect(() => {
     if (!clientId || !containerRef.current) return undefined;
     let active = true;
+    let timer;
+    // O botão do Google tem largura fixa em pixels: acompanha a largura disponível (celulares de 360 px ou menos).
+    const draw = () => {
+      if (!active || !window.google?.accounts?.id || !containerRef.current) return;
+      const width = Math.min(384, Math.max(200, Math.floor(containerRef.current.clientWidth)));
+      window.google.accounts.id.renderButton(containerRef.current, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', width, locale: 'pt-BR' });
+    };
+    const onResize = () => { clearTimeout(timer); timer = setTimeout(draw, 200); };
     loadGoogleScript().then(() => {
       if (!active || !window.google?.accounts?.id) return;
       window.google.accounts.id.initialize({ client_id: clientId, callback: ({ credential }) => onCredential(credential) });
-      window.google.accounts.id.renderButton(containerRef.current, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', width: 384, locale: 'pt-BR' });
+      draw();
+      window.addEventListener('resize', onResize);
     }).catch(() => active && setError('Não foi possível carregar o login com Google.'));
-    return () => { active = false; };
+    return () => { active = false; clearTimeout(timer); window.removeEventListener('resize', onResize); };
   }, [clientId, onCredential]);
 
   if (!clientId) return null;
-  return <div className={disabled ? 'pointer-events-none opacity-60' : ''}><div ref={containerRef} className="flex justify-center" />{error && <p className="mt-2 text-center text-xs text-danger">{error}</p>}</div>;
+  return <div className={disabled ? 'pointer-events-none opacity-60' : ''}><div ref={containerRef} className="flex w-full justify-center overflow-hidden" />{error && <p className="mt-2 text-center text-xs text-danger">{error}</p>}</div>;
 }

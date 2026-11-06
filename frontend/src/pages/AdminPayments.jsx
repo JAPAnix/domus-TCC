@@ -37,6 +37,7 @@ function Payments() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
   const resource = useApiResource('/admin/payments', { page, ...(status && { status }) }, { keepPrevious: true });
+  const pages = resource.data?.meta?.pages ?? 1; // calculado fora da função filha: o compilador do React lê isto antes de os dados chegarem
   return (
     <>
       <label className="mb-4 flex items-center gap-2 text-sm">Situação
@@ -65,7 +66,7 @@ function Payments() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={page} pages={resource.data.meta.pages} onChange={setPage} label="Páginas de pagamentos" />
+            <Pagination page={page} pages={pages} onChange={setPage} label="Páginas de pagamentos" />
           </>
         )}
       </List>

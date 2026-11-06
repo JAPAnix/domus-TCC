@@ -8,6 +8,8 @@ import { validateStep, validateAll, LISTING_LIMITS } from '../utils/listingRules
 import { bookingDateError, dateKey, earliestDate } from '../utils/orderRules.js';
 import { registerDeletionStep } from './accountController.js';
 import { platformFeePercent } from '../services/orderWorkflow.js';
+import { asaasActive, approvedReceiver } from '../services/payoutAccounts.js';
+import { feeConfig } from '../config/fees.js';
 import { busyForListing, listingReviews, ownerPageData, reportListing, REPORT_REASONS } from '../services/listingPageService.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -332,8 +334,9 @@ export async function getPublicListing(req, res) {
     const profile = listing.owner.professionalProfile;
     const ownerExtra = await ownerPageData(listing.ownerId, num(profile?.averageRating) ?? 0, profile?.totalReviews ?? 0);
     const busy = await busyForListing(listing.id, today);
+    const payments = { provider: asaasActive() ? 'asaas' : 'manual', ready: asaasActive() ? !!(await approvedReceiver(listing.ownerId)) : true, clientFeePercent: asaasActive() ? feeConfig().clientFeePercent : 0 };
     res.set('Cache-Control', 'no-store').json({
-      ...data, isOwner, platformFeePercent: platformFeePercent(),
+      ...data, isOwner, platformFeePercent: platformFeePercent(), payments,
       owner: { uuid: bufferToUuid(listing.owner.uuid), name: nameOf(listing.owner), profilePictureUrl: listing.owner.profilePictureUrl, city: listing.owner.city, state: listing.owner.state, memberSince: listing.owner.createdAt, rating: num(profile?.averageRating) ?? 0, reviews: profile?.totalReviews ?? 0, verified: !!profile?.isVerified, ...ownerExtra },
       calendar: { earliest: earliestDate(today, data.availability?.leadTimeHours ?? 0), blocked: blocked.map((row) => row.date.toISOString().slice(0, 10)), busyHours: busy.hours, busyDays: busy.days },
     });

@@ -2,6 +2,8 @@ import { prisma } from '../config/prisma.js';
 import { logger } from '../utils/logger.js';
 import { PAYMENT_METHODS, parseAcceptedMethods } from '../utils/paymentRules.js';
 import { activeProvider } from '../services/payments/index.js';
+import { asaasActive, escrowEnabled } from '../services/payoutAccounts.js';
+import { feeConfig } from '../config/fees.js';
 import {
   actOnPayment, getReceipt, listPayments, orderPaymentState, processMercadoPagoWebhook, saveReceivingSettings, startPayment,
 } from '../services/paymentWorkflow.js';
@@ -18,7 +20,8 @@ function fail(res, err, label) {
 export async function config(req, res) {
   const provider = activeProvider();
   res.json({
-    provider: provider.name, automatic: !provider.manual, freeMode: true,
+    provider: asaasActive() ? 'asaas' : provider.name, automatic: asaasActive() || !provider.manual, freeMode: !asaasActive(),
+    asaas: asaasActive() ? { escrow: escrowEnabled(), cardSettlementDays: 32, clientFeePercent: feeConfig().clientFeePercent, autoConfirmDays: feeConfig().autoConfirmDays } : null,
     methods: Object.entries(PAYMENT_METHODS).map(([value, label]) => ({ value, label })),
   });
 }
@@ -56,7 +59,7 @@ export async function forOrder(req, res) {
 }
 
 export async function start(req, res) {
-  try { res.status(201).json(await startPayment(req.params.orderUuid, me(req), req.body.method)); } catch (err) { fail(res, err, 'payments.start'); }
+  try { res.status(201).json(await startPayment(req.params.orderUuid, me(req), req.body.method, { installments: req.body.installments, cpfCnpj: req.body.cpf_cnpj })); } catch (err) { fail(res, err, 'payments.start'); }
 }
 
 export async function act(req, res) {

@@ -39,6 +39,7 @@ export default function ProDashboard() {
         <Stat label="Mensagens não lidas" value={unread.data?.count ?? '—'} to="/mensagens" note={unread.data?.count ? 'Clientes esperando resposta' : 'Tudo em dia'} />
       </section>
 
+      {data.receivingWarning && <p role="alert" className="rounded-control border border-warning-line bg-warning-soft p-4 text-sm leading-6 text-warning-strong">{data.receivingWarning.message} <Link to="/configuracoes/pagamentos" className="font-medium underline">Ir para “Como recebo”</Link></p>}
       {!data.verified && <p role="note" className="rounded-control border border-info-line bg-info-soft p-4 text-sm leading-6 text-info">O selo “Verificado” aparece depois de uma análise manual dos seus dados. Enquanto isso, você já recebe pedidos normalmente.</p>}
 
       <section aria-labelledby="proximos">

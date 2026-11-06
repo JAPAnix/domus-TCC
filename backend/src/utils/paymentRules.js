@@ -4,8 +4,11 @@ import { unitsTotal } from './bookingSlots.js';
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 
 export const PAYMENT_METHODS = { pix: 'Pix', cash: 'Dinheiro', card_in_person: 'Cartão na maquininha, presencialmente' };
+// Rótulos de todos os meios, inclusive os do pagamento pela plataforma. PAYMENT_METHODS segue sendo só o pagamento direto.
+export const METHOD_LABELS = { ...PAYMENT_METHODS, credit_card: 'Cartão de crédito', boleto: 'Boleto' };
 export const PAYMENT_STATUS_LABELS = {
   pending: 'Aguardando pagamento', reported: 'Aguardando confirmação do profissional', confirmed: 'Pagamento confirmado', cancelled: 'Cancelado', refunded: 'Estornado',
+  expired: 'Expirado', refused: 'Recusado', disputed: 'Em análise', chargeback: 'Contestado',
 };
 
 // Quem pode fazer cada ação e de qual status ela parte.
@@ -19,7 +22,7 @@ export const PAYMENT_ACTIONS = {
 };
 
 export const ORDER_STATUSES_THAT_ALLOW_PAYMENT = ['accepted', 'in_progress', 'completed'];
-export const ACTIVE_PAYMENT_STATUSES = ['pending', 'reported', 'confirmed'];
+export const ACTIVE_PAYMENT_STATUSES = ['pending', 'reported', 'confirmed', 'disputed'];
 
 export function paymentRole(payment, userId) {
   if (payment.clientId === userId) return 'client';

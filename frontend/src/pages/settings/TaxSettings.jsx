@@ -97,7 +97,7 @@ export default function TaxSettings() {
   const has = !!tax.documentType;
   return (
     <>
-      <SettingsHeading title="Impostos">Informe o seu CPF ou CNPJ. Esses dados ficam protegidos, aparecem mascarados nesta página e nunca são exibidos no seu perfil público. O Dommos não processa pagamentos nem emite notas fiscais: o recebimento é combinado direto com o cliente.</SettingsHeading>
+      <SettingsHeading title="Impostos">Informe o seu CPF ou CNPJ. Esses dados ficam protegidos, aparecem mascarados nesta página e nunca são exibidos no seu perfil público. O Dommos não emite notas fiscais: se for o seu caso, a nota do serviço é responsabilidade sua. Quando o pagamento é feito direto entre as partes, o recebimento é combinado com o cliente.</SettingsHeading>
       <div className="mt-8">
         {has && !editing ? (
           <>

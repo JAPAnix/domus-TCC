@@ -439,3 +439,77 @@ Página pública do anúncio, cartão de contratação, pedido, pagamento direto
 - O site não tem modo escuro, então não havia o que manter; os tokens foram pensados só para o tema claro.
 - A cor da categoria vem do nome (regras por palavra-chave) e, se não houver regra, do número da categoria. Categorias novas ganham uma cor automática que pode não ser a ideal.
 - Alguns pontos continuam com a cor antiga por não serem de atenção (por exemplo, formulários e menus), para a maior parte da tela seguir clara e limpa.
+
+## Rodada 5: pagamento pela plataforma com o Asaas (pesquisa e decisões)
+
+Fonte: documentação oficial em docs.asaas.com, lida em 06/11/2026 (as páginas citam datas de atualização de agosto a novembro de 2026). Onde a documentação não diz, está escrito "não confirmado". **Nada foi testado contra o sandbox real do Asaas** (não há chave); a integração é testada contra um servidor simulado dentro dos testes.
+
+### O que a documentação confirma
+
+- **Subcontas:** `POST /v3/accounts`. Obrigatórios: `name`, `email`, `cpfCnpj`, `mobilePhone`, `incomeValue`, `address`, `addressNumber`, `province`, `postalCode`. Opcionais: `birthDate` (só pessoa física), `companyType` e `taxRegime` (só pessoa jurídica), `loginEmail`, `phone`, `site`, `complement`, `webhooks`. A resposta traz `walletId` e a `apiKey` da subconta, que **só aparece nessa resposta e não pode ser recuperada depois**.
+- **A conta-pai precisa ser pessoa jurídica:** "A conta-pai que realiza a criação deve ser pessoa jurídica (CNPJ)." e "Contas de pessoa física (CPF) não podem criar subcontas." **Sem CNPJ não há subconta, nem split, nem custódia em produção.**
+- **Período de avaliação:** começa na primeira subconta criada em **produção**: até 10 subcontas, até R$ 2.000,00 em cobranças por subconta e no máximo 60 dias, até o Asaas concluir a revisão.
+- **Documentos da subconta:** a análise "normalmente" pede documento de identificação e selfie do titular. A documentação não traz uma lista completa por tipo. O envio é pela interface do Asaas (e-mail de ativação ao titular) ou, no modelo BaaS, por `onboardingUrl`/API.
+- **Aprovação:** a conta está aprovada quando `general` é `APPROVED`. Consulta: `GET /v3/myAccount/status` (campos `commercialInfo`, `bankAccountInfo`, `documentation`, `general`, cada um `PENDING`, `APPROVED`, `REJECTED` ou `AWAITING_APPROVAL`), autenticada com a chave da própria conta. Eventos: `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED`, `_REJECTED`, `_AWAITING_APPROVAL`, `_PENDING` e os de cada dimensão.
+- **Sandbox:** URL `https://api-sandbox.asaas.com/v3`; produção `https://api.asaas.com/v3`; cabeçalho da chave: `access_token`; até 20 subcontas por dia; contas criadas no sandbox são aprovadas automaticamente quando os dados obrigatórios são válidos; `POST /v3/sandbox/payment/{id}/confirm` simula o pagamento; cartões de teste na página de testes (aprovado: Visa `4539 6560 4839 2220`; recusado: Visa `4916 5613 5824 0741`).
+- **Cobrança:** `POST /v3/payments` (obrigatórios `customer`, `billingType`, `value`, `dueDate`; `billingType` = `PIX`, `CREDIT_CARD`, `BOLETO` ou `UNDEFINED`). Cliente: `POST /v3/customers` (obrigatórios `name`, `cpfCnpj`; a API permite duplicados, então guardar o `id`). Pix dinâmico: `GET /v3/payments/{id}/pixQrCode` (`payload`, `encodedImage`, `expirationDate`; "pode ser pago uma única vez"). Cartão: a resposta traz `invoiceUrl`, página hospedada pelo Asaas, **sem o número do cartão passar pelo nosso servidor**. Parcelamento: `installmentCount` (até 21x Visa/Mastercard e 12x outras bandeiras) e `installmentValue` ou `totalValue`.
+- **Split:** array `split` na criação (`walletId`, `fixedValue` com 2 casas, `percentualValue` com 4 casas). Fica **bloqueado por padrão em contas novas** (habilitar em Integrações > Segurança). É calculado sobre o `netValue` (valor após as taxas); o que não for distribuído fica na conta que emitiu a cobrança. Não existe prioridade entre fixo e percentual; passar do valor líquido bloqueia o split (`PAYMENT_SPLIT_DIVERGENCE_BLOCK`, 2 dias úteis para corrigir). Cobrança estornada estorna os repasses. Status: `PENDING`, `AWAITING_CREDIT`, `DONE`, `CANCELLED`, `REFUSED`, `REFUNDED`.
+- **Custódia (Conta Escrow):** é por subconta: `POST /v3/accounts/{id}/escrow` com `{"enabled": true, "daysToExpire": N, "isFeePayer": true|false}`. O valor fica em garantia pelo número de dias. Estado da garantia de uma cobrança: `GET /v3/payments/{id}/escrow` (status `ACTIVE`/`DONE`) **com a chave da subconta**. Liberação manual: `GET` do id da garantia e depois `POST /v3/escrow/{idDaGarantia}/finish`. Alterar `daysToExpire` vale só para novos recebimentos. **Não existe webhook para mudança de estado da garantia.**
+- **Webhooks:** `POST /v3/webhooks` (obrigatórios `name`, `url`, `email`, `interrupted`, `enabled`, `events`, `sendType`; `authToken` de 32 a 255 caracteres). O Asaas envia o token no cabeçalho `asaas-access-token` (e a chave da API vai em `access_token`). Entrega "at least once": o mesmo evento pode chegar mais de uma vez, e o campo `id` do evento serve para idempotência. Responder 2xx logo e processar depois. Depois de **15 falhas consecutivas a fila é interrompida** (eventos ficam 14 dias). Eventos de cobrança: `PAYMENT_CREATED`, `_CONFIRMED`, `_RECEIVED`, `_OVERDUE`, `_REFUNDED`, `_PARTIALLY_REFUNDED`, `_CHARGEBACK_REQUESTED`, `_CREDIT_CARD_CAPTURE_REFUSED`, `_SPLIT_DONE`, `_SPLIT_CANCELLED` e outros.
+- **Estorno:** `POST /v3/payments/{id}/refund` (`value` opcional, `description`). Pix aceita estorno total ou vários parciais; cartão pode ser estornado quando confirmado ou recebido. **As taxas do Asaas não são devolvidas.**
+- **Prazos:** Pix cai na conta "imediatamente, em questão de segundos"; cartão **D+32 dias corridos** (parcelado: uma parcela a cada 32 dias); antecipação do cartão em 2 dias úteis, a partir de 1,25% ao mês, sujeita a análise. Boleto: não confirmado.
+- **Taxas (página de preços; "as taxas apresentadas são padrão", o contrato pode variar):** Pix R$ 1,08 por transação nos 3 primeiros meses e R$ 2,15 depois (página do Pix); cartão a partir de 1,99% + R$ 0,49 nos 3 primeiros meses (tabela por parcela não lida). **Conflito:** a página geral de preços mostra Pix e boleto a R$ 1,59 / R$ 0,79, e não consegui dizer qual vale. Conferir na conta.
+
+### O que a documentação NÃO confirma
+
+- **Quem paga a taxa do Asaas quando há split:** não está escrito. A base do split é o `netValue` e o restante fica com quem emitiu a cobrança.
+- **Corpo e chave da liberação manual da garantia** (`/v3/escrow/{id}/finish`): a página de referência não foi lida.
+- **Mínimo e máximo de `daysToExpire`**, e **se o Asaas precisa habilitar a Conta Escrow na conta-pai** (a documentação só manda verificar "se a Conta Escrow está disponível para sua conta").
+- **Mensalidade da Conta Escrow:** "a cobrança da mensalidade será realizada no dia seguinte à ativação" por subconta habilitada. O valor não aparece. **Isso é um custo fixo por profissional**, o que conflita com a regra de priorizar soluções sem mensalidade.
+- Se uma mesma regra de split aceita `fixedValue` e `percentualValue` juntos (os exemplos usam objetos separados).
+- Caminho exato para aprovar subconta no sandbox (a referência e o guia divergem: `POST /v3/sandbox/myAccount/approve` e `POST /v3/accounts/{id}/approve`).
+
+### Limitações que mudam o desenho
+
+1. **Sem CNPJ não há split em produção.** O prompt proíbe passar dinheiro por conta pessoal; então, sem uma conta Asaas PJ, o modo Asaas só pode ser usado no sandbox. Em produção o Dommos continua no pagamento direto até a empresa existir.
+2. **Custódia tem custo e prazo fixos.** A "garantia" do Asaas é por **dias** (`daysToExpire`), não por evento. O valor é liberado quando o prazo acaba ou quando a plataforma encerra a garantia pela API. Por isso a regra "só libera depois da conclusão" é implementada assim: a garantia é aberta com um prazo maior que o prazo de confirmação do cliente, e a plataforma **encerra a garantia quando o cliente confirma** (ou na confirmação automática). Se a plataforma não encerrar, o Asaas libera sozinho no fim do prazo.
+3. **Cartão só chega ao profissional em D+32** (a menos que haja antecipação, com taxa). A tela precisa dizer isso.
+4. **A chave da API da subconta é segredo e só aparece uma vez.** Precisa ser guardada cifrada no banco (chave de cifra em variável de ambiente), porque é com ela que se consulta a garantia.
+
+### Decisões tomadas (todas configuráveis por variável de ambiente)
+
+| Decisão | Padrão | Variável |
+| --- | --- | --- |
+| Provedor de pagamento | `manual` (contingência, ligado hoje) | `PAYMENT_PROVIDER=manual\|asaas\|mercadopago` |
+| Taxa de serviço cobrada do cliente | 0% | `CLIENT_FEE_PERCENT` |
+| Comissão descontada do profissional | 10% | `PRO_COMMISSION_PERCENT` |
+| Quem arca com a taxa do gateway | `professional` | `GATEWAY_FEE_PAYER=professional\|platform` |
+| Dias de garantia na Conta Escrow | 14 | `ESCROW_DAYS` |
+| Dias até a confirmação automática | 7 | `AUTO_CONFIRM_DAYS` |
+
+- Valores em **centavos inteiros** no banco e nos cálculos; arredondamento "meio para cima" por item, testado. As taxas usadas ficam gravadas no pagamento (snapshot) e mudar a configuração depois não altera pedidos antigos.
+- O pagamento direto manual continua existindo como contingência: com `PAYMENT_PROVIDER=manual` nada muda para quem usa hoje.
+
+### O que você precisa fazer à mão (para ligar o Asaas)
+
+1. Ter (ou abrir) um **CNPJ** e criar uma **conta Asaas PJ** em https://www.asaas.com, e conferir lá as **taxas do seu contrato** (os números acima são os públicos).
+2. Criar uma **conta Sandbox** em https://sandbox.asaas.com e gerar a chave de API do sandbox.
+3. Em Integrações > Segurança, habilitar o **Split**, e perguntar ao Asaas se a **Conta Escrow** está disponível e quanto custa por subconta.
+4. Cadastrar o **webhook** (URL e token de 32 a 255 caracteres) e marcar os eventos de cobrança e de status de conta.
+5. Para produção: enviar a documentação da empresa, esperar a aprovação, trocar as chaves e a URL base.
+
+### Rodada 5: implementação (06/11/2026)
+
+**Feito (backend):** interface `PaymentProvider` com `AsaasProvider`; valores em centavos inteiros (`utils/money.js`, arredondamento "meio para cima" testado); taxas centrais e *snapshot* por pagamento (`config/fees.js`); cadastro da conta de recebimento (subconta) com chave de API cifrada (`utils/secretBox.js`, `SECRETS_KEY`); Pix dinâmico, cartão (página segura do Asaas, parcelas sem juros) e boleto; split no momento da cobrança; webhook com token (comparação em tempo constante) e idempotência por id de evento (`WebhookEvent`); conciliação periódica; confirmação do serviço pelo cliente ou automática (`AUTO_CONFIRM_DAYS`); reclamação com decisão de administrador (liberar ou estornar); estorno por política de cancelamento; Conta Escrow atrás de `ESCROW_ENABLED` (desligada); alertas de chargeback e de falha de repasse; ganhos com totais e CSV; administração (`/api/admin/*`, papel `admin`, `scripts/grant-admin.mjs`). Migration `20261109100000_asaas_payments` (**não aplicada ao banco real**).
+
+**Feito (frontend):** checkout `AsaasCheckout.jsx` (Pix com QR, contagem regressiva e atualização automática a cada 4 s, cartão e boleto pela página do Asaas, parcelas, CPF/CNPJ do pagador, estados expirado, recusado, em reclamação, contestado e estornado, confirmar serviço, abrir reclamação, histórico); "Como recebo" (`PayoutAccount.jsx`: formulário guiado com validação de CPF/CNPJ, status, "Atualizar status", aviso do prazo D+32); Ganhos (`AsaasEarnings.jsx`: totais, período, tabela, CSV); `/admin/pagamentos` (resumo, pagamentos, reclamações, alertas, webhooks); aviso no painel do profissional; Termos de uso e Política de cancelamento atualizados (com o aviso de revisão jurídica). Com `PAYMENT_PROVIDER=manual` as telas antigas continuam como estavam.
+
+**Verificação:** `npm test` no backend: 88 testes (87 passam, 1 pulado por exigir banco); simulação ponta a ponta contra um Asaas simulado e MariaDB descartável: 98/98 verificações, mais 10/10 com a garantia ligada; lint e build do frontend sem erros.
+
+**Pendente / limites:**
+- **Nada foi testado contra o Asaas real.** Confirmar no sandbox: `PUT /v3/lean/payments/{id}` (split), encerramento da garantia (chave e corpo), quem arca com a taxa do gateway com split, liquidação do boleto.
+- Aplicar a migration no banco real (com backup) e rodar `node scripts/grant-admin.mjs` para criar o administrador.
+- Conta Asaas PJ (CNPJ) e aprovação para produção; Conta Escrow só depois de confirmar custo e regras com o Asaas.
+- Vencimento do boleto fixo em +3 dias (melhoria: tornar configurável).
+- Termos e política são texto-base: precisam de revisão jurídica antes de operar com dinheiro real.
+- Não há teste automatizado de tela para o fluxo novo do frontend (só verificação manual/ponta a ponta de API).

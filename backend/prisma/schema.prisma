@@ -141,6 +141,9 @@ model User {
   reportsReceived             UserReport[]              @relation("ReportReported")
   feedbacks                   Feedback[]
   listingReports              ListingReport[]
+  payoutAccount               PayoutAccount?
+  disputesOpened              PaymentDispute[]          @relation("DisputeOpener")
+  disputesResolved            PaymentDispute[]          @relation("DisputeResolver")
   paymentEvents               PaymentEvent[]
   verification                ProfessionalVerification?
   recentListingViews          RecentListingView[]
@@ -448,6 +451,7 @@ model UserSettings {
   payoutKey               String?           @map("payout_key") @db.VarChar(140)
   messageSuggestions      Boolean           @default(true) @map("message_suggestions")
   acceptedPaymentMethods  String            @default("pix") @map("accepted_payment_methods") @db.VarChar(60)
+  asaasCustomerId         String?           @map("asaas_customer_id") @db.VarChar(40)
   updatedAt               DateTime          @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -736,35 +740,57 @@ enum PaymentStatus {
   confirmed
   cancelled
   refunded
+  expired
+  refused
+  disputed
+  chargeback
 }
 
 enum PaymentMethod {
   pix
   cash
   card_in_person
+  credit_card
+  boleto
 }
 
 // Cobrança de um pedido. Nunca guarda dados de cartão: o pagamento acontece fora da plataforma ou no provedor.
 model Payment {
-  id             BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid           Bytes         @unique @db.Binary(16)
-  orderId        BigInt        @map("order_id") @db.UnsignedBigInt
-  clientId       BigInt        @map("client_id") @db.UnsignedBigInt
-  professionalId BigInt        @map("professional_id") @db.UnsignedBigInt
-  provider       String        @default("manual") @db.VarChar(20)
-  method         PaymentMethod
-  status         PaymentStatus @default(pending)
-  amount         Decimal       @db.Decimal(10, 2)
-  externalId     String?       @unique @map("external_id") @db.VarChar(80)
-  pixPayload     String?       @map("pix_payload") @db.Text
-  receiptNumber  String?       @unique @map("receipt_number") @db.VarChar(24)
-  note           String?       @db.VarChar(300)
-  reportedAt     DateTime?     @map("reported_at")
-  confirmedAt    DateTime?     @map("confirmed_at")
-  cancelledAt    DateTime?     @map("cancelled_at")
-  refundedAt     DateTime?     @map("refunded_at")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id                 BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid               Bytes            @unique @db.Binary(16)
+  orderId            BigInt           @map("order_id") @db.UnsignedBigInt
+  clientId           BigInt           @map("client_id") @db.UnsignedBigInt
+  professionalId     BigInt           @map("professional_id") @db.UnsignedBigInt
+  provider           String           @default("manual") @db.VarChar(20)
+  method             PaymentMethod
+  status             PaymentStatus    @default(pending)
+  amount             Decimal          @db.Decimal(10, 2)
+  externalId         String?          @unique @map("external_id") @db.VarChar(80)
+  pixPayload         String?          @map("pix_payload") @db.Text
+  receiptNumber      String?          @unique @map("receipt_number") @db.VarChar(24)
+  note               String?          @db.VarChar(300)
+  amountCents        Int?             @map("amount_cents")
+  clientFeeCents     Int?             @map("client_fee_cents")
+  commissionCents    Int?             @map("commission_cents")
+  proShareCents      Int?             @map("pro_share_cents")
+  platformShareCents Int?             @map("platform_share_cents")
+  gatewayFeeCents    Int?             @map("gateway_fee_cents")
+  refundedCents      Int              @default(0) @map("refunded_cents")
+  installments       Int?             @db.UnsignedTinyInt
+  feeSnapshot        Json?            @map("fee_snapshot")
+  invoiceUrl         String?          @map("invoice_url") @db.VarChar(500)
+  expiresAt          DateTime?        @map("expires_at")
+  escrowId           String?          @map("escrow_id") @db.VarChar(80)
+  payoutStatus       String           @default("none") @map("payout_status") @db.VarChar(16)
+  autoConfirmAt      DateTime?        @map("auto_confirm_at")
+  releasedAt         DateTime?        @map("released_at")
+  disputes           PaymentDispute[]
+  reportedAt         DateTime?        @map("reported_at")
+  confirmedAt        DateTime?        @map("confirmed_at")
+  cancelledAt        DateTime?        @map("cancelled_at")
+  refundedAt         DateTime?        @map("refunded_at")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
 
   order        Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
   client       User           @relation("PaymentClient", fields: [clientId], references: [id], onDelete: Restrict)
@@ -801,6 +827,10 @@ model WebhookEvent {
   provider    String   @db.VarChar(20)
   eventKey    String   @map("event_key") @db.VarChar(120)
   processedAt DateTime @default(now()) @map("processed_at")
+  status      String   @default("done") @db.VarChar(12)
+  eventName   String?  @map("event_name") @db.VarChar(60)
+  reference   String?  @db.VarChar(80)
+  error       String?  @db.VarChar(300)
 
   @@unique([provider, eventKey])
   @@map("webhook_events")
@@ -941,4 +971,45 @@ model ListingReport {
 
   @@unique([listingId, reporterId])
   @@map("listing_reports")
+}
+
+// Conta de recebimento do profissional no gateway (subconta). A chave de API fica cifrada (utils/secretBox.js).
+model PayoutAccount {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId          BigInt   @unique @map("user_id") @db.UnsignedBigInt
+  provider        String   @default("asaas") @db.VarChar(20)
+  accountId       String?  @map("account_id") @db.VarChar(60)
+  walletId        String?  @map("wallet_id") @db.VarChar(60)
+  apiKeyEnc       String?  @map("api_key_enc") @db.Text
+  status          String   @default("not_started") @db.VarChar(16)
+  statusDetail    Json?    @map("status_detail")
+  rejectionReason String?  @map("rejection_reason") @db.VarChar(300)
+  escrowEnabled   Boolean  @default(false) @map("escrow_enabled")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payout_accounts")
+}
+
+// Reclamação do cliente antes da liberação do valor. O administrador decide: liberar ao profissional ou estornar.
+model PaymentDispute {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  paymentId    BigInt    @map("payment_id") @db.UnsignedBigInt
+  openedById   BigInt    @map("opened_by_id") @db.UnsignedBigInt
+  reason       String    @db.VarChar(500)
+  status       String    @default("open") @db.VarChar(20)
+  resolution   String?   @db.VarChar(500)
+  resolvedById BigInt?   @map("resolved_by_id") @db.UnsignedBigInt
+  resolvedAt   DateTime? @map("resolved_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  openedBy   User    @relation("DisputeOpener", fields: [openedById], references: [id], onDelete: Cascade)
+  resolvedBy User?   @relation("DisputeResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([paymentId])
+  @@map("payment_disputes")
 }

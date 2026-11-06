@@ -58,7 +58,8 @@ O arquivo `backend/.env.example` lista todas, com comentários. As principais:
 | `STORAGE_PROVIDER` | `local` (pasta `backend/uploads`, só desenvolvimento) ou `cloudinary`. |
 | `PAYMENT_PROVIDER` | `manual` (padrão) ou `mercadopago`. |
 | `SMTP_*`, `EMAIL_FROM`, `SUPPORT_EMAIL` | E-mails (opcionais). Sem SMTP o app funciona, só não envia e-mails. |
-| `PLATFORM_FEE_PERCENT` | Taxa da plataforma sobre cada serviço. Começa em 0. |
+| `PLATFORM_FEE_PERCENT` | Taxa da plataforma sobre cada serviço no pagamento direto. Começa em 0. |
+| `PAYMENT_PROVIDER`, `ASAAS_*`, `SECRETS_KEY`, `*_FEE*`, `ESCROW_*` | Pagamento pela plataforma. Veja "Ativar o pagamento pela plataforma (Asaas)". |
 | `GOOGLE_CLIENT_ID` | Login com Google (opcional). |
 
 No frontend: `VITE_API_URL` (termina em `/api`) e `VITE_GOOGLE_CLIENT_ID`. Nenhum segredo vai para o frontend.
@@ -93,6 +94,43 @@ O Mercado Pago não cobra mensalidade, mas **cobra uma taxa por transação** (c
 6. Teste o fluxo inteiro com credenciais de teste. Só então troque pelo token de produção (`APP_USR-...`).
 
 O webhook só é aceito com assinatura válida e o sistema consulta o pagamento no provedor antes de confirmar. A integração foi testada contra um servidor simulado, **não contra o Mercado Pago real**.
+
+#### Ativar o pagamento pela plataforma (Asaas)
+
+Modelo parecido com o do Airbnb: o cliente paga **pelo Dommos** (Pix, cartão de crédito ou boleto), o valor é dividido automaticamente (*split*) entre o profissional e a comissão da plataforma, e o repasse acontece depois que o cliente confirma o serviço. Nada passa por conta pessoal. **A troca é uma única variável: `PAYMENT_PROVIDER=asaas`** (com as chaves abaixo preenchidas; se faltar alguma, o sistema volta sozinho ao pagamento direto).
+
+**O que o Asaas exige:** subcontas e split só existem em conta **PJ (CNPJ)**. Em CPF, só dá para testar no sandbox. As taxas mudam por contrato; confira as do seu antes de definir a comissão.
+
+Passo a passo:
+
+1. **Sandbox (testes):** crie uma conta em https://sandbox.asaas.com, gere a chave de API (Integrações) e habilite o **Split**.
+2. No `.env` do backend:
+
+   ```text
+   PAYMENT_PROVIDER=asaas
+   ASAAS_ENV=sandbox
+   ASAAS_API_KEY=...chave do sandbox...
+   ASAAS_WEBHOOK_TOKEN=...invente um texto de 32 a 255 caracteres...
+   SECRETS_KEY=...gere com: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   PUBLIC_API_URL=https://SUA-API
+   ```
+
+   `SECRETS_KEY` cifra, no banco, a chave de API de cada profissional. **Guarde uma cópia: se ela se perder, as chaves já gravadas não podem ser lidas.**
+3. **Webhook** (Integrações > Webhooks): URL `https://SUA-API/api/payments/webhook/asaas`, o **mesmo token** de `ASAAS_WEBHOOK_TOKEN`, fila ativa, e marque os eventos de **cobrança** (`PAYMENT_*`) e de **status da conta** (`ACCOUNT_STATUS_*`). O Asaas pausa a fila depois de 15 falhas seguidas; o painel de administração mostra os eventos com erro.
+4. **Migration** (uma vez por banco): `npx prisma migrate deploy` aplica `20261109100000_asaas_payments`. Confira antes com `npx prisma migrate status` e **faça backup antes de rodar no banco de produção**.
+5. **Administrador** (painel de reclamações): `node --env-file=.env scripts/grant-admin.mjs seu@email.com`. O painel fica em `/admin/pagamentos`.
+6. Reinicie o backend. Em Configurações > Pagamentos > "Como recebo", o profissional cadastra a conta de recebimento; a análise do Asaas leva algum tempo (no sandbox, aprove pelo painel do sandbox).
+7. **Produção:** abra a conta Asaas PJ, envie os documentos da empresa, aguarde a aprovação, troque `ASAAS_ENV=production` e a `ASAAS_API_KEY`, e recadastre o webhook na conta de produção. Teste um Pix de valor baixo antes de divulgar.
+
+**Taxas e prazos** (todos opcionais): `CLIENT_FEE_PERCENT` (taxa de serviço cobrada do cliente, padrão 0), `PRO_COMMISSION_PERCENT` (comissão descontada do profissional, padrão 10), `GATEWAY_FEE_PAYER` (`professional` ou `platform`, padrão `professional`), `AUTO_CONFIRM_DAYS` (confirmação automática do serviço, padrão 7). As taxas ficam gravadas em cada pagamento; mudar a configuração depois não altera pedidos já pagos. Valores em centavos inteiros, arredondamento "meio para cima".
+
+**Prazos de repasse:** Pix, na hora (depois da confirmação do serviço); **cartão, 32 dias corridos** depois do pagamento (parcelado: uma parcela a cada 32 dias); boleto, depois da compensação. Não há antecipação paga. Isso aparece ao profissional em "Como recebo" e nos Termos de uso.
+
+**Conta Escrow (garantia): `ESCROW_ENABLED=false` por padrão.** Com ela, o Asaas segura o valor na subconta do profissional até a plataforma encerrar a garantia (quando o cliente confirma) ou até `ESCROW_DAYS` (padrão 14, precisa ser maior que `AUTO_CONFIRM_DAYS`). A documentação pública não informa se há **mensalidade por subconta**. Antes de ligar, confirme com o Asaas: (a) se a Conta Escrow está liberada para a sua conta, (b) o custo por subconta, (c) quem consulta e quem encerra a garantia (hoje o código lê com a chave da subconta e encerra com a chave da plataforma) e (d) se o split funciona junto com a garantia. Com a flag desligada, a proteção do cliente é o fluxo de **reclamação e estorno**: o dinheiro é dividido no pagamento, a reclamação é aberta antes de o cliente confirmar o serviço e um administrador decide entre liberar e estornar. O Asaas não devolve a própria taxa em reembolsos.
+
+**Cancelamento e reembolso:** seguem a política do anúncio (flexível 24 h, moderada 72 h, rígida 7 dias para reembolso integral; fora do prazo, 50%, 50% e 0%; cancelamento feito pelo profissional é sempre integral).
+
+**O que foi e o que não foi testado:** o fluxo completo (cadastro da conta, Pix, cartão e boleto, webhook com idempotência, conciliação, liberação, reclamação, estorno por política, CSV) foi validado contra um **servidor Asaas simulado**, com banco real descartável. **Nada foi testado contra o Asaas real.** Confirme no sandbox, na primeira vez: a atualização do split (`PUT /v3/lean/payments/{id}`), o encerramento da garantia, quem arca com a taxa do gateway quando há split e a liquidação do boleto. Segurança: o webhook só aceita o token correto (comparação em tempo constante), eventos repetidos são ignorados pelo id, dados de cartão nunca passam pelo servidor (o cliente paga na página segura do Asaas), os logs não guardam segredos e só as duas partes do pedido (e administradores) veem o pagamento.
 
 ### Tempo real (mensagens)
 

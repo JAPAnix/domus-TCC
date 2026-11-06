@@ -6,6 +6,7 @@ import { formatMoney } from '../utils/format';
 import { copyText } from '../utils/clipboard';
 import { paymentStatus } from '../utils/status';
 import PaymentNotice from './PaymentNotice';
+import AsaasCheckout from './AsaasCheckout';
 import PixQrCode from './PixQrCode';
 import StatusBadge from './StatusBadge';
 import { Button, Card, ConfirmDialog, ErrorState, Modal, SkeletonList, Textarea, useToast } from './ui';
@@ -90,6 +91,8 @@ export default function OrderPayment({ orderUuid }) {
 
   if (!state && resource.loading) return <Card><SkeletonList count={2} label="Carregando pagamento" itemClassName="h-16" /></Card>;
   if (resource.error && !state) return <Card><ErrorState title="Não foi possível carregar o pagamento" message={apiError(resource.error)} onRetry={resource.retry} /></Card>;
+
+  if (state.provider === 'asaas') return <AsaasCheckout orderUuid={orderUuid} state={state} onRefresh={resource.retry} />;
 
   const chosen = method || state.methods[0]?.value || '';
   const has = (action) => payment?.actions.includes(action);

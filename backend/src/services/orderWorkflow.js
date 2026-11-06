@@ -3,6 +3,8 @@ import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 import { resolveTransition, computeAmounts, bookingDateError, weekdayOf } from '../utils/orderRules.js';
 import { addDays, daysOf, hasConflict, normalizeQuantity, slotError } from '../utils/bookingSlots.js';
 import { syncPaymentsWithOrder } from './paymentWorkflow.js';
+import { asaasActive } from './payoutAccounts.js';
+import { feeConfig } from '../config/fees.js';
 import { registerConnectionSource } from '../utils/connections.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -12,6 +14,8 @@ const brDate = (value) => (value instanceof Date ? value.toISOString().slice(0, 
 const personSelect = { id: true, uuid: true, firstName: true, lastName: true, preferredName: true, city: true };
 
 export const platformFeePercent = () => {
+  // Com o pagamento pela plataforma, a comissão do profissional vem da configuração central de taxas.
+  if (asaasActive()) return feeConfig().proCommissionPercent;
   const fee = Number(process.env.PLATFORM_FEE_PERCENT ?? 0);
   return Number.isFinite(fee) && fee >= 0 && fee < 100 ? fee : 0;
 };

@@ -60,6 +60,7 @@ const HelpContact = lazy(() => import('./pages/help/HelpContact'));
 const LegalPage = lazy(() => import('./pages/help/LegalPage'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const FavoriteList = lazy(() => import('./pages/FavoriteList'));
+const AdminPayments = lazy(() => import('./pages/AdminPayments'));
 const Messages = lazy(() => import('./pages/Messages'));
 const ProLayout = lazy(() => import('./pages/pro/ProLayout'));
 const ProDashboard = lazy(() => import('./pages/pro/ProDashboard'));
@@ -141,6 +142,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="mensagens" element={<Navigate to="/mensagens" replace />} />
       <Route path="*" element={<Navigate to="/pro" replace />} />
     </Route>
+    <Route path="/admin/pagamentos" element={<ProtectedRoute roles={['admin']}><AdminPayments /></ProtectedRoute>} />
     <Route path="/pro/comecar" element={<ProtectedRoute><ProStart /></ProtectedRoute>} />
     <Route path="/pro/anuncio/:uuid" element={<ProtectedRoute><ListingWizard /></ProtectedRoute>} />
     <Route path="/pro/anuncio/:uuid/etapa/:step" element={<ProtectedRoute><ListingWizard /></ProtectedRoute>} />

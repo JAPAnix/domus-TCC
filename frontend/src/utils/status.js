@@ -34,4 +34,8 @@ export const paymentStatus = {
   confirmed: { label: 'Pagamento confirmado', tone: 'bg-success-soft text-success' },
   cancelled: { label: 'Cancelado', tone: 'bg-surface-muted text-ink-soft' },
   refunded: { label: 'Estornado', tone: 'bg-danger-soft text-danger' },
+  expired: { label: 'Expirado', tone: 'bg-surface-muted text-ink-soft' },
+  refused: { label: 'Recusado', tone: 'bg-danger-soft text-danger' },
+  disputed: { label: 'Em reclamação', tone: 'bg-info-soft text-info' },
+  chargeback: { label: 'Contestado', tone: 'bg-danger-soft text-danger' },
 };

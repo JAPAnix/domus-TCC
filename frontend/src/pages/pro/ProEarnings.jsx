@@ -5,15 +5,22 @@ import { apiError } from '../../services/api';
 import { formatDay, formatMoney } from '../../utils/format';
 import Pagination from '../../components/Pagination';
 import { EmptyState, ErrorState, SkeletonList } from '../../components/ui';
+import AsaasEarnings from './AsaasEarnings';
 
 const monthName = (key) => new Date(`${key}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
 
 export default function ProEarnings() {
+  const config = useApiResource('/payments/config', undefined, { keepPrevious: true });
+  if (config.data?.provider === 'asaas') return <AsaasEarnings />;
+  return <LegacyEarnings loadingConfig={!config.data && config.loading} />;
+}
+
+function LegacyEarnings({ loadingConfig }) {
   const [page, setPage] = useState(1);
   const resource = useApiResource('/pro/earnings', { page }, { keepPrevious: true });
   const data = resource.data;
 
-  if (!data && resource.loading) return <SkeletonList count={3} label="Carregando ganhos" itemClassName="h-32" />;
+  if (loadingConfig || (!data && resource.loading)) return <SkeletonList count={3} label="Carregando ganhos" itemClassName="h-32" />;
   if (resource.error && !data) return <ErrorState title="Não foi possível carregar os ganhos" message={apiError(resource.error)} onRetry={resource.retry} />;
 
   const max = Math.max(1, ...data.months.map((month) => month.net));

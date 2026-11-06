@@ -10,6 +10,7 @@ import Pagination from '../../components/Pagination';
 import StatusBadge from '../../components/StatusBadge';
 import { Button, EmptyState, ErrorState, Input, Select, SkeletonList, Tabs, useToast } from '../../components/ui';
 import { SettingsBlock, SettingsHeading } from './SettingsPages';
+import PayoutAccount from './PayoutAccount';
 
 const KEY_TYPES = { cpf: 'CPF', cnpj: 'CNPJ', email: 'E-mail', phone: 'Telefone', random: 'Chave aleatória' };
 const METHODS = { pix: 'Pix', cash: 'Dinheiro', card_in_person: 'Cartão na maquininha, presencialmente' };
@@ -101,10 +102,19 @@ function ReceivingForm({ initial, onSaved }) {
 function ReceivingTab() {
   const resource = useApiResource('/payments/receiving', undefined, { keepPrevious: true });
   const profile = useApiResource('/settings', undefined, { keepPrevious: true });
+  const config = useApiResource('/payments/config', undefined, { keepPrevious: true });
   if ((!resource.data || !profile.data) && (resource.loading || profile.loading)) return <SkeletonList count={2} label="Carregando" itemClassName="h-24" />;
   if (resource.error || profile.error) return <ErrorState title="Não foi possível carregar esta aba" message={apiError(resource.error ?? profile.error)} onRetry={() => { resource.retry(); profile.retry(); }} />;
   if (!profile.data.hasProfessionalProfile) {
     return <EmptyState icon="list" title="Disponível para profissionais" description="Aqui você define como recebe dos clientes. Ative o modo profissional ao publicar o seu primeiro serviço." action={<Button to={PRO_START_PATH}>Começar a oferecer serviços</Button>} />;
+  }
+  if (config.data?.provider === 'asaas') {
+    return (
+      <>
+        <PayoutAccount />
+        <SettingsBlock title="Pagamentos recebidos"><PaymentList role="professional" /></SettingsBlock>
+      </>
+    );
   }
   return (
     <>

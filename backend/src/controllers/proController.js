@@ -1,3 +1,4 @@
+import { receivingWarning } from '../services/payoutAccounts.js';
 import { prisma } from '../config/prisma.js';
 import { bufferToUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
@@ -31,7 +32,7 @@ export async function summary(req, res) {
       prisma.proposal.count({ where: { professionalId, status: 'pending', service: { deletedAt: null } } }),
     ]);
     res.set('Cache-Control', 'no-store').json({
-      newOrders, inProgress, proposalsPending,
+      newOrders, inProgress, proposalsPending, receivingWarning: await receivingWarning(professionalId),
       monthEarnings: { amount: num(month._sum.finalAmount) ?? 0, count: month._count._all },
       rating: { average: num(profile?.averageRating) ?? 0, total: profile?.totalReviews ?? 0 },
       verified: !!profile?.isVerified,

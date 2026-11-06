@@ -5,6 +5,7 @@ import { availableActions, ORDER_STATUS_LABELS, roleIn } from '../utils/orderRul
 import { createOrder, transitionOrder, orderReviewContext, submitOrderReview } from '../services/orderWorkflow.js';
 import { completeSchema } from '../validators/listingValidator.js';
 import { unitsTotal } from '../utils/bookingSlots.js';
+import { refundOnCancel } from '../services/asaasPayments.js';
 import { openConversation, sendMessage } from '../services/messageService.js';
 import { trustedMessageImage } from './messageController.js';
 
@@ -103,7 +104,10 @@ export async function act(req, res) {
       if (!parsed.success) return res.status(400).json({ message: 'Dados inválidos', errors: parsed.error.issues.map((issue) => ({ field: issue.path.join('.'), message: issue.message })) });
       body = parsed.data;
     }
-    res.json(await transitionOrder(req.params.uuid, me(req), req.params.action, body));
+    const result = await transitionOrder(req.params.uuid, me(req), req.params.action, body);
+    // Pedido cancelado ou recusado: cancela cobranças abertas e estorna o que foi pago, conforme a política (Asaas).
+    if (['cancel', 'decline'].includes(req.params.action)) await refundOnCancel(req.params.uuid).catch((error) => logger.error('order.refundOnCancel', error));
+    res.json(result);
   } catch (err) { sendWorkflowError(res, err, 'orderAction'); }
 }
 

@@ -16,7 +16,7 @@ const TITLES = [
   [/^\/notificacoes$/, 'Notificações'],
   [/^\/meus-servicos$/, 'Pedidos e contratações'], [/^\/contratacoes\/[^/]+\/avaliar$/, 'Avaliar serviço'], [/^\/contratacoes\//, 'Pedido'], [/^\/pagamentos\/[^/]+\/recibo$/, 'Recibo de pagamento'],
   [/^\/perfil\/editar$/, 'Editar perfil'], [/^\/perfil\/avaliacoes/, 'Avaliações'], [/^\/perfil/, 'Perfil'], [/^\/bem-vindo$/, 'Bem-vindo'],
-  [/^\/configuracoes\/pagamentos$/, 'Pagamentos'], [/^\/configuracoes\/impostos$/, 'Impostos'], [/^\/configuracoes\/notificacoes$/, 'Notificações da conta'],
+  [/^\/admin\/pagamentos$/, 'Administração de pagamentos'], [/^\/configuracoes\/pagamentos$/, 'Pagamentos'], [/^\/configuracoes\/impostos$/, 'Impostos'], [/^\/configuracoes\/notificacoes$/, 'Notificações da conta'],
   [/^\/configuracoes\/privacidade$/, 'Privacidade'], [/^\/configuracoes\/seguranca$/, 'Login e segurança'], [/^\/configuracoes\/idioma$/, 'Idioma e tradução'], [/^\/configuracoes/, 'Configurações da conta'],
   [/^\/pro\/comecar$/, 'Comece a oferecer serviços'], [/^\/pro\/anuncio\//, 'Seu anúncio'], [/^\/pro\/pedidos$/, 'Pedidos e agenda'], [/^\/pro\/servicos$/, 'Meus serviços'], [/^\/pro\/ganhos$/, 'Ganhos'], [/^\/pro/, 'Painel profissional'],
 ];

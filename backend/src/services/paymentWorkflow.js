@@ -5,10 +5,14 @@ import { verifyWebhookSignature, MERCADOPAGO_STATUS_MAP } from './payments/merca
 import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 import { pixKeyFromBrCode } from '../utils/pixBrCode.js';
 import {
-  ACTIVE_PAYMENT_STATUSES, ORDER_STATUSES_THAT_ALLOW_PAYMENT, PAYMENT_METHODS, PAYMENT_STATUS_LABELS,
+  ACTIVE_PAYMENT_STATUSES, METHOD_LABELS, ORDER_STATUSES_THAT_ALLOW_PAYMENT, PAYMENT_METHODS, PAYMENT_STATUS_LABELS,
   amountDue, availablePaymentActions, parseAcceptedMethods, paymentRole, resolvePaymentAction,
 } from '../utils/paymentRules.js';
 import { logger } from '../utils/logger.js';
+import { asaasActive, approvedReceiver } from './payoutAccounts.js';
+import { installmentOptions, scheduleAutoConfirm, startAsaasPayment } from './asaasPayments.js';
+import { feeConfig } from '../config/fees.js';
+import { computeCheckout, toCents } from '../utils/money.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -55,6 +59,21 @@ export function maskKey(key) {
   return key.length <= 6 ? '***' : `${key.slice(0, 3)}***${key.slice(-2)}`;
 }
 
+/** Campos extras do pagamento pela plataforma: valores em centavos, página do cartão, validade do Pix e situação do repasse. */
+function asaasView(payment, role) {
+  const cents = payment.amountCents ?? Math.round(Number(payment.amount) * 100);
+  const confirmedByClient = (payment.events ?? []).some((item) => ['service_confirmed', 'service_auto_confirmed'].includes(item.type));
+  return {
+    amountCents: cents, serviceCents: cents - (payment.clientFeeCents ?? 0), clientFeeCents: payment.clientFeeCents ?? 0,
+    ...(role === 'professional' && { commissionCents: payment.commissionCents, proShareCents: payment.proShareCents }),
+    invoiceUrl: role === 'client' && ['pending', 'refused', 'expired'].includes(payment.status) ? payment.invoiceUrl : null,
+    expiresAt: payment.expiresAt, payoutStatus: payment.payoutStatus, installments: payment.installments, refundedCents: payment.refundedCents,
+    autoConfirmAt: payment.autoConfirmAt, serviceConfirmed: confirmedByClient,
+    canConfirmService: role === 'client' && payment.status === 'confirmed' && payment.order?.status === 'completed' && !confirmedByClient,
+    canDispute: role === 'client' && payment.status === 'confirmed' && !confirmedByClient,
+  };
+}
+
 export function serializePayment(payment, viewerId, { events = false } = {}) {
   const role = paymentRole(payment, viewerId);
   const provider = providerByName(payment.provider);
@@ -62,25 +81,57 @@ export function serializePayment(payment, viewerId, { events = false } = {}) {
   const key = payment.pixPayload ? pixKeyFromBrCode(payment.pixPayload) : null;
   return {
     uuid: bufferToUuid(payment.uuid), orderUuid: payment.order ? bufferToUuid(payment.order.uuid) : undefined, orderTitle: payment.order?.titleSnapshot,
-    method: payment.method, methodLabel: PAYMENT_METHODS[payment.method], provider: payment.provider,
+    method: payment.method, methodLabel: METHOD_LABELS[payment.method], provider: payment.provider,
     status: payment.status, statusLabel: PAYMENT_STATUS_LABELS[payment.status], amount: Number(payment.amount), note: payment.note,
     role,
     // O BR Code e a chave só aparecem enquanto há algo a pagar e só para o cliente (quem paga) ou o dono da chave.
-    pix: payment.method === 'pix' && payment.pixPayload && open ? { payload: payment.pixPayload, key: role === 'client' ? key : maskKey(key) } : null,
+    // No pagamento pela plataforma o QR Code é só do cliente (quem paga); o profissional não precisa dele.
+    pix: payment.method === 'pix' && payment.pixPayload && open && (payment.provider !== 'asaas' || role === 'client') ? { payload: payment.pixPayload, key: payment.provider === 'asaas' ? null : role === 'client' ? key : maskKey(key) } : null,
+    ...(payment.provider === 'asaas' && asaasView(payment, role)),
     receiptNumber: payment.receiptNumber,
     createdAt: payment.createdAt, reportedAt: payment.reportedAt, confirmedAt: payment.confirmedAt, cancelledAt: payment.cancelledAt, refundedAt: payment.refundedAt,
-    actions: availablePaymentActions(payment, viewerId, { manual: provider.manual }),
+    actions: payment.provider === 'asaas' ? (role === 'client' && payment.status === 'pending' ? ['cancel'] : []) : availablePaymentActions(payment, viewerId, { manual: provider.manual }),
     ...(events && payment.events ? { events: payment.events.map((item) => ({ type: item.type, from: item.fromStatus, to: item.toStatus, detail: item.detail, at: item.createdAt, byMe: item.actorId != null && item.actorId === viewerId })) } : {}),
   };
 }
 
-const paymentInclude = { order: { select: { uuid: true, titleSnapshot: true } } };
+const paymentInclude = { order: { select: { uuid: true, titleSnapshot: true, status: true } } };
 
 /** Situação de pagamento de um pedido, para a tela do pedido. */
+/** Estado do pagamento de um pedido quando o Asaas é o provedor: valores, meios, parcelas e o que falta. */
+async function asaasOrderState(order, userId) {
+  const isClient = order.clientId === userId;
+  const payment = await prisma.payment.findFirst({
+    where: { orderId: order.id, provider: 'asaas', status: { not: 'cancelled' } }, orderBy: { id: 'desc' },
+    include: { ...paymentInclude, events: { orderBy: { id: 'asc' } } },
+  });
+  const receiver = await approvedReceiver(order.professionalId);
+  const due = amountDue(order);
+  const cfg = feeConfig();
+  const total = due == null ? null : computeCheckout({ serviceCents: toCents(due), clientFeePercent: cfg.clientFeePercent, proCommissionPercent: cfg.proCommissionPercent });
+  const settings = isClient ? await prisma.userSettings.findUnique({ where: { userId }, select: { asaasCustomerId: true } }) : null;
+  const allowed = ORDER_STATUSES_THAT_ALLOW_PAYMENT.includes(order.status);
+  const retry = !payment || ['expired', 'refused'].includes(payment.status);
+  return {
+    amountDue: total ? total.totalCents / 100 : null, amountDueCents: total?.totalCents ?? null,
+    breakdown: total && { serviceCents: total.serviceCents, clientFeeCents: total.clientFeeCents, totalCents: total.totalCents },
+    ...(order.professionalId === userId && total && { proPreview: { commissionCents: total.commissionCents, proGrossCents: total.proGrossCents, gatewayFeePayer: cfg.gatewayFeePayer } }),
+    canStart: isClient && allowed && due != null && !!receiver && retry,
+    blockedReason: !retry ? null : !allowed ? 'O pagamento fica disponível depois que o profissional aceita o pedido.' : due == null ? 'O valor será definido quando o profissional concluir o serviço.' : !receiver ? 'O profissional ainda está liberando o recebimento pela plataforma. Tente de novo mais tarde.' : null,
+    provider: 'asaas', automatic: true,
+    methods: [{ value: 'pix', label: 'Pix' }, { value: 'credit_card', label: 'Cartão de crédito' }, { value: 'boleto', label: 'Boleto' }],
+    installments: total ? installmentOptions(total.totalCents) : [],
+    needsDocument: isClient && !settings?.asaasCustomerId,
+    autoConfirmDays: cfg.autoConfirmDays,
+    payment: payment ? serializePayment(payment, userId, { events: true }) : null,
+  };
+}
+
 export async function orderPaymentState(orderUuid, userId) {
   if (!UUID.test(orderUuid)) fail(404, 'Pedido não encontrado.');
   const order = await prisma.order.findFirst({ where: { uuid: uuidToBuffer(orderUuid), OR: [{ clientId: userId }, { professionalId: userId }] }, include: { professional: { select: personSelect } } });
   if (!order) fail(404, 'Pedido não encontrado.');
+  if (asaasActive()) return asaasOrderState(order, userId);
   const payment = await prisma.payment.findFirst({
     where: { orderId: order.id, status: { in: ACTIVE_PAYMENT_STATUSES } }, orderBy: { id: 'desc' },
     include: { ...paymentInclude, events: { orderBy: { id: 'asc' } } },
@@ -101,7 +152,11 @@ export async function orderPaymentState(orderUuid, userId) {
   };
 }
 
-export async function startPayment(orderUuid, userId, method) {
+export async function startPayment(orderUuid, userId, method, extra = {}) {
+  if (asaasActive()) {
+    await startAsaasPayment(orderUuid, userId, { method, ...extra });
+    return orderPaymentState(orderUuid, userId);
+  }
   if (!(method in PAYMENT_METHODS)) fail(400, 'Escolha uma forma de pagamento válida.');
   const provider = activeProvider();
   const created = await runTransaction(async (tx, emails) => {
@@ -160,6 +215,8 @@ export async function actOnPayment(paymentUuid, userId, action, body = {}) {
   // Primeiro a regra (sem rede). Se o provedor for automático, cancelar/estornar também avisa o provedor.
   const peek = await prisma.payment.findFirst({ where: { uuid: UUID.test(paymentUuid) ? uuidToBuffer(paymentUuid) : Buffer.alloc(16) } });
   if (!peek || !paymentRole(peek, userId)) fail(404, 'Pagamento não encontrado.');
+  // No pagamento pela plataforma o dinheiro só se mexe pelo fluxo próprio (confirmar serviço, reclamar, administrador).
+  if (peek.provider === 'asaas' && action !== 'cancel') fail(403, 'Esta ação não está disponível para este pagamento.');
   const provider = providerByName(peek.provider);
   if (!provider.manual && (action === 'cancel' || action === 'refund')) {
     resolvePaymentAction(peek, userId, action, { manual: provider.manual });
@@ -217,8 +274,11 @@ export async function getReceipt(paymentUuid, userId) {
 
 /** Chamado pelo fluxo de pedidos: encerra ou ajusta cobranças abertas quando o pedido muda. */
 export async function syncPaymentsWithOrder(tx, order, newStatus, finalAmount) {
+  // Concluído: o pagamento pela plataforma começa a contar o prazo de confirmação automática.
+  if (newStatus === 'completed') await scheduleAutoConfirm(tx, order.id);
   if (['cancelled', 'declined'].includes(newStatus)) {
-    const open = await tx.payment.findMany({ where: { orderId: order.id, status: { in: ['pending', 'reported'] } } });
+    // Cobranças do Asaas são canceladas e estornadas por refundOnCancel (fala com o gateway, fora da transação).
+    const open = await tx.payment.findMany({ where: { orderId: order.id, status: { in: ['pending', 'reported'] }, provider: { not: 'asaas' } } });
     for (const payment of open) {
       await tx.payment.update({ where: { id: payment.id }, data: { status: 'cancelled', cancelledAt: new Date() } });
       await record(tx, payment, null, 'order_closed', payment.status, 'cancelled', 'Pedido encerrado.');

@@ -81,3 +81,11 @@ test('situação da conta de recebimento', () => {
   assert.match(rejectionText({ bankAccountInfo: 'REJECTED', commercialInfo: 'REJECTED' }), /bancários.*cadastrais/);
   assert.match(rejectionText({}), /recusou o cadastro/);
 });
+
+test('situação da conta vira texto legível (nunca um objeto)', async () => {
+  const { describeAccountDetail } = await import('../src/utils/asaasEvents.js');
+  assert.equal(describeAccountDetail({ commercialInfo: 'APPROVED', bankAccountInfo: 'PENDING', documentation: 'AWAITING_APPROVAL', general: 'PENDING' }), 'Pendente: documentos, dados bancários.');
+  assert.equal(describeAccountDetail({ commercialInfo: 'APPROVED', bankAccountInfo: 'APPROVED', documentation: 'APPROVED' }), null);
+  assert.equal(describeAccountDetail(null), null);
+  assert.equal(typeof describeAccountDetail({ documentation: 'PENDING' }), 'string');
+});

@@ -126,7 +126,21 @@ function ReceivingTab() {
   );
 }
 
-function PayTab() {
+function PayTab({ platform }) {
+  if (platform) {
+    return (
+      <>
+        <SettingsBlock title="Formas de pagamento" description="Você escolhe a forma ao contratar, direto no pedido. Não há nada para cadastrar aqui.">
+          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+            <li className="p-4"><p className="font-medium">Pix</p><p className="text-sm text-ink-muted">QR Code e “copia e cola” gerados no pedido. A confirmação é automática, sem precisar avisar.</p></li>
+            <li className="p-4"><p className="font-medium">Cartão de crédito</p><p className="text-sm text-ink-muted">Pago na página segura do Asaas, com parcelamento. O Dommos nunca recebe nem guarda dados de cartão.</p></li>
+            <li className="p-4"><p className="font-medium">Boleto</p><p className="text-sm text-ink-muted">Pago na página segura do Asaas. A compensação pode levar alguns dias úteis.</p></li>
+          </ul>
+        </SettingsBlock>
+        <SettingsBlock title="Seus pagamentos"><PaymentList role="client" /></SettingsBlock>
+      </>
+    );
+  }
   return (
     <>
       <SettingsBlock title="Formas de pagamento disponíveis" description="Não há nada para cadastrar: em cada pedido você escolhe entre as formas que o profissional aceita.">
@@ -143,13 +157,15 @@ function PayTab() {
 
 export default function PaymentSettings() {
   const [tab, setTab] = useState('pago');
+  const config = useApiResource('/payments/config', undefined, { keepPrevious: true });
+  const platform = config.data?.provider === 'asaas';
   return (
     <>
       <SettingsHeading title="Pagamentos">Veja como pagar e como receber, os pagamentos de cada pedido e os recibos.</SettingsHeading>
-      <div className="mt-6"><PaymentNotice /></div>
+      <div className="mt-6"><PaymentNotice platform={platform} /></div>
       <div className="mt-8">
         <Tabs label="Pagamentos" value={tab} onChange={setTab} tabs={[{ value: 'pago', label: 'Como pago' }, { value: 'recebo', label: 'Como recebo' }]} />
-        <div role="tabpanel" aria-labelledby={`tab-${tab}`}>{tab === 'pago' ? <PayTab /> : <ReceivingTab />}</div>
+        <div role="tabpanel" aria-labelledby={`tab-${tab}`}>{tab === 'pago' ? <PayTab platform={platform} /> : <ReceivingTab />}</div>
       </div>
     </>
   );

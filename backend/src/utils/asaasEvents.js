@@ -81,5 +81,13 @@ export function rejectionText(detail) {
   return parts.length ? `O gateway informou que ${parts.join('; ')}.` : 'O gateway recusou o cadastro. Confira os dados e tente de novo.';
 }
 
+/** Resumo legível do que ainda falta na análise da conta ("Pendente: documentos, dados bancários."), ou null. */
+export function describeAccountDetail(detail) {
+  if (!detail || typeof detail !== 'object') return typeof detail === 'string' ? detail : null;
+  const labels = { documentation: 'documentos', bankAccountInfo: 'dados bancários', commercialInfo: 'dados cadastrais' };
+  const pending = Object.entries(labels).filter(([key]) => detail[key] && !['APPROVED', 'REJECTED'].includes(detail[key])).map(([, label]) => label);
+  return pending.length ? `Pendente: ${pending.join(', ')}.` : null;
+}
+
 /** Estados em que o dinheiro do cliente ainda pode ser devolvido por nós. */
 export const REFUNDABLE = ['confirmed', 'disputed'];

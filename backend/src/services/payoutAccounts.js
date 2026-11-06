@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { providerByName } from './payments/index.js';
 import { asaasConfigured } from './payments/asaasClient.js';
-import { planAccountEvent } from '../utils/asaasEvents.js';
+import { planAccountEvent, describeAccountDetail } from '../utils/asaasEvents.js';
 import { decryptSecret, encryptSecret } from '../utils/secretBox.js';
 import { feeConfig } from '../config/fees.js';
 import { logger } from '../utils/logger.js';
@@ -20,7 +20,7 @@ export function serializePayout(account) {
     enabled: asaasActive(),
     status,
     canReceive: status === 'approved',
-    detail: account?.statusDetail ?? null,
+    detail: describeAccountDetail(account?.statusDetail),
     rejectionReason: account?.rejectionReason ?? null,
     escrowEnabled: !!account?.escrowEnabled,
     cardNote: CARD_NOTE,

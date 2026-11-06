@@ -62,7 +62,7 @@ export async function approveInSandbox(userId, env = process.env) {
     try {
       await asaas.sandboxApproveOwnAccount(decryptSecret(account.apiKeyEnc), { env });
     } catch (second) {
-      logger.warn('sandbox.approve falhou', { porId: first.details?.status, pelaSubconta: second.details?.status });
+      logger.info(`sandbox.approve falhou: rota por id HTTP ${first.details?.status ?? '?'}, rota da subconta HTTP ${second.details?.status ?? '?'}`);
       throw second;
     }
   }

@@ -9,3 +9,7 @@ npm run lint
 npm test
 npm run build    # gera dist/
 ```
+
+## Produção
+
+O site é publicado na subpasta `/tecti/2026/gpec10/` (Apache, Hostinger). Preencha `.env.production.local` com a URL HTTPS real da API, incluindo `/api`, antes de `npm run build`, e envie o conteúdo de `dist`, inclusive o `.htaccess`. O passo a passo completo está no [README da raiz](../README.md).

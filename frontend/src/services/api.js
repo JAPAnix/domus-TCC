@@ -3,7 +3,7 @@ import axios from 'axios';
 export const SESSION_EXPIRED_EVENT = 'dommos:sessao-expirada';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+  baseURL: import.meta.env.VITE_API_URL
 });
 
 api.interceptors.request.use((config) => {

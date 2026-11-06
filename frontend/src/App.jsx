@@ -192,6 +192,6 @@ const router = createBrowserRouter(createRoutesFromElements(
 
     <Route path="*" element={<NotFound />} />
   </Route>
-));
+), { basename: import.meta.env.BASE_URL });
 
 export default function App() { return <RouterProvider router={router} />; }

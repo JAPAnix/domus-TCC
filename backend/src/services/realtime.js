@@ -27,7 +27,10 @@ export function publish(userIds, payload) {
 export const onTyping = (handler) => { typingHandler = handler; };
 
 function allowedOrigins() {
-  return ['http://localhost:5173', 'http://127.0.0.1:5173', process.env.FRONTEND_URL].filter(Boolean);
+  // FRONTEND_URL pode ter subpasta (https://host/pasta); o cabeçalho Origin traz só o endereço do site.
+  let site = null;
+  try { site = process.env.FRONTEND_URL ? new URL(process.env.FRONTEND_URL).origin : null; } catch { site = null; }
+  return ['http://localhost:5173', 'http://127.0.0.1:5173', site].filter(Boolean);
 }
 
 export function attachRealtime(server) {

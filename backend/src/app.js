@@ -9,6 +9,7 @@ import { setEmailDispatcher } from './services/serviceWorkflow.js';
 import { dispatchEventEmails } from './services/eventEmails.js';
 import { attachRealtime } from './services/realtime.js';
 import { startScheduler } from './services/messageService.js';
+import { prisma } from './config/prisma.js';
 
 validateEnv();
 
@@ -19,6 +20,9 @@ BigInt.prototype.toJSON = function () {
 setEmailDispatcher(dispatchEventEmails);
 
 export const app = express();
+app.disable('x-powered-by');
+// Render terminates HTTPS and forwards requests through its reverse proxy.
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
 app.disable('x-powered-by');
 // Atrás de um proxy (Render, Fly, etc.) defina TRUST_PROXY=1 para req.ip ser o do visitante e não o do proxy.
@@ -34,11 +38,14 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', process.env.FRONTEND_URL].filter(Boolean),
+  origin: process.env.NODE_ENV === 'production'
+    ? [new URL(process.env.FRONTEND_URL).origin]
+    : [...new Set(['http://localhost:5173', 'http://127.0.0.1:5173', ...(process.env.FRONTEND_URL ? [new URL(process.env.FRONTEND_URL).origin] : [])])],
   credentials: true
 }));
 
 app.use(express.json({ limit: '100kb' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Imagens do provedor local. Só arquivos gerados pelo servidor; nosniff impede interpretar como outro tipo.
 app.use('/uploads', express.static(uploadDirectory, {
@@ -53,8 +60,12 @@ app.use('/api', router);
 app.use(errorMiddleware);
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const port = Number(process.env.PORT) || 3000;
-  const server = app.listen(port, () => console.log(`Servidor rodando na porta ${port}`));
+  const port = Number(process.env.PORT || 3000);
+  const server = app.listen(port, '0.0.0.0', () => console.log(`Servidor rodando na porta ${port}`));
   attachRealtime(server);
   startScheduler();
+  for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => {
+    const timer = setTimeout(() => process.exit(1), 10000).unref();
+    server.close(async () => { await prisma.$disconnect(); clearTimeout(timer); process.exit(0); });
+  });
 }

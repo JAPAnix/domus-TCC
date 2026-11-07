@@ -24,7 +24,8 @@ if (!key) {
   else if (!account.ok) {
     const detail = await account.text().catch(() => '');
     say(false, `A Brevo recusou a chave (HTTP ${account.status}): ${detail.slice(0, 120)}`);
-    problems.push(account.status === 401 ? 'A chave não existe nesta conta da Brevo. Gere outra em SMTP e API > Chaves de API e copie a chave inteira.' : 'Veja a mensagem acima.');
+    if (/unrecognised IP/i.test(detail)) problems.push('A conta da Brevo só aceita chamadas de IPs cadastrados, e o IP do Render muda. Desative esse bloqueio em https://app.brevo.com/security/authorised_ips (Segurança > IPs autorizados).');
+    else problems.push(account.status === 401 ? 'A chave não existe nesta conta da Brevo. Gere outra em SMTP e API > Chaves de API e copie a chave inteira.' : 'Veja a mensagem acima.');
   } else {
     say(true, 'A Brevo aceitou a chave.');
     const senders = await fetch('https://api.brevo.com/v3/senders', { headers }).then((r) => (r.ok ? r.json() : null)).catch(() => null);

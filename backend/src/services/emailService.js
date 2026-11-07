@@ -25,7 +25,8 @@ async function deliver({ to, subject, text, html, replyTo }) {
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
-      const hint = response.status === 401 && String(process.env.BREVO_API_KEY).trim().startsWith('xsmtpsib-')
+      const ipBlocked = response.status === 401 && /unrecognised IP/i.test(detail);
+      const hint = ipBlocked ? ' A Brevo bloqueia IPs não cadastrados: desative o bloqueio em Segurança > IPs autorizados (app.brevo.com/security/authorised_ips).' : response.status === 401 && String(process.env.BREVO_API_KEY).trim().startsWith('xsmtpsib-')
         ? ' A chave configurada é uma chave SMTP (xsmtpsib-). A API precisa de uma chave de API (xkeysib-): Brevo > SMTP e API > Chaves de API.' : '';
       const message = `A Brevo recusou o envio (${response.status}). ${detail.slice(0, 200)}${hint}`;
       // Fica no log do servidor mesmo em produção (a mensagem não contém segredos), porque o "esqueci a senha" não mostra erro ao usuário.

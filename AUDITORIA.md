@@ -513,3 +513,20 @@ Fonte: documentação oficial em docs.asaas.com, lida em 06/11/2026 (as páginas
 - Vencimento do boleto fixo em +3 dias (melhoria: tornar configurável).
 - Termos e política são texto-base: precisam de revisão jurídica antes de operar com dinheiro real.
 - Não há teste automatizado de tela para o fluxo novo do frontend (só verificação manual/ponta a ponta de API).
+
+### Rodada 6: pedido do cliente, fotos e e-mail em produção (07/11/2026)
+
+**Feito:**
+- **Solicitar serviço (cliente):** quando o atendimento é "na casa do cliente", há um passo novo **Local** com endereço completo (CEP com preenchimento pelo ViaCEP, rua, número, complemento, bairro, cidade, estado), validado no navegador e no servidor. O endereço fica em `orders.service_address` (migration `20261110100000_order_service_address`, **a aplicar no banco real**). O cliente vê o endereço inteiro; o profissional vê só bairro e cidade até aceitar o pedido (`addressFor` em `utils/orderRules.js`). Atendimento remoto não guarda endereço.
+- O passo "Pagamento" e a tela de confirmação do pedido agora seguem o provedor: com o Asaas mostram o pagamento protegido pelo Dommos; antes diziam "modo gratuito" mesmo com o Asaas ligado.
+- **Fotos:** em produção com `STORAGE_PROVIDER=local` o envio é recusado com mensagem clara (o disco do Render é apagado a cada reinício e as fotos sumiam em silêncio). O `/health` mostra `storage`, `email` e `payments` (só nomes, sem segredos) para conferir o deploy.
+- Painel de administração (aba Pagamentos quebrava a página), busca por texto e alertas (`LIKE` com collations incompatíveis no MySQL da hospedagem), botão do Google em telas de 360 px, modo escuro, "Vou contratar", respostas rápidas, aviso de foto indisponível.
+- E-mail por API da Brevo (o SMTP é bloqueado no plano gratuito do Render).
+
+**Verificação:** backend 97 testes (1 pulado) e frontend 10; teste de API com banco descartável (12/12) e teste no navegador do fluxo completo do cliente com foto, em 1280 px e 390 px (16/16 cada), sem erros de JavaScript.
+
+**Pendente:**
+- Configurar no Render: `STORAGE_PROVIDER=cloudinary` + as 3 chaves do Cloudinary (a conta e as chaves ainda não existem no `.env`), e `BREVO_API_KEY` + `EMAIL_FROM` (remetente verificado na Brevo). Conferir em `/health`. As fotos antigas foram perdidas e precisam ser enviadas de novo.
+- Aplicar a migration `20261110100000_order_service_address` no banco real.
+- "Publicar pedido" (pedido aberto) continua um formulário único; não tem local nem etapas como o anúncio.
+- Telas logadas (pedidos, ganhos, mensagens, painel) não foram testadas em celular por automação.

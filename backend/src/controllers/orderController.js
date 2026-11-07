@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
-import { availableActions, ORDER_STATUS_LABELS, roleIn } from '../utils/orderRules.js';
+import { addressFor, availableActions, ORDER_STATUS_LABELS, roleIn } from '../utils/orderRules.js';
 import { createOrder, transitionOrder, orderReviewContext, submitOrderReview } from '../services/orderWorkflow.js';
 import { completeSchema } from '../validators/listingValidator.js';
 import { unitsTotal } from '../utils/bookingSlots.js';
@@ -31,7 +31,7 @@ export function serializeOrder(order, viewerId) {
     title: order.titleSnapshot, listing: order.listing ? { uuid: bufferToUuid(order.listing.uuid), cover: order.listing.images[0]?.url ?? null, available: !order.listing.deletedAt } : null,
     client: person(order.client), professional: person(order.professional),
     pricingModel: order.pricingModelSnapshot, price, travelFee, total: order.pricingModelSnapshot === 'fixed' && price != null ? price + (travelFee ?? 0) : unitsTotal(order.pricingModelSnapshot, price, order.quantity, travelFee),
-    scheduledTime: order.scheduledTime, endDate: order.endDate ? order.endDate.toISOString().slice(0, 10) : null, quantity: order.quantity, referenceImages: Array.isArray(order.referenceImages) ? order.referenceImages : [],
+    scheduledTime: order.scheduledTime, endDate: order.endDate ? order.endDate.toISOString().slice(0, 10) : null, quantity: order.quantity, referenceImages: Array.isArray(order.referenceImages) ? order.referenceImages : [], serviceAddress: addressFor(order, viewerId),
     finalAmount, platformFeePercent: fee, netAmount: finalAmount == null ? null : Math.round(finalAmount * (100 - fee)) / 100,
     policy: order.policySnapshot, createdAt: order.createdAt, acceptedAt: order.acceptedAt, startedAt: order.startedAt, completedAt: order.completedAt, cancelledAt: order.cancelledAt,
     cancelledByMe: order.cancelledById != null && viewerId != null ? order.cancelledById === viewerId : null,

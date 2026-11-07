@@ -7,10 +7,13 @@ import { priceBreakdown, UNIT } from '../utils/bookingPrice';
 import { fromMinutes, toMinutes } from '../utils/bookingSlots';
 import { formatDay, formatMoney } from '../utils/format';
 import { MODE_LABELS, POLICY_INFO } from '../utils/listingText';
+import AddressForm from '../components/AddressForm';
+import { addressPayload, EMPTY_ADDRESS, validateAddress } from '../utils/address';
 import ImageUploader from '../components/ImageUploader';
 import { Breadcrumb, Button, Card, EmptyState, ErrorState, Skeleton, Textarea } from '../components/ui';
 
-const STEPS = ['Revisar', 'Mensagem', 'Pagamento', 'Confirmar'];
+// O passo "Local" só existe quando o serviço é na casa do cliente: o profissional precisa saber aonde ir.
+const stepsFor = (mode) => (mode === 'client_place' ? ['Revisar', 'Local', 'Mensagem', 'Pagamento', 'Confirmar'] : ['Revisar', 'Mensagem', 'Pagamento', 'Confirmar']);
 const QUESTIONS = ['Qual é o endereço aproximado (bairro)?', 'O local tem fácil acesso?', 'Preciso comprar algum material antes?', 'Existe algum horário que não funciona para mim?'];
 
 function Summary({ listing, selection, calc }) {
@@ -32,7 +35,7 @@ function Summary({ listing, selection, calc }) {
   );
 }
 
-function Confirmation({ result, listing }) {
+function Confirmation({ result, listing, platform }) {
   const number = result.uuid.slice(0, 8).toUpperCase();
   return (
     <main className="mx-auto max-w-form px-4 py-12 text-center sm:px-6">
@@ -43,7 +46,7 @@ function Confirmation({ result, listing }) {
         <h2 className="font-semibold">Próximos passos</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-ink-soft">
           <li>O profissional recebe o pedido e responde. Avisamos você aqui e por e-mail, se estiver ativo.</li>
-          <li>Quando ele aceitar, você escolhe como pagar (Pix, dinheiro ou cartão presencial) na página do pedido.</li>
+          <li>{platform ? 'Quando ele aceitar, você paga pelo Dommos (Pix, cartão ou boleto) na página do pedido. O valor só é repassado a ele depois que você confirmar o serviço.' : 'Quando ele aceitar, você escolhe como pagar (Pix, dinheiro ou cartão presencial) na página do pedido.'}</li>
           <li>Depois do serviço, vocês dois se avaliam.</li>
         </ol>
       </Card>
@@ -70,6 +73,10 @@ export default function RequestFlow() {
   const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [address, setAddress] = useState(EMPTY_ADDRESS);
+  const [addressErrors, setAddressErrors] = useState({});
+  const config = useApiResource('/payments/config');
+  const platform = config.data?.provider === 'asaas';
   useDocumentMeta({ title: listing ? `Solicitar: ${listing.title}` : 'Solicitar serviço' });
 
   const crumbs = [{ label: 'Buscar', to: '/buscar' }, { label: listing?.title ?? 'Serviço', to: `/anuncios/${uuid}` }, { label: 'Solicitar' }];
@@ -79,7 +86,7 @@ export default function RequestFlow() {
     return <main className="mx-auto max-w-content px-4 py-10 sm:px-6"><Breadcrumb items={crumbs} />{missing ? <EmptyState as="h1" icon="search" title="Serviço não encontrado" description="Ele pode ter sido pausado ou removido." action={<Button to="/buscar">Buscar serviços</Button>} /> : <ErrorState title="Não foi possível carregar o serviço" message={apiError(resource.error)} onRetry={resource.retry} />}</main>;
   }
   if (listing.isOwner) return <main className="mx-auto max-w-content px-4 py-10 sm:px-6"><EmptyState as="h1" icon="alert" title="Este é o seu anúncio" description="Você não pode contratar o próprio serviço." action={<Button to="/pro/servicos">Meus serviços</Button>} /></main>;
-  if (result) return <Confirmation result={result} listing={listing} />;
+  if (result) return <Confirmation result={result} listing={listing} platform={platform} />;
 
   const date = params.get('data');
   const quantity = UNIT[listing.pricingModel] ? Number(params.get('qtd') ?? 1) : null;
@@ -88,6 +95,17 @@ export default function RequestFlow() {
     return <main className="mx-auto max-w-content px-4 py-10 sm:px-6"><Breadcrumb items={crumbs} /><EmptyState as="h1" icon="list" title="Escolha a data primeiro" description="Volte ao anúncio e escolha a data e, se for por hora, o horário." action={<Button to={`/anuncios/${uuid}#disponibilidade`}>Escolher no calendário</Button>} /></main>;
   }
   const calc = priceBreakdown(listing, { packageName: selection.packageName, mode: selection.mode, quantity });
+  const steps = stepsFor(selection.mode);
+  const name = steps[step];
+
+  function goNext() {
+    if (name === 'Local') {
+      const found = validateAddress(address);
+      setAddressErrors(found);
+      if (Object.keys(found).length) return;
+    }
+    setStep(step + 1);
+  }
 
   async function send() {
     setBusy(true);
@@ -98,6 +116,7 @@ export default function RequestFlow() {
         listing_uuid: uuid, date, service_mode: selection.mode, ...(selection.packageName && { package_name: selection.packageName }),
         ...(selection.time && { time: selection.time }), ...(quantity && { quantity }),
         ...(message.trim() && { note: message.trim() }), ...(photos.length && { image_urls: photos }),
+        ...(selection.mode === 'client_place' && { service_address: addressPayload(address) }),
       });
       setResult(data);
     } catch (err) {
@@ -113,16 +132,16 @@ export default function RequestFlow() {
       <Breadcrumb items={crumbs} />
       <h1 className="text-2xl font-bold sm:text-3xl">{listing.pricingModel === 'quote' ? 'Pedir orçamento' : 'Solicitar serviço'}</h1>
       <ol className="mt-5 flex flex-wrap gap-2" aria-label="Etapas">
-        {STEPS.map((name, index) => (
-          <li key={name} aria-current={index === step ? 'step' : undefined} className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${index === step ? 'bg-gradient-primary font-semibold text-white' : index < step ? 'bg-success-soft text-success' : 'bg-surface-muted text-ink-muted'}`}>
-            <span aria-hidden="true" className="font-bold">{index < step ? '✓' : index + 1}</span>{name}{index < step && <span className="sr-only"> (concluída)</span>}
+        {steps.map((label, index) => (
+          <li key={label} aria-current={index === step ? 'step' : undefined} className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${index === step ? 'bg-gradient-primary font-semibold text-white' : index < step ? 'bg-success-soft text-success' : 'bg-surface-muted text-ink-muted'}`}>
+            <span aria-hidden="true" className="font-bold">{index < step ? '✓' : index + 1}</span>{label}{index < step && <span className="sr-only"> (concluída)</span>}
           </li>
         ))}
       </ol>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
-          {step === 0 && (
+          {name === 'Revisar' && (
             <Card>
               <h2 className="text-lg font-semibold">Revise o seu pedido</h2>
               <dl className="mt-4 divide-y divide-line text-sm">
@@ -131,7 +150,16 @@ export default function RequestFlow() {
               <p className="mt-4 text-sm"><Link to={`/anuncios/${uuid}#disponibilidade`} className="font-medium text-primary-strong underline">Alterar data ou horário</Link></p>
             </Card>
           )}
-          {step === 1 && (
+          {name === 'Local' && (
+            <Card className="space-y-5">
+              <div>
+                <h2 className="text-lg font-semibold">Onde o serviço será feito</h2>
+                <p className="mt-1 text-sm text-ink-muted">O profissional vai até você. Ele só vê o endereço completo depois de aceitar o pedido; antes disso, vê apenas o bairro e a cidade.</p>
+              </div>
+              <AddressForm value={address} onChange={(next) => { setAddress(next); setAddressErrors({}); }} errors={addressErrors} defaultCity={listing.city} defaultState={listing.state} />
+            </Card>
+          )}
+          {name === 'Mensagem' && (
             <Card className="space-y-5">
               <div>
                 <h2 className="text-lg font-semibold">Mensagem ao profissional</h2>
@@ -145,7 +173,18 @@ export default function RequestFlow() {
               <ImageUploader variant="gallery" purpose="message" max={5} value={photos} onChange={setPhotos} label="Fotos de referência (opcional)" hint="Mostre o local, o problema ou um exemplo do resultado que você quer." onBusyChange={setUploading} />
             </Card>
           )}
-          {step === 2 && (
+          {name === 'Pagamento' && platform && (
+            <Card className="space-y-4">
+              <h2 className="text-lg font-semibold">Como funciona o pagamento</h2>
+              <ul className="space-y-3 text-sm leading-6 text-ink-soft">
+                <li className="flex gap-3"><span aria-hidden="true">1️⃣</span><span>O pedido só é confirmado <strong>quando o profissional aceitar</strong>. Até lá, nada é cobrado.</span></li>
+                <li className="flex gap-3"><span aria-hidden="true">2️⃣</span><span>Depois do aceite, você paga {calc.total != null ? <strong>{formatMoney(calc.total)}</strong> : 'o valor combinado'} <strong>pelo Dommos</strong>, com Pix, cartão de crédito ou boleto. O pagamento é processado pelo Asaas e o Dommos nunca recebe dados de cartão.</span></li>
+                <li className="flex gap-3"><span aria-hidden="true">3️⃣</span><span>O valor fica protegido: <strong>só é repassado ao profissional depois que você confirmar o serviço</strong>. Se algo não sair como combinado, você pode abrir uma reclamação antes de confirmar.</span></li>
+              </ul>
+              <p className="rounded-control bg-info-soft p-3 text-sm text-info">Pague sempre pelo pedido no Dommos. Desconfie de quem pedir pagamento por fora, link estranho ou transferência para outra pessoa.</p>
+            </Card>
+          )}
+          {name === 'Pagamento' && !platform && (
             <Card className="space-y-4">
               <h2 className="text-lg font-semibold">Como funciona o pagamento</h2>
               <ul className="space-y-3 text-sm leading-6 text-ink-soft">
@@ -156,9 +195,16 @@ export default function RequestFlow() {
               <p className="rounded-control bg-info-soft p-3 text-sm text-info"><strong>Dommos em modo gratuito:</strong> o dinheiro não passa pela plataforma. Nunca pague fora do pedido nem a outra pessoa que não seja o profissional do anúncio.</p>
             </Card>
           )}
-          {step === 3 && (
+          {name === 'Confirmar' && (
             <Card className="space-y-4">
               <h2 className="text-lg font-semibold">Regras e cancelamento</h2>
+              {selection.mode === 'client_place' && (
+                <div className="rounded-control bg-surface-muted p-3 text-sm">
+                  <p className="font-semibold">Local do serviço</p>
+                  <p className="mt-1 text-ink-soft">{address.street}, {address.number}{address.complement ? ` (${address.complement})` : ''} · {address.neighborhood} · {address.city}/{address.state.toUpperCase()} · CEP {address.postal_code}</p>
+                  <p className="mt-1"><button type="button" onClick={() => setStep(steps.indexOf('Local'))} className="font-medium text-primary-strong underline">Alterar endereço</button></p>
+                </div>
+              )}
               {policy && <p className="text-sm leading-6 text-ink-soft"><strong>Política {policy.label.toLowerCase()}.</strong> {policy.text} Depois disso, eventuais custos são combinados direto com o profissional.</p>}
               {listing.requirements && <div><p className="text-sm font-semibold">O que você precisa providenciar</p><p className="mt-1 whitespace-pre-line text-sm leading-6 text-ink-soft">{listing.requirements}</p></div>}
               <label className="flex cursor-pointer items-start gap-3 text-sm"><input type="checkbox" className="mt-1 h-5 w-5" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>Li e aceito as regras do serviço, a política de cancelamento e os <Link to="/termos-de-uso" target="_blank" className="font-medium text-primary-strong underline">termos de uso</Link>.</span></label>
@@ -173,7 +219,7 @@ export default function RequestFlow() {
 
           <div className="flex flex-wrap justify-between gap-3">
             <Button variant="secondary" onClick={() => (step === 0 ? navigate(`/anuncios/${uuid}`) : setStep(step - 1))} disabled={busy}>{step === 0 ? 'Voltar ao anúncio' : 'Voltar'}</Button>
-            {step < 3 ? <Button onClick={() => setStep(step + 1)} disabled={uploading}>Continuar</Button> : <Button onClick={send} loading={busy} disabled={!accepted}>Enviar solicitação</Button>}
+            {step < steps.length - 1 ? <Button onClick={goNext} disabled={uploading}>Continuar</Button> : <Button onClick={send} loading={busy} disabled={!accepted}>Enviar solicitação</Button>}
           </div>
         </div>
         <Summary listing={listing} selection={selection} calc={calc} />

@@ -66,6 +66,16 @@ export default function OrderPage() {
               {order.finalAmount != null && <div><dt className="text-sm text-ink-muted">Valor final informado</dt><dd className="font-semibold text-primary-strong">{formatMoney(order.finalAmount)}</dd></div>}
               {order.policy && <div className="sm:col-span-2"><dt className="text-sm text-ink-muted">Cancelamento</dt><dd className="font-medium">{POLICY_INFO[order.policy].label}: <span className="font-normal text-ink-soft">{POLICY_INFO[order.policy].text}</span></dd></div>}
             </dl>
+            {order.serviceAddress && (
+              <div className="border-t border-line pt-5">
+                <h2 className="text-sm font-semibold">Local do serviço</h2>
+                {order.serviceAddress.partial ? (
+                  <p className="mt-1 text-sm leading-6 text-ink-soft">{order.serviceAddress.neighborhood} · {order.serviceAddress.city}/{order.serviceAddress.state}. <span className="text-ink-muted">O endereço completo aparece depois que você aceitar o pedido.</span></p>
+                ) : (
+                  <p className="mt-1 text-sm leading-6 text-ink-soft">{order.serviceAddress.street}, {order.serviceAddress.number}{order.serviceAddress.complement ? ` (${order.serviceAddress.complement})` : ''} · {order.serviceAddress.neighborhood} · {order.serviceAddress.city}/{order.serviceAddress.state} · CEP {order.serviceAddress.postal_code}</p>
+                )}
+              </div>
+            )}
             {order.note && <div className="border-t border-line pt-5"><h2 className="text-sm font-semibold">Observações do cliente</h2><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-ink-soft">{order.note}</p></div>}
             {order.referenceImages?.length > 0 && <div className="border-t border-line pt-5"><h2 className="text-sm font-semibold">Fotos de referência</h2><ul className="mt-2 flex flex-wrap gap-2">{order.referenceImages.map((url, index) => <li key={url}><a href={url} target="_blank" rel="noreferrer"><img src={url} alt={`Foto de referência ${index + 1}`} loading="lazy" className="h-20 w-20 rounded-control object-cover" /></a></li>)}</ul></div>}
           </Card>

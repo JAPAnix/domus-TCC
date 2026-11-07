@@ -83,3 +83,12 @@ export function bookingDateError(availability, dateStr, now, blockedDates = new 
   if (blockedDates.has(dateStr)) return 'O profissional não está disponível nesta data.';
   return null;
 }
+
+/** O cliente vê o endereço inteiro; o profissional só vê bairro e cidade até aceitar o pedido. */
+export function addressFor(order, viewerId) {
+  const address = order.serviceAddress;
+  if (!address || typeof address !== 'object') return null;
+  const isClient = viewerId != null && order.clientId === viewerId;
+  if (isClient || ['accepted', 'in_progress', 'completed'].includes(order.status)) return address;
+  return { neighborhood: address.neighborhood, city: address.city, state: address.state, partial: true };
+}

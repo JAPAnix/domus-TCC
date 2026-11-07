@@ -46,7 +46,9 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '100kb' }));
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+// Mostra quais serviços externos estão configurados (só os nomes, nunca valores), para conferir o deploy abrindo /health.
+const emailMode = () => (process.env.EMAIL_FROM && process.env.BREVO_API_KEY ? 'brevo' : process.env.EMAIL_FROM && process.env.SMTP_HOST ? 'smtp' : 'none');
+app.get('/health', (_req, res) => res.json({ status: 'ok', storage: process.env.STORAGE_PROVIDER || 'local', email: emailMode(), payments: process.env.PAYMENT_PROVIDER || 'manual' }));
 
 // Imagens do provedor local. Só arquivos gerados pelo servidor; nosniff impede interpretar como outro tipo.
 app.use('/uploads', express.static(uploadDirectory, {

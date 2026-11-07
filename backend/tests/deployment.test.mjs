@@ -18,7 +18,12 @@ test('production health and CORS work without a database connection', async () =
   try {
     const health = await fetch(`${url}/health`);
     assert.equal(health.status, 200);
-    assert.deepEqual(await health.json(), { status: 'ok' });
+    // storage informa o provedor de fotos para quem conferir /health (sem segredos): sem STORAGE_PROVIDER é 'local'.
+    const body = await health.json();
+    assert.equal(body.status, 'ok');
+    assert.equal(body.storage, process.env.STORAGE_PROVIDER || 'local');
+    assert.ok(['brevo', 'smtp', 'none'].includes(body.email));
+    assert.equal(JSON.stringify(body).includes('KEY'), false);
     const allowed = await fetch(`${url}/api/services`, { method: 'OPTIONS', headers: {
       Origin: 'https://frontend-test.invalid',
       'Access-Control-Request-Method': 'POST',

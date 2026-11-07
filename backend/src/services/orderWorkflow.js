@@ -52,6 +52,7 @@ export async function createOrder(userId, body, now = new Date()) {
 
     const modes = [listing.atClientPlace && 'client_place', listing.atProPlace && 'pro_place', listing.isRemote && 'remote'].filter(Boolean);
     if (!modes.includes(body.service_mode)) fail(400, 'Esta forma de atendimento não está disponível neste anúncio.');
+    if (body.service_mode === 'client_place' && !body.service_address) fail(422, 'Informe o endereço onde o serviço será feito.');
 
     const scheduledDate = new Date(`${body.date}T00:00:00.000Z`);
     const blockedDay = await tx.professionalAvailability.findFirst({ where: { professionalId: listing.ownerId, date: scheduledDate, isAvailable: false }, select: { id: true } });
@@ -89,7 +90,7 @@ export async function createOrder(userId, body, now = new Date()) {
       data: {
         uuid: generateUuid(), listingId: listing.id, clientId: userId, professionalId: listing.ownerId, scheduledDate, serviceMode: body.service_mode,
         packageName: body.package_name || null, note: body.note || null, scheduledTime: listing.pricingModel === 'hourly' ? body.time : null,
-        endDate: endDate ? new Date(`${endDate}T00:00:00.000Z`) : null, quantity, ...(body.image_urls?.length && { referenceImages: body.image_urls }), titleSnapshot: listing.title, pricingModelSnapshot: listing.pricingModel,
+        endDate: endDate ? new Date(`${endDate}T00:00:00.000Z`) : null, quantity, ...(body.image_urls?.length && { referenceImages: body.image_urls }), ...(body.service_mode === 'client_place' && body.service_address && { serviceAddress: body.service_address }), titleSnapshot: listing.title, pricingModelSnapshot: listing.pricingModel,
         priceSnapshot: amounts.price, travelFeeSnapshot: amounts.travelFee, policySnapshot: listing.cancellationPolicy, platformFeePercent: platformFeePercent(),
       },
     });

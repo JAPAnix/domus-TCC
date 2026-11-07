@@ -13,6 +13,11 @@ export const uploadImage = async (req, res) => {
   try {
     if (!await isActiveUser(req)) return res.status(401).json({ message: 'Conta indisponível. Entre novamente.' });
     if (!req.file) return res.status(400).json({ message: 'Selecione uma imagem para enviar.' });
+    if (process.env.NODE_ENV === 'production' && (process.env.STORAGE_PROVIDER || 'local') === 'local') {
+      // Em hospedagem com disco temporário, a foto sumiria no próximo reinício. Melhor recusar do que perder depois.
+      logger.error('uploadImage: STORAGE_PROVIDER=local em produção. Configure o Cloudinary no servidor.');
+      return res.status(503).json({ message: 'O envio de fotos ainda não está configurado no servidor. Avise o suporte.' });
+    }
 
     const purpose = req.body.purpose;
     if (!UPLOAD_PURPOSES.includes(purpose)) return res.status(400).json({ message: 'Destino da imagem inválido.' });

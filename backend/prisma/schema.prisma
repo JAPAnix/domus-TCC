@@ -705,6 +705,7 @@ model Order {
   endDate              DateTime?           @map("end_date") @db.Date
   quantity             Int?                @db.UnsignedSmallInt
   referenceImages      Json?               @map("reference_images")
+  serviceAddress       Json?               @map("service_address")
   titleSnapshot        String              @map("title_snapshot") @db.VarChar(120)
   pricingModelSnapshot PricingModel?       @map("pricing_model_snapshot")
   priceSnapshot        Decimal?            @map("price_snapshot") @db.Decimal(10, 2)

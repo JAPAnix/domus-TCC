@@ -46,6 +46,19 @@ export const verificationSchema = z.object({
   if (!valid) ctx.addIssue({ code: 'custom', path: ['document'], message: value.document_type === 'cpf' ? 'CPF inválido. Confira os 11 dígitos.' : 'CNPJ inválido. Confira os 14 dígitos.' });
 });
 
+const clean = (label, max) => z.string({ error: `Informe ${label}.` }).trim().min(1, `Informe ${label}.`).max(max, `Use no máximo ${max} caracteres.`);
+
+/** Endereço do serviço (modo "na casa do cliente"). Só vai ao profissional depois que ele aceita o pedido. */
+export const serviceAddressSchema = z.object({
+  postal_code: z.string({ error: 'Informe o CEP.' }).trim().regex(/^\d{5}-?\d{3}$/, 'CEP inválido. Use 8 dígitos.'),
+  street: clean('a rua', 120),
+  number: clean('o número', 20),
+  complement: z.string().trim().max(80, 'Use no máximo 80 caracteres.').optional(),
+  neighborhood: clean('o bairro', 80),
+  city: clean('a cidade', 80),
+  state: z.string({ error: 'Informe o estado.' }).trim().length(2, 'Use a sigla do estado, com 2 letras.').transform((value) => value.toUpperCase()),
+});
+
 export const bookingSchema = z.object({
   listing_uuid: z.string().regex(UUID, 'Anúncio inválido.'),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Escolha uma data válida.'),
@@ -55,6 +68,7 @@ export const bookingSchema = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Escolha o horário.').nullable().optional(),
   quantity: z.number().int('Informe um número inteiro.').min(1, 'Informe pelo menos 1.').max(30, 'Quantidade alta demais.').nullable().optional(),
   image_urls: z.array(z.string().url().max(500)).max(5, 'Envie no máximo 5 fotos.').optional(),
+  service_address: serviceAddressSchema.optional(),
 });
 
 export const completeSchema = z.object({

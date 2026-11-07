@@ -1,36 +1,28 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Input } from './ui';
-import { digits, maskCep } from '../utils/address';
+import { useCepLookup } from '../hooks/useCepLookup';
+import { maskCep } from '../utils/cep';
 
 /** Endereço do serviço, com preenchimento automático pelo CEP (ViaCEP, gratuito). Se a consulta falhar, o cliente digita. */
 export default function AddressForm({ value, onChange, errors = {}, defaultCity = '', defaultState = '' }) {
-  const [lookup, setLookup] = useState('');
-  const lastCep = useRef('');
+  const latest = useRef(value);
+  useEffect(() => { latest.current = value; });
+  // Preenche só o que ainda está vazio: o que a pessoa já digitou nunca é sobrescrito.
+  const { status, lookup } = useCepLookup((found) => {
+    const now = latest.current;
+    onChange({ ...now, street: now.street || found.street, neighborhood: now.neighborhood || found.neighborhood, city: now.city || found.city, state: now.state || found.state });
+  });
 
   const set = (name, text) => onChange({ ...value, [name]: text });
-
-  async function onCep(text) {
+  function onCep(text) {
     const masked = maskCep(text);
-    const next = { ...value, postal_code: masked };
-    onChange(next);
-    const clean = digits(masked);
-    if (clean.length !== 8 || lastCep.current === clean) return;
-    lastCep.current = clean;
-    setLookup('Buscando o endereço...');
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${clean}/json/`, { signal: AbortSignal.timeout(6000) });
-      const data = await response.json();
-      if (data.erro) { setLookup('CEP não encontrado. Preencha o endereço abaixo.'); return; }
-      onChange({ ...next, street: next.street || data.logradouro || '', neighborhood: next.neighborhood || data.bairro || '', city: next.city || data.localidade || '', state: next.state || data.uf || '' });
-      setLookup('Endereço preenchido. Confira e complete o número.');
-    } catch {
-      setLookup('Não foi possível buscar o CEP agora. Preencha o endereço abaixo.');
-    }
+    onChange({ ...value, postal_code: masked });
+    lookup(masked);
   }
 
   return (
     <div className="space-y-4">
-      <Input label="CEP" name="postal_code" inputMode="numeric" autoComplete="postal-code" value={value.postal_code} onChange={(event) => onCep(event.target.value)} error={errors.postal_code} hint={lookup || 'Preenchemos o resto do endereço pelo CEP.'} />
+      <Input label="CEP" name="postal_code" inputMode="numeric" autoComplete="postal-code" value={value.postal_code} onChange={(event) => onCep(event.target.value)} error={errors.postal_code} hint={status || 'Preenchemos o resto do endereço pelo CEP.'} />
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
         <Input label="Rua" name="street" autoComplete="address-line1" value={value.street} onChange={(event) => set('street', event.target.value)} error={errors.street} maxLength={120} />
         <Input label="Número" name="number" value={value.number} onChange={(event) => set('number', event.target.value)} error={errors.number} maxLength={20} />

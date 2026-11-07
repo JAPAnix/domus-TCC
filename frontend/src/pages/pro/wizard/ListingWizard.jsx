@@ -12,7 +12,7 @@ import { StepAvailability, StepCategory, StepIncluded, StepLocation, StepModes, 
 
 const FIRST_FIELD = { categoryId: 'categoryId', serviceModes: 'serviceModes', city: 'city', title: 'title', price: 'price' };
 
-function Wizard({ listing, config }) {
+function Wizard({ listing, config, prefill }) {
   const { uuid, step: stepParam } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -20,10 +20,10 @@ function Wizard({ listing, config }) {
   const { setMode } = useMode();
   const step = Math.min(10, Math.max(1, Number.parseInt(stepParam, 10) || 1));
   const info = STEPS[step - 1];
-  const [form, setForm] = useState(() => formFromListing(listing));
+  const [form, setForm] = useState(() => formFromListing(listing, prefill));
   const [errors, setErrors] = useState({});
   const [serverErrors, setServerErrors] = useState(null);
-  const [saved, setSaved] = useState(() => JSON.stringify(allPayload(formFromListing(listing))));
+  const [saved, setSaved] = useState(() => JSON.stringify(allPayload(formFromListing(listing, prefill))));
   const [busy, setBusy] = useState('');
   const [uploading, setUploading] = useState(false);
   const allowLeave = useRef(false);
@@ -150,8 +150,10 @@ export default function ListingWizard() {
   const { uuid, step } = useParams();
   const resource = useApiResource(`/pro/listings/${uuid}`);
   const config = useApiResource('/listings/config');
+  // Dados já informados no cadastro (cidade, nome e CPF/CNPJ) entram prontos no anúncio.
+  const prefill = useApiResource('/account/prefill');
 
-  if (resource.loading || config.loading) return <main className="mx-auto max-w-form px-4 py-10"><SkeletonList count={3} label="Carregando anúncio" itemClassName="h-40" /></main>;
+  if (resource.loading || config.loading || prefill.loading) return <main className="mx-auto max-w-form px-4 py-10"><SkeletonList count={3} label="Carregando anúncio" itemClassName="h-40" /></main>;
   if (resource.error) {
     return (
       <main className="mx-auto max-w-form px-4 py-10">
@@ -163,5 +165,5 @@ export default function ListingWizard() {
   }
   if (config.error) return <main className="mx-auto max-w-form px-4 py-10"><ErrorState title="Não foi possível carregar as configurações" message={apiError(config.error)} onRetry={config.retry} /></main>;
   if (!step) return <Navigate to={`/pro/anuncio/${uuid}/etapa/${resource.data.status === 'draft' ? resource.data.wizardStep : 10}`} replace />;
-  return <Wizard key={uuid} listing={resource.data} config={config.data} />;
+  return <Wizard key={uuid} listing={resource.data} config={config.data} prefill={prefill.data ?? null} />;
 }

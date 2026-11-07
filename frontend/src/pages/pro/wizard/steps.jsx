@@ -10,6 +10,8 @@ import { CANCELLATION_POLICIES, LISTING_LIMITS, PRICING_MODELS, SERVICE_MODES, n
 import { MODE_HELP, MODE_LABELS, POLICY_INFO, PRICING_HELP, PRICING_LABELS, WEEKDAY_NAMES, WEEKDAY_ORDER } from '../../../utils/listingText';
 import { STATES } from '../../../utils/roles';
 import { formatCnpj, formatCpf } from '../../settings/identityValidation';
+import { useCepLookup } from '../../../hooks/useCepLookup';
+import { maskCep } from '../../../utils/cep';
 import { DEFAULT_HOURS, STEPS, previewListing, ruleData } from './formModel';
 
 const optionCard = (active) => `flex cursor-pointer items-start gap-3 rounded-card border p-4 transition-colors ${active ? 'border-primary bg-primary-softer' : 'border-line hover:bg-surface-muted'}`;
@@ -82,10 +84,14 @@ export function StepModes({ form, set, errors }) {
 
 // ---- 3. Localização e raio ----
 export function StepLocation({ form, set, errors }) {
+  const [cep, setCep] = useState('');
+  // CEP é só um atalho: preenche cidade e UF. O anúncio guarda apenas a cidade, nunca o CEP.
+  const { status: cepStatus, lookup } = useCepLookup((found) => { set('city', found.city); set('state', found.state); });
   const physical = form.serviceModes.includes('client_place') || form.serviceModes.includes('pro_place');
   if (!physical) return <p className="rounded-card border border-line bg-surface-muted p-5 text-sm leading-6 text-ink-soft">Você atende só online, então não precisa informar um local. Seu anúncio aparece nas buscas de qualquer cidade.</p>;
   return (
     <div className="space-y-5">
+      <Input label="CEP" optional inputMode="numeric" autoComplete="postal-code" value={cep} onChange={(event) => { const masked = maskCep(event.target.value); setCep(masked); lookup(masked); }} hint={cepStatus || 'Digite o CEP e preenchemos a cidade e o estado. O CEP não aparece no anúncio.'} />
       <div className="grid grid-cols-3 gap-3">
         <Input wrapperClassName="col-span-2" label="Cidade" required value={form.city} onChange={(event) => set('city', event.target.value)} error={errors.city} maxLength={100} autoComplete="address-level2" />
         <Select label="UF" required value={form.state} onChange={(event) => set('state', event.target.value)} error={errors.state}><option value="">—</option>{STATES.map((uf) => <option key={uf}>{uf}</option>)}</Select>

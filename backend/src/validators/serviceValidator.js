@@ -14,9 +14,16 @@ const serviceBaseSchema = z.object({
     .transform(value => new Date(value + "T00:00:00.000Z"))
     .optional(),
   image_urls: z.array(imageUrl).max(10, "Envie no máximo 10 fotos").optional(),
+  city: z.string().trim().min(2, "Informe a cidade").max(100).optional(),
+  state: z.string().trim().length(2, "Use a sigla do estado, com 2 letras").transform((value) => value.toUpperCase()).optional(),
+  neighborhood: z.string().trim().max(100).optional(),
 });
 
-export const createServiceSchema = serviceBaseSchema.refine(
+export const createServiceSchema = serviceBaseSchema.extend({
+  // Pedido novo precisa dizer onde será o serviço; edição de rascunho continua parcial.
+  city: serviceBaseSchema.shape.city.unwrap(),
+  state: serviceBaseSchema.shape.state.unwrap(),
+}).refine(
   (data) => {
     if (data.budget_min && data.budget_max) {
       return data.budget_max >= data.budget_min;

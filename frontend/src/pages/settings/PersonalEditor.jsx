@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import UnsavedChangesDialog from '../../components/UnsavedChangesDialog';
+import { useCepLookup } from '../../hooks/useCepLookup';
 import { sections, initialForm, formPayload, inputClass, primaryClass, linkClass, maskEmail, maskPhone, formatZip } from './personalFields';
 
 export function PersonalEditor() {
@@ -16,6 +17,8 @@ function EditForm({ section, person }) {
   const navigate = useNavigate();
   const [initial] = useState(() => initialForm(section, person));
   const [form, setForm] = useState(initial);
+  // O CEP completa rua, bairro, cidade e estado; o que a pessoa já preencheu não é sobrescrito.
+  const { status: cepStatus, lookup } = useCepLookup((found) => setForm((old) => ({ ...old, street: old.street || found.street, neighborhood: old.neighborhood || found.neighborhood, city: old.city || found.city, state: old.state || found.state })));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState({});
@@ -27,6 +30,7 @@ function EditForm({ section, person }) {
     const { name, value, checked, type } = event.target;
     setForm((old) => ({ ...old, [name]: type === 'checkbox' ? checked : value }));
     setErrors((old) => ({ ...old, [name]: '' }));
+    if (name === 'zip_code') lookup(value);
   }
   async function save(event) {
     event.preventDefault();
@@ -58,7 +62,7 @@ function EditForm({ section, person }) {
       <form onSubmit={save} className="mt-6 space-y-5">
         {error && <p role="alert" className="rounded-control bg-danger-soft p-3 text-sm text-danger">{error}</p>}
         <fieldset disabled={busy} className="min-w-0 space-y-5">
-          {['residencial', 'postal'].includes(section) && <p className="text-sm text-ink-muted">País/Região: Brasil. Preencha o endereço manualmente.</p>}
+          {['residencial', 'postal'].includes(section) && <div><p className="text-sm text-ink-muted">País/Região: Brasil. Digite o CEP e preenchemos o restante; confira e complete o número.</p>{cepStatus && <p role="status" className="mt-1 text-xs text-ink-muted">{cepStatus}</p>}</div>}
           {section === 'postal' && <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="same_as_home" checked={form.same_as_home} onChange={change} className="h-5 w-5 accent-primary" />Usar o mesmo endereço residencial</label>}
           {section === 'phone' && <label className="block text-sm font-medium" htmlFor="country">País<select id="country" name="country" value={form.country} onChange={change} className={inputClass}><option value="+55">Brasil (+55)</option><option value="+351">Portugal (+351)</option><option value="+1">Estados Unidos/Canadá (+1)</option><option value="+54">Argentina (+54)</option><option value="+56">Chile (+56)</option><option value="+598">Uruguai (+598)</option></select></label>}
           {!(section === 'postal' && form.same_as_home) && sections[section].fields.map(([name, label, max, optional, type = 'text']) => (

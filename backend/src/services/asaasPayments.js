@@ -60,10 +60,11 @@ export async function startAsaasPayment(orderUuid, userId, { method, installment
     const active = await tx.payment.findFirst({ where: { orderId: order.id, status: { in: ['pending', 'confirmed', 'disputed'] } }, orderBy: { id: 'desc' } });
     if (active && (active.status !== 'pending' || (active.method === method && active.provider === 'asaas'))) return { reuse: true };
 
-    const settings = await tx.userSettings.findUnique({ where: { userId }, select: { asaasCustomerId: true } });
+    const settings = await tx.userSettings.findUnique({ where: { userId }, select: { asaasCustomerId: true, taxDocument: true } });
     let payerDocument = null;
     if (!settings?.asaasCustomerId) {
-      payerDocument = onlyDigits(cpfCnpj ?? '');
+      // O CPF/CNPJ já salvo em Configurações > Impostos vale; só pede se não houver um válido.
+      payerDocument = onlyDigits(cpfCnpj || settings?.taxDocument || '');
       if (!(payerDocument.length === 11 ? isValidCpf(payerDocument) : payerDocument.length === 14 && isValidCnpj(payerDocument))) fail(422, 'Informe um CPF ou CNPJ válido para o pagamento.');
     }
     const parts = Number(installments);

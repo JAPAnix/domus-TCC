@@ -314,19 +314,23 @@ model ProfileSkill {
 }
 
 model Service {
-  id          BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid        Bytes         @unique @db.Binary(16)
-  clientId    BigInt        @map("client_id") @db.UnsignedBigInt
-  categoryId  Int           @map("category_id") @db.UnsignedInt
-  title       String        @db.VarChar(255)
-  description String        @db.Text
-  budgetMin   Decimal?      @map("budget_min") @db.Decimal(10, 2)
-  budgetMax   Decimal?      @map("budget_max") @db.Decimal(10, 2)
-  status      ServiceStatus @default(draft)
-  deadline    DateTime?     @db.Date
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  deletedAt   DateTime?     @map("deleted_at")
+  id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid         Bytes         @unique @db.Binary(16)
+  clientId     BigInt        @map("client_id") @db.UnsignedBigInt
+  categoryId   Int           @map("category_id") @db.UnsignedInt
+  title        String        @db.VarChar(255)
+  description  String        @db.Text
+  budgetMin    Decimal?      @map("budget_min") @db.Decimal(10, 2)
+  budgetMax    Decimal?      @map("budget_max") @db.Decimal(10, 2)
+  status       ServiceStatus @default(draft)
+  deadline     DateTime?     @db.Date
+  // Onde o serviço será feito (só cidade, estado e bairro: o endereço completo só vai ao profissional contratado).
+  city         String?       @db.VarChar(100)
+  state        String?       @db.VarChar(2)
+  neighborhood String?       @db.VarChar(100)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  deletedAt    DateTime?     @map("deleted_at")
 
   client    User           @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category  Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)

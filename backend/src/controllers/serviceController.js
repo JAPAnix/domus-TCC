@@ -20,7 +20,7 @@ function imageRows(urls) {
 }
 
 export const createService = async (req, res) => {
-  const { title, description, category_id, budget_min, budget_max, deadline, image_urls } = req.body;
+  const { title, description, category_id, budget_min, budget_max, deadline, image_urls, city, state, neighborhood } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -34,6 +34,9 @@ export const createService = async (req, res) => {
         budgetMin: budget_min,
         budgetMax: budget_max,
         deadline,
+        city,
+        state,
+        neighborhood: neighborhood || null,
         status: 'open',
         ...(image_urls?.length && { images: { create: imageRows(image_urls) } })
       },
@@ -157,7 +160,7 @@ export const getService = async (req, res) => {
 
 export const updateService = async (req, res) => {
   const { uuid } = req.params;
-  const { title, description, category_id, budget_min, budget_max, deadline, image_urls } = req.body;
+  const { title, description, category_id, budget_min, budget_max, deadline, image_urls, city, state, neighborhood } = req.body;
   const userId = BigInt(req.user.id);
 
   try {
@@ -186,6 +189,9 @@ export const updateService = async (req, res) => {
         budgetMin: budget_min,
         budgetMax: budget_max,
         deadline,
+        city,
+        state,
+        neighborhood,
         ...(image_urls !== undefined && { images: { deleteMany: {}, create: imageRows(image_urls) } })
       },
       include: { category: true, ...imagesInclude }

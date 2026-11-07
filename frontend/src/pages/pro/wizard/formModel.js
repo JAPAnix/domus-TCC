@@ -1,4 +1,4 @@
-import { isValidCnpj, isValidCpf } from '../../settings/identityValidation';
+import { formatCnpj, formatCpf, isValidCnpj, isValidCpf } from '../../settings/identityValidation';
 
 export const STEPS = [
   { n: 1, short: 'Serviço', title: 'Qual serviço você oferece?', description: 'Escolha a categoria e o tipo de serviço. É assim que os clientes encontram você.' },
@@ -15,16 +15,17 @@ export const STEPS = [
 
 export const DEFAULT_HOURS = { from: '08:00', to: '18:00' };
 
-export function formFromListing(listing) {
+export function formFromListing(listing, prefill = null) {
+  const saved = prefill?.address ?? {};
   return {
     categoryId: listing.categoryId, catalogItemId: listing.catalogItemId, serviceModes: listing.serviceModes,
-    city: listing.city ?? '', state: listing.state ?? '', radiusKm: listing.radiusKm ?? '',
+    city: listing.city || saved.city || '', state: listing.state || saved.state || '', radiusKm: listing.radiusKm ?? '',
     title: listing.title ?? '', description: listing.description ?? '', images: listing.images,
     included: listing.included, excluded: listing.excluded, requirements: listing.requirements ?? '', materials: listing.materials ?? '',
     pricingModel: listing.pricingModel ?? '', price: listing.price ?? '', travelFee: listing.travelFee ?? '',
     packages: listing.packages.map((item) => ({ name: item.name, price: item.price, description: item.description ?? '' })),
     availability: listing.availability ?? { weekdays: [], leadTimeHours: 24 }, cancellationPolicy: listing.cancellationPolicy ?? '',
-    legalName: listing.legalName ?? '', documentType: 'cpf', document: '', documentSaved: !!listing.verificationOk,
+    legalName: listing.legalName || prefill?.holderName || prefill?.name || '', documentType: prefill?.documentType ?? 'cpf', document: prefill?.document ? (prefill.documentType === 'cnpj' ? formatCnpj(prefill.document) : formatCpf(prefill.document)) : '', documentSaved: !!listing.verificationOk,
   };
 }
 

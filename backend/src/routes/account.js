@@ -9,6 +9,7 @@ import {
   changePassword, linkGoogle, unlinkGoogle, listSessions, revokeSession, revokeOtherSessions,
   deactivateAccount, startDeleteAccount, confirmDeleteAccount, exportData,
 } from '../controllers/accountController.js';
+import { prefill } from '../controllers/prefillController.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -19,6 +20,7 @@ const exports_ = rateLimit({ limit: 5, windowMs: 60 * 60 * 1000, message: 'Você
 router.patch('/password', sensitive, validate(changePasswordSchema), changePassword);
 router.post('/google', sensitive, validate(googleLinkSchema), linkGoogle);
 router.delete('/google', unlinkGoogle);
+router.get('/prefill', prefill);
 router.get('/sessions', listSessions);
 router.delete('/sessions', revokeOtherSessions);
 router.delete('/sessions/:id', revokeSession);

@@ -55,8 +55,8 @@ function ServiceContent({uuid}) {
           <h1 className="break-words text-2xl font-bold sm:text-3xl">{service.title}</h1>
           <p className="mt-3 text-sm text-ink-muted">{description}</p>
         </header>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[['Orçamento mínimo',money(service.budgetMin)],['Orçamento máximo',money(service.budgetMax)],['Prazo solicitado',date(service.deadline)]].map(([title,value])=><div key={title} className="rounded-control border border-line bg-surface p-5"><p className="text-xs text-ink-muted">{title}</p><p className="mt-2 break-words font-semibold">{value}</p></div>)}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[['Orçamento mínimo',money(service.budgetMin)],['Orçamento máximo',money(service.budgetMax)],['Prazo solicitado',date(service.deadline)],...(service.city?[['Onde será o serviço',[service.neighborhood,service.city].filter(Boolean).join(', ')+'/'+service.state]]:[])].map(([title,value])=><div key={title} className="rounded-control border border-line bg-surface p-5"><p className="text-xs text-ink-muted">{title}</p><p className="mt-2 break-words font-semibold">{value}</p></div>)}
         </div>
         <section className="rounded-card border border-line bg-surface p-6"><h2 className="mb-3 font-semibold">Sobre o pedido</h2><p className="whitespace-pre-wrap break-words leading-relaxed text-ink-soft">{service.description}</p></section>
         <section className="rounded-card border border-line bg-surface p-6"><h2 className="mb-4 font-semibold">Publicado por</h2><div className="flex items-center gap-3">

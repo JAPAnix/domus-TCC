@@ -15,6 +15,7 @@ function RequestCard({ service }) {
         <span className="self-start rounded-full bg-primary-soft px-2.5 py-1 text-xs font-medium text-primary-strong">{service.category?.name ?? 'Sem categoria'}</span>
         <h2 className="line-clamp-2 font-semibold leading-snug group-hover:text-primary-strong">{service.title}</h2>
         <p className="line-clamp-2 flex-1 text-sm text-ink-muted">{service.description}</p>
+        {service.city && <p className="text-xs font-medium text-ink-soft">{[service.neighborhood, service.city].filter(Boolean).join(', ')}/{service.state}</p>}
         <div className="flex items-center gap-2 text-xs text-ink-muted">
           <Avatar src={service.client?.profilePictureUrl} name={fullName(service.client)} size="xs" decorative />
           {fullName(service.client)}

@@ -10,6 +10,7 @@ import {
 } from '../utils/paymentRules.js';
 import { logger } from '../utils/logger.js';
 import { asaasActive, approvedReceiver } from './payoutAccounts.js';
+import { isValidCnpj, isValidCpf, onlyDigits } from '../utils/taxDocument.js';
 import { installmentOptions, scheduleAutoConfirm, startAsaasPayment } from './asaasPayments.js';
 import { feeConfig } from '../config/fees.js';
 import { computeCheckout, toCents } from '../utils/money.js';
@@ -109,7 +110,9 @@ async function asaasOrderState(order, userId) {
   const due = amountDue(order);
   const cfg = feeConfig();
   const total = due == null ? null : computeCheckout({ serviceCents: toCents(due), clientFeePercent: cfg.clientFeePercent, proCommissionPercent: cfg.proCommissionPercent });
-  const settings = isClient ? await prisma.userSettings.findUnique({ where: { userId }, select: { asaasCustomerId: true } }) : null;
+  const settings = isClient ? await prisma.userSettings.findUnique({ where: { userId }, select: { asaasCustomerId: true, taxDocument: true } }) : null;
+  const savedDoc = onlyDigits(settings?.taxDocument ?? '');
+  const hasValidDocument = savedDoc.length === 11 ? isValidCpf(savedDoc) : savedDoc.length === 14 && isValidCnpj(savedDoc);
   const allowed = ORDER_STATUSES_THAT_ALLOW_PAYMENT.includes(order.status);
   const retry = !payment || ['expired', 'refused'].includes(payment.status);
   return {
@@ -121,7 +124,7 @@ async function asaasOrderState(order, userId) {
     provider: 'asaas', automatic: true,
     methods: [{ value: 'pix', label: 'Pix' }, { value: 'credit_card', label: 'Cartão de crédito' }, { value: 'boleto', label: 'Boleto' }],
     installments: total ? installmentOptions(total.totalCents) : [],
-    needsDocument: isClient && !settings?.asaasCustomerId,
+    needsDocument: isClient && !settings?.asaasCustomerId && !hasValidDocument,
     autoConfirmDays: cfg.autoConfirmDays,
     payment: payment ? serializePayment(payment, userId, { events: true }) : null,
   };

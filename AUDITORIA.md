@@ -548,3 +548,19 @@ Fonte: documentação oficial em docs.asaas.com, lida em 06/11/2026 (as páginas
 - Pedidos abertos já aceitos antes desta versão não têm contratação, então não têm pagamento (só os novos). Se houver algum em andamento que precise de pagamento, é preciso criar a contratação por script.
 - Preencher dados automaticamente (identidade, cadastro) e CEP em todos os formulários de endereço (ainda não feito).
 - Cloudinary e chave de API da Brevo continuam por configurar no Render.
+
+### Rodada 8: dados já informados, CEP em todos os endereços e local do pedido (07/11/2026)
+
+**Feito:**
+- `GET /api/account/prefill` (privada, sem cache): devolve ao próprio usuário o que ele já informou (nome, e-mail, telefone, nascimento, endereço, CPF/CNPJ válido e nome do titular). Nunca é exposto a outras pessoas.
+- **Preenchimento automático:** solicitar serviço na casa do cliente (endereço do cadastro, editável), "Como recebo" (nome, e-mail, CPF/CNPJ, telefone, nascimento e endereço), anúncio do profissional (cidade/UF e nome/CPF da verificação) e "Publicar pedido" (cidade, UF e bairro). O pagamento pela plataforma passou a usar o CPF/CNPJ já salvo em Configurações > Impostos em vez de pedir de novo.
+- **CEP** preenche o que dá em todos os formulários de endereço: solicitação de serviço, dados pessoais, "Como recebo" (rua e bairro), etapa Local do anúncio (cidade e UF) e "Publicar pedido" (cidade, UF e bairro); a verificação de identidade já fazia. Mesma consulta (ViaCEP) e mesmos cuidados de privacidade em `utils/cep.js` e `hooks/useCepLookup.js`: preenche só o que está vazio, cancela consulta antiga, e se falhar o usuário digita.
+- **Publicar pedido** reorganizado em seções (o que você precisa, onde, quando e quanto, fotos) e agora pede **cidade e estado** (bairro opcional), mostrados na lista de pedidos abertos e na página do pedido (migration `20261112100000_service_location`, **a aplicar no banco real**). Pedidos antigos continuam sem local.
+- `backend/scripts/check-email.mjs`: confere a Brevo (chave, remetente) sem mostrar segredos e, com `--send`, manda um e-mail de teste.
+
+**Verificação:** backend 100 testes (1 pulado), frontend 14; API com banco descartável 12/12; navegador 15/15 em 1280 px e em 390 px, sem erros de JavaScript.
+
+**Pendente:**
+- Aplicar a migration `20261112100000_service_location` no banco real **antes** de publicar este código (as listas de pedidos abertos leem as colunas novas).
+- A chave da Brevo do `.env` local é recusada ("Key not found"); conferir a chave configurada no Render com `check-email.mjs`.
+- Telas logadas ainda sem teste automatizado em celular além dos fluxos acima.

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api, { apiError } from '../services/api';
 import { useApiResource } from '../hooks/useApiResource';
@@ -8,7 +8,7 @@ import { fromMinutes, toMinutes } from '../utils/bookingSlots';
 import { formatDay, formatMoney } from '../utils/format';
 import { MODE_LABELS, POLICY_INFO } from '../utils/listingText';
 import AddressForm from '../components/AddressForm';
-import { addressPayload, EMPTY_ADDRESS, validateAddress } from '../utils/address';
+import { addressPayload, EMPTY_ADDRESS, maskCep, validateAddress } from '../utils/address';
 import ImageUploader from '../components/ImageUploader';
 import { Breadcrumb, Button, Card, EmptyState, ErrorState, Skeleton, Textarea } from '../components/ui';
 
@@ -76,6 +76,14 @@ export default function RequestFlow() {
   const [address, setAddress] = useState(EMPTY_ADDRESS);
   const [addressErrors, setAddressErrors] = useState({});
   const config = useApiResource('/payments/config');
+  // O endereço do cadastro vem preenchido; se a pessoa mexer, vale o que ela digitou.
+  const prefill = useApiResource('/account/prefill');
+  const [edited, setEdited] = useState(false);
+  const savedAddress = useMemo(() => {
+    const saved = prefill.data?.address;
+    return saved && (saved.street || saved.postal_code) ? { ...EMPTY_ADDRESS, ...saved, postal_code: maskCep(saved.postal_code) } : null;
+  }, [prefill.data]);
+  const current = edited ? address : savedAddress ?? address;
   const platform = config.data?.provider === 'asaas';
   useDocumentMeta({ title: listing ? `Solicitar: ${listing.title}` : 'Solicitar serviço' });
 
@@ -100,7 +108,7 @@ export default function RequestFlow() {
 
   function goNext() {
     if (name === 'Local') {
-      const found = validateAddress(address);
+      const found = validateAddress(current);
       setAddressErrors(found);
       if (Object.keys(found).length) return;
     }
@@ -116,7 +124,7 @@ export default function RequestFlow() {
         listing_uuid: uuid, date, service_mode: selection.mode, ...(selection.packageName && { package_name: selection.packageName }),
         ...(selection.time && { time: selection.time }), ...(quantity && { quantity }),
         ...(message.trim() && { note: message.trim() }), ...(photos.length && { image_urls: photos }),
-        ...(selection.mode === 'client_place' && { service_address: addressPayload(address) }),
+        ...(selection.mode === 'client_place' && { service_address: addressPayload(current) }),
       });
       setResult(data);
     } catch (err) {
@@ -156,7 +164,8 @@ export default function RequestFlow() {
                 <h2 className="text-lg font-semibold">Onde o serviço será feito</h2>
                 <p className="mt-1 text-sm text-ink-muted">O profissional vai até você. Ele só vê o endereço completo depois de aceitar o pedido; antes disso, vê apenas o bairro e a cidade.</p>
               </div>
-              <AddressForm value={address} onChange={(next) => { setAddress(next); setAddressErrors({}); }} errors={addressErrors} defaultCity={listing.city} defaultState={listing.state} />
+              {savedAddress && !edited && <p role="status" className="rounded-control bg-primary-softer p-3 text-sm text-primary-strong">Preenchemos com o endereço do seu cadastro. Confira e mude se o serviço for em outro lugar.</p>}
+              <AddressForm value={current} onChange={(next) => { setAddress(next); setEdited(true); setAddressErrors({}); }} errors={addressErrors} defaultCity={listing.city} defaultState={listing.state} />
             </Card>
           )}
           {name === 'Mensagem' && (
@@ -201,7 +210,7 @@ export default function RequestFlow() {
               {selection.mode === 'client_place' && (
                 <div className="rounded-control bg-surface-muted p-3 text-sm">
                   <p className="font-semibold">Local do serviço</p>
-                  <p className="mt-1 text-ink-soft">{address.street}, {address.number}{address.complement ? ` (${address.complement})` : ''} · {address.neighborhood} · {address.city}/{address.state.toUpperCase()} · CEP {address.postal_code}</p>
+                  <p className="mt-1 text-ink-soft">{current.street}, {current.number}{current.complement ? ` (${current.complement})` : ''} · {current.neighborhood} · {current.city}/{current.state.toUpperCase()} · CEP {current.postal_code}</p>
                   <p className="mt-1"><button type="button" onClick={() => setStep(steps.indexOf('Local'))} className="font-medium text-primary-strong underline">Alterar endereço</button></p>
                 </div>
               )}

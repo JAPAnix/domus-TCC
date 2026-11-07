@@ -1,8 +1,11 @@
+import { digitsOf, maskCep } from './cep.js';
+
 // Endereço do serviço: validação e formato enviado à API. O formulário fica em components/AddressForm.jsx.
+export { maskCep };
+const digits = digitsOf;
+
 export const EMPTY_ADDRESS = { postal_code: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' };
 
-export const digits = (value) => value.replace(/\D/g, '');
-export const maskCep = (value) => { const d = digits(value).slice(0, 8); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d; };
 
 /** Confere o endereço antes de enviar. Devolve { campo: mensagem } só com o que está errado. */
 export function validateAddress(address) {

@@ -1,10 +1,13 @@
 import { prisma } from '../config/prisma.js';
-import { uuidToBuffer } from '../utils/uuid.js';
+import { bufferToUuid, uuidToBuffer } from '../utils/uuid.js';
 
-export function participation(service, userId, professional, proposal) {
+export function participation(service, userId, professional, proposal, order = null) {
   const isOwner = service.clientId === userId;
+  const party = order && (order.clientId === userId || order.professionalId === userId);
   return {
     status: service.status, isOwner, isProfessional: professional,
+    // Contratação criada quando a proposta foi aceita: é nela que fica o pagamento. Só as duas partes recebem o link.
+    orderUuid: party ? bufferToUuid(order.uuid) : null,
     proposalStatus: proposal?.status ?? null,
     canSubmit: service.status === 'open' && !isOwner && professional && !proposal
   };
@@ -18,6 +21,7 @@ export async function getServiceParticipation(req, res, next) {
     const service = await prisma.service.findFirst({ where: { uuid: uuidToBuffer(req.params.uuid), deletedAt: null }, select: { id: true, clientId: true, status: true } });
     if (!service) return res.status(404).json({ message: 'Serviço não encontrado.' });
     const proposal = await prisma.proposal.findUnique({ where: { serviceId_professionalId: { serviceId: service.id, professionalId: userId } }, select: { status: true } });
-    res.set('Cache-Control','no-store').json(participation(service, userId, user.roles.some(item => item.role.name === 'professional'), proposal));
+    const order = await prisma.order.findUnique({ where: { serviceId: service.id }, select: { uuid: true, clientId: true, professionalId: true } });
+    res.set('Cache-Control','no-store').json(participation(service, userId, user.roles.some(item => item.role.name === 'professional'), proposal, order));
   } catch(err) { next(err); }
 }

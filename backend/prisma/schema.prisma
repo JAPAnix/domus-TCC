@@ -333,6 +333,7 @@ model Service {
   proposals Proposal[]
   reviews   Review[]
   images    ServiceImage[]
+  order     Order?
 
   @@index([clientId])
   @@index([categoryId])
@@ -368,6 +369,7 @@ model Proposal {
 
   service      Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   professional ProfessionalProfile @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+  order        Order?
 
   @@unique([serviceId, professionalId])
   @@index([serviceId])
@@ -693,7 +695,10 @@ model ProfessionalVerification {
 model Order {
   id                   BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
   uuid                 Bytes               @unique @db.Binary(16)
-  listingId            BigInt              @map("listing_id") @db.UnsignedBigInt
+  listingId            BigInt?             @map("listing_id") @db.UnsignedBigInt
+  // Contratação nascida de uma proposta aceita num pedido aberto (sem anúncio): serviceId e proposalId preenchidos, listingId nulo.
+  serviceId            BigInt?             @unique @map("service_id") @db.UnsignedBigInt
+  proposalId           BigInt?             @unique @map("proposal_id") @db.UnsignedBigInt
   clientId             BigInt              @map("client_id") @db.UnsignedBigInt
   professionalId       BigInt              @map("professional_id") @db.UnsignedBigInt
   status               OrderStatus         @default(requested)
@@ -721,7 +726,9 @@ model Order {
   completedAt          DateTime?           @map("completed_at")
   cancelledAt          DateTime?           @map("cancelled_at")
 
-  listing        Listing         @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  listing        Listing?        @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  service        Service?        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  proposal       Proposal?       @relation(fields: [proposalId], references: [id], onDelete: Restrict)
   client         User            @relation("OrderClient", fields: [clientId], references: [id], onDelete: Restrict)
   professional   User            @relation("OrderProfessional", fields: [professionalId], references: [id], onDelete: Restrict)
   reviews        Review[]

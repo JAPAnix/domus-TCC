@@ -51,7 +51,8 @@ export async function openConversation(userId, { listingUuid, orderUuid }) {
     clientId = userId;
   }
   if (await isBlockedBetween(prisma, clientId, professionalId)) fail(403, 'Não é possível conversar com esta pessoa.');
-  const find = () => prisma.conversation.findFirst({ where: { listingId, clientId }, select: { uuid: true } });
+  // Contratação sem anúncio (nascida de uma proposta): a conversa é do par cliente + profissional, nunca "qualquer conversa sem anúncio".
+  const find = () => prisma.conversation.findFirst({ where: listingId == null ? { listingId: null, clientId, professionalId } : { listingId, clientId }, select: { uuid: true } });
   let conversation = await find();
   if (!conversation) {
     try { conversation = await prisma.conversation.create({ data: { uuid: generateUuid(), listingId, clientId, professionalId, title: title.slice(0, 120) }, select: { uuid: true } }); }

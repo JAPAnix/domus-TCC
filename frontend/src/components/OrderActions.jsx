@@ -10,6 +10,7 @@ const CONFIRM = {
 const DIRECT = {
   accept: { label: 'Aceitar', success: 'Pedido aceito. O cliente foi avisado.' },
   start: { label: 'Iniciar serviço', success: 'Serviço iniciado.' },
+  complete: { label: 'Concluir serviço', success: 'Serviço concluído. Cliente e profissional já podem se avaliar.' },
 };
 
 function CompleteModal({ order, onClose, onDone }) {
@@ -53,10 +54,10 @@ export default function OrderActions({ order, onChanged, size = 'sm' }) {
   const [confirming, setConfirming] = useState(null);
   const [completing, setCompleting] = useState(false);
 
-  async function run(action) {
+  async function run(action, body) {
     setBusy(action);
     try {
-      await api.post(`/orders/${order.uuid}/${action}`);
+      await api.post(`/orders/${order.uuid}/${action}`, body);
       toast.success((DIRECT[action] ?? CONFIRM[action]).success);
       setConfirming(null);
       onChanged();
@@ -76,7 +77,8 @@ export default function OrderActions({ order, onChanged, size = 'sm' }) {
       <div className="flex flex-wrap gap-2">
         {has('accept') && <Button size={size} onClick={() => run('accept')} loading={busy === 'accept'}>Aceitar</Button>}
         {has('start') && <Button size={size} onClick={() => run('start')} loading={busy === 'start'}>Iniciar serviço</Button>}
-        {has('complete') && <Button size={size} onClick={() => setCompleting(true)}>Concluir serviço</Button>}
+        {/* Contratação de proposta: o valor já foi combinado na proposta, não há o que digitar. */}
+        {has('complete') && <Button size={size} onClick={() => (order.service ? run('complete', { final_amount: order.total }) : setCompleting(true))} loading={busy === 'complete'}>Concluir serviço</Button>}
         {has('decline') && <Button size={size} variant="dangerOutline" onClick={() => setConfirming('decline')}>Recusar</Button>}
         {has('cancel') && <Button size={size} variant="secondary" onClick={() => setConfirming('cancel')}>Cancelar pedido</Button>}
       </div>

@@ -18,6 +18,7 @@ export const orderInclude = {
   listing: { select: { uuid: true, deletedAt: true, images: { take: 1, orderBy: { sortOrder: 'asc' }, select: { url: true } } } },
   client: { select: personSelect },
   professional: { select: personSelect },
+  service: { select: { uuid: true } },
 };
 
 export function serializeOrder(order, viewerId) {
@@ -28,7 +29,7 @@ export function serializeOrder(order, viewerId) {
   return {
     uuid: bufferToUuid(order.uuid), status: order.status, statusLabel: ORDER_STATUS_LABELS[order.status],
     scheduledDate: order.scheduledDate.toISOString().slice(0, 10), serviceMode: order.serviceMode, packageName: order.packageName, note: order.note,
-    title: order.titleSnapshot, listing: order.listing ? { uuid: bufferToUuid(order.listing.uuid), cover: order.listing.images[0]?.url ?? null, available: !order.listing.deletedAt } : null,
+    title: order.titleSnapshot, service: order.service ? { uuid: bufferToUuid(order.service.uuid) } : null, listing: order.listing ? { uuid: bufferToUuid(order.listing.uuid), cover: order.listing.images[0]?.url ?? null, available: !order.listing.deletedAt } : null,
     client: person(order.client), professional: person(order.professional),
     pricingModel: order.pricingModelSnapshot, price, travelFee, total: order.pricingModelSnapshot === 'fixed' && price != null ? price + (travelFee ?? 0) : unitsTotal(order.pricingModelSnapshot, price, order.quantity, travelFee),
     scheduledTime: order.scheduledTime, endDate: order.endDate ? order.endDate.toISOString().slice(0, 10) : null, quantity: order.quantity, referenceImages: Array.isArray(order.referenceImages) ? order.referenceImages : [], serviceAddress: addressFor(order, viewerId),

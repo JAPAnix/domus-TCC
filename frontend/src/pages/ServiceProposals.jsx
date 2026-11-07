@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useApiResource } from '../hooks/useApiResource';
 import { useAuth } from '../context/useAuth';
 import api, { apiError } from '../services/api';
@@ -9,12 +9,13 @@ import StatusBadge from '../components/StatusBadge';
 import { Avatar, Breadcrumb, Button, Card, ConfirmDialog, EmptyState, ErrorState, SkeletonList, useToast } from '../components/ui';
 
 const actions = {
-  accepted: { title: 'Aceitar proposta', confirmLabel: 'Aceitar proposta', danger: false, success: 'Proposta aceita. O serviço está em andamento.', message: (name) => `Ao aceitar a proposta de ${name}, as outras propostas pendentes serão recusadas e o serviço ficará em andamento.` },
+  accepted: { title: 'Aceitar proposta', confirmLabel: 'Aceitar proposta', danger: false, success: 'Proposta aceita. Agora faça o pagamento para garantir o serviço.', message: (name) => `Ao aceitar a proposta de ${name}, as outras propostas pendentes serão recusadas e o serviço ficará em andamento.` },
   rejected: { title: 'Recusar proposta', confirmLabel: 'Recusar proposta', danger: true, success: 'Proposta recusada.', message: (name) => `A proposta de ${name} será recusada. Essa ação não pode ser desfeita.` },
 };
 
 export default function ServiceProposals() {
   const { uuid } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const toast = useToast();
   const proposalsResource = useApiResource(`/services/${uuid}/proposals`, undefined, { keepPrevious: true });
@@ -31,8 +32,10 @@ export default function ServiceProposals() {
     const { proposal, status } = pending;
     setBusy(true);
     try {
-      await api.patch(`/proposals/${proposal.uuid}/status`, { status });
+      const { data } = await api.patch(`/proposals/${proposal.uuid}/status`, { status });
       toast.success(actions[status].success);
+      // Aceitou: a contratação já existe. Vai direto para ela, onde o cliente paga.
+      if (status === 'accepted' && data.orderUuid) { navigate(`/contratacoes/${data.orderUuid}#pagamento`); return; }
     } catch (err) {
       toast.error(apiError(err, 'Não foi possível atualizar a proposta.'));
     } finally {

@@ -3,8 +3,7 @@ import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 import { resolveTransition, computeAmounts, bookingDateError, weekdayOf } from '../utils/orderRules.js';
 import { addDays, daysOf, hasConflict, normalizeQuantity, slotError } from '../utils/bookingSlots.js';
 import { syncPaymentsWithOrder } from './paymentWorkflow.js';
-import { asaasActive } from './payoutAccounts.js';
-import { feeConfig } from '../config/fees.js';
+import { platformFeePercent } from './platformFee.js';
 import { registerConnectionSource } from '../utils/connections.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -13,12 +12,7 @@ const nameOf = (user) => user.preferredName?.trim() || [user.firstName, user.las
 const brDate = (value) => (value instanceof Date ? value.toISOString().slice(0, 10) : String(value)).split('-').reverse().join('/');
 const personSelect = { id: true, uuid: true, firstName: true, lastName: true, preferredName: true, city: true };
 
-export const platformFeePercent = () => {
-  // Com o pagamento pela plataforma, a comissão do profissional vem da configuração central de taxas.
-  if (asaasActive()) return feeConfig().proCommissionPercent;
-  const fee = Number(process.env.PLATFORM_FEE_PERCENT ?? 0);
-  return Number.isFinite(fee) && fee >= 0 && fee < 100 ? fee : 0;
-};
+export { platformFeePercent };
 
 // Contratações aceitas contam como "conexão" entre cliente e profissional.
 registerConnectionSource(async (db, userId, add) => {
@@ -33,7 +27,7 @@ async function lockedOrder(tx, uuid) {
   if (!UUID.test(uuid)) fail(400, 'Pedido inválido.');
   const id = uuidToBuffer(uuid);
   await tx.$queryRaw`SELECT id FROM orders WHERE uuid = ${id} FOR UPDATE`;
-  const order = await tx.order.findFirst({ where: { uuid: id }, include: { client: { select: personSelect }, professional: { select: personSelect } } });
+  const order = await tx.order.findFirst({ where: { uuid: id }, include: { client: { select: personSelect }, professional: { select: personSelect }, service: { select: { id: true, uuid: true } } } });
   if (!order) fail(404, 'Pedido não encontrado.');
   return order;
 }
@@ -114,6 +108,8 @@ export async function transitionOrder(uuid, userId, action, body = {}) {
     const order = await lockedOrder(tx, uuid);
     const { to, role } = resolveTransition(order, userId, action);
     const now = new Date();
+    // Contratação de proposta: o valor é o da proposta aceita, não um valor digitado na hora de concluir.
+    if (order.serviceId && to === 'completed') body = { ...body, final_amount: Number(order.priceSnapshot) };
     const data = {
       status: to,
       ...(to === 'accepted' && { acceptedAt: now }),
@@ -130,13 +126,15 @@ export async function transitionOrder(uuid, userId, action, body = {}) {
     }
     await tx.order.update({ where: { id: order.id }, data });
     await syncPaymentsWithOrder(tx, order, to, to === 'completed' ? body.final_amount : null);
+    // O pedido aberto acompanha a contratação nascida da proposta.
+    if (order.serviceId && ['completed', 'cancelled'].includes(to)) await tx.service.update({ where: { id: order.serviceId }, data: { status: to } });
 
     const orderUuid = bufferToUuid(order.uuid);
     const actor = nameOf(role === 'professional' ? order.professional : order.client);
     const other = role === 'professional' ? order.clientId : order.professionalId;
     if (action === 'complete') {
       for (const recipient of [order.clientId, order.professionalId]) {
-        await notify(tx, emails, recipient, `order-completed:${orderUuid}:${recipient}`, `O serviço "${order.titleSnapshot}" foi concluído. Conte como foi sua experiência.`, `/contratacoes/${orderUuid}/avaliar`, 'service_completed');
+        await notify(tx, emails, recipient, `order-completed:${orderUuid}:${recipient}`, `O serviço "${order.titleSnapshot}" foi concluído. Conte como foi sua experiência.`, order.service ? `/servicos/${bufferToUuid(order.service.uuid)}/avaliar` : `/contratacoes/${orderUuid}/avaliar`, 'service_completed');
       }
     } else {
       await notify(tx, emails, other, `order-${to}:${orderUuid}`, MESSAGES[action](order, actor), `/contratacoes/${orderUuid}`, 'order_update');

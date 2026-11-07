@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
+import { cancelOrderForService, completeOrderForService, createOrderForProposal } from './proposalOrders.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 
@@ -86,17 +87,21 @@ export async function decideProposal(uuid, userId, status) {
     if (!client && proposal.professionalId !== userId) fail(403, 'Acesso negado.');
     if (client ? !['accepted', 'rejected'].includes(status) : status !== 'withdrawn') fail(403, 'Ação não permitida.');
     await tx.proposal.update({ where: { id: proposal.id }, data: { status } });
+    let orderUuid = null;
     if (status === 'accepted') {
       await tx.service.update({ where: { id: service.id }, data: { status: 'in_progress' } });
       await tx.proposal.updateMany({ where: { serviceId: service.id, id: { not: proposal.id }, status: 'pending' }, data: { status: 'rejected' } });
-      await notify(tx, emails, proposal.professionalId, 'accepted:' + uuid, 'Sua proposta para "' + service.title + '" foi aceita!', '/servicos/' + serviceUuid, 'proposal_accepted');
+      const order = await createOrderForProposal(tx, { service, proposal });
+      orderUuid = bufferToUuid(order.uuid);
+      await notify(tx, emails, proposal.professionalId, 'accepted:' + uuid, 'Sua proposta para "' + service.title + '" foi aceita! O cliente vai fazer o pagamento pela contratação.', '/contratacoes/' + orderUuid, 'proposal_accepted');
     }
-    return { status };
+    return { status, ...(orderUuid && { orderUuid }) };
   });
 }
 
 export async function changeServiceStatus(uuid, userId, status) {
-  return runTransaction(async (tx, emails) => {
+  let cancelledOrder = null;
+  const result = await runTransaction(async (tx, emails) => {
     await activeUser(tx, userId);
     const service = await lockedService(tx, uuid);
     if (service.clientId !== userId) fail(403, 'Somente o cliente pode concluir o serviço.');
@@ -105,6 +110,9 @@ export async function changeServiceStatus(uuid, userId, status) {
     if (status === 'completed' && service.proposals.length !== 1) fail(409, 'O serviço precisa ter exatamente uma proposta aceita.');
     await tx.service.update({ where: { id: service.id }, data: { status } });
     if (status === 'cancelled') await tx.proposal.updateMany({ where: { serviceId: service.id, status: 'pending' }, data: { status: 'rejected' } });
+    // A contratação criada no aceite da proposta acompanha o pedido aberto.
+    if (status === 'completed') await completeOrderForService(tx, service.id);
+    if (status === 'cancelled') cancelledOrder = await cancelOrderForService(tx, service.id, userId);
     if (status === 'completed') {
       for (const recipient of [service.clientId, service.proposals[0].professionalId]) {
         await notify(tx, emails, recipient, 'completed:' + uuid + ':' + recipient, 'O serviço "' + service.title + '" foi concluído. Conte como foi sua experiência.', '/servicos/' + uuid + '/avaliar', 'service_completed');
@@ -112,6 +120,12 @@ export async function changeServiceStatus(uuid, userId, status) {
     }
     return { status };
   });
+  if (cancelledOrder) {
+    // Fora da transação: fala com o gateway para estornar o que foi pago, conforme a política.
+    const { refundOnCancel } = await import('./asaasPayments.js');
+    await refundOnCancel(bufferToUuid(cancelledOrder.uuid)).catch((error) => console.error('[PEDIDO] estorno do cancelamento falhou:', error?.message));
+  }
+  return result;
 }
 
 export async function getReviewContext(uuid, userId) {

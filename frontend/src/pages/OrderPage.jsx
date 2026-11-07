@@ -1,4 +1,5 @@
-import { Link, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { apiError } from '../services/api';
 import { useApiResource } from '../hooks/useApiResource';
 import { formatDay, formatMoney } from '../utils/format';
@@ -25,6 +26,12 @@ export default function OrderPage() {
   const { uuid } = useParams();
   const resource = useApiResource(`/orders/${uuid}`, undefined, { keepPrevious: true });
   const order = resource.data;
+  const { hash } = useLocation();
+  const orderUuid = order?.uuid;
+  // Vindo do aceite da proposta (#pagamento), rola até a área de pagamento assim que o pedido carrega.
+  useEffect(() => {
+    if (hash === '#pagamento' && orderUuid) document.getElementById('pagamento')?.scrollIntoView({ block: 'start' });
+  }, [hash, orderUuid]);
   const isClient = order?.role === 'client';
   const crumbs = [{ label: isClient || !order ? 'Pedidos e contratações' : 'Pedidos e agenda', to: !order || isClient ? '/meus-servicos' : '/pro/pedidos' }, { label: order?.title ?? 'Pedido' }];
 
@@ -46,7 +53,7 @@ export default function OrderPage() {
     <main className="mx-auto max-w-content px-4 py-10 sm:px-6">
       <Breadcrumb items={crumbs} />
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0"><h1 className="break-words text-2xl font-bold sm:text-3xl">{order.title}</h1><p className="mt-1 text-ink-muted">Para {formatDay(order.scheduledDate, { dateStyle: 'full' })}</p></div>
+        <div className="min-w-0"><h1 className="break-words text-2xl font-bold sm:text-3xl">{order.title}</h1><p className="mt-1 text-ink-muted">{order.service ? 'Prazo' : 'Para'} {formatDay(order.scheduledDate, { dateStyle: 'full' })}</p></div>
         <StatusBadge status={order.status} map={orderStatus} />
       </div>
 
@@ -60,7 +67,7 @@ export default function OrderPage() {
               {order.scheduledTime && <div><dt className="text-sm text-ink-muted">Horário</dt><dd className="font-medium">{order.scheduledTime}{order.quantity ? ` (${order.quantity} ${order.quantity === 1 ? 'hora' : 'horas'})` : ''}</dd></div>}
               {!order.scheduledTime && order.quantity > 1 && <div><dt className="text-sm text-ink-muted">Dias</dt><dd className="font-medium">{order.quantity}{order.endDate ? ` (até ${formatDay(order.endDate)})` : ''}</dd></div>}
               <div><dt className="text-sm text-ink-muted">Como o preço é cobrado</dt><dd className="font-medium">{PRICING_LABELS[order.pricingModel] ?? 'Sob consulta'}</dd></div>
-              {order.price != null && <div><dt className="text-sm text-ink-muted">Valor do anúncio</dt><dd className="font-medium">{formatMoney(order.price)}</dd></div>}
+              {order.price != null && <div><dt className="text-sm text-ink-muted">{order.service ? 'Valor da proposta' : 'Valor do anúncio'}</dt><dd className="font-medium">{formatMoney(order.price)}</dd></div>}
               {order.travelFee != null && <div><dt className="text-sm text-ink-muted">Deslocamento</dt><dd className="font-medium">{formatMoney(order.travelFee)}</dd></div>}
               {order.total != null && <div><dt className="text-sm text-ink-muted">Valor estimado</dt><dd className="font-medium">{formatMoney(order.total)}</dd></div>}
               {order.finalAmount != null && <div><dt className="text-sm text-ink-muted">Valor final informado</dt><dd className="font-semibold text-primary-strong">{formatMoney(order.finalAmount)}</dd></div>}
@@ -76,10 +83,10 @@ export default function OrderPage() {
                 )}
               </div>
             )}
-            {order.note && <div className="border-t border-line pt-5"><h2 className="text-sm font-semibold">Observações do cliente</h2><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-ink-soft">{order.note}</p></div>}
+            {order.note && <div className="border-t border-line pt-5"><h2 className="text-sm font-semibold">{order.service ? 'Mensagem do profissional na proposta' : 'Observações do cliente'}</h2><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-ink-soft">{order.note}</p></div>}
             {order.referenceImages?.length > 0 && <div className="border-t border-line pt-5"><h2 className="text-sm font-semibold">Fotos de referência</h2><ul className="mt-2 flex flex-wrap gap-2">{order.referenceImages.map((url, index) => <li key={url}><a href={url} target="_blank" rel="noreferrer"><img src={url} alt={`Foto de referência ${index + 1}`} loading="lazy" className="h-20 w-20 rounded-control object-cover" /></a></li>)}</ul></div>}
           </Card>
-          {['accepted', 'in_progress', 'completed'].includes(order.status) && <OrderPayment key={order.status} orderUuid={order.uuid} />}
+          {['accepted', 'in_progress', 'completed'].includes(order.status) && <div id="pagamento" className="scroll-mt-24"><OrderPayment key={order.status} orderUuid={order.uuid} /></div>}
         </div>
 
         <div className="space-y-6">
@@ -87,9 +94,10 @@ export default function OrderPage() {
             <h2 className="font-semibold">O que fazer agora</h2>
             <div className="mt-4 space-y-3">
               {order.actions.length > 0 ? <OrderActions order={order} onChanged={resource.retry} size="md" /> : <p className="text-sm text-ink-muted">Nenhuma ação disponível neste status.</p>}
-              {order.status === 'completed' && (order.reviewedByMe ? <p className="text-sm text-success">Você já avaliou este serviço.</p> : <Button to={`/contratacoes/${order.uuid}/avaliar`}>Avaliar {other.name}</Button>)}
+              {order.status === 'completed' && (order.reviewedByMe ? <p className="text-sm text-success">Você já avaliou este serviço.</p> : <Button to={order.service ? `/servicos/${order.service.uuid}/avaliar` : `/contratacoes/${order.uuid}/avaliar`}>Avaliar {other.name}</Button>)}
               <MessageButton orderUuid={order.uuid} block>Conversar com {other.name}</MessageButton>
               {order.listing?.available && <Button to={`/anuncios/${order.listing.uuid}`} variant="secondary">Ver o anúncio</Button>}
+              {order.service && <Button to={`/servicos/${order.service.uuid}`} variant="secondary">Ver o pedido aberto</Button>}
             </div>
           </Card>
           <Card>

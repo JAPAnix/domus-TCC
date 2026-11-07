@@ -530,3 +530,21 @@ Fonte: documentação oficial em docs.asaas.com, lida em 06/11/2026 (as páginas
 - Aplicar a migration `20261110100000_order_service_address` no banco real.
 - "Publicar pedido" (pedido aberto) continua um formulário único; não tem local nem etapas como o anúncio.
 - Telas logadas (pedidos, ganhos, mensagens, painel) não foram testadas em celular por automação.
+
+### Rodada 7: pagamento no pedido aberto com proposta (07/11/2026)
+
+**Problema:** o cliente que publicava um pedido aberto e aceitava uma proposta não tinha onde pagar. O pagamento só existia para contratações de anúncio (`Order`).
+
+**Feito:** aceitar uma proposta agora cria uma **contratação** (`Order`) ligada ao pedido aberto (`orders.service_id`, `orders.proposal_id`, `listing_id` opcional; migration `20261111100000_proposal_orders`, **a aplicar no banco real**). Ela entra já como "aceita", com o valor da proposta, e usa o mesmo caminho de pagamento, recibo, ganhos, reembolso e disputa dos anúncios (Asaas ou direto).
+- O aceite leva o cliente direto à área de pagamento da contratação; o pedido aberto e a proposta mostram "Ver contratação e pagamento" para as duas partes.
+- Os dois fluxos andam juntos: o cliente concluir ou cancelar o pedido aberto conclui ou cancela a contratação (com estorno conforme a política); o profissional concluir ou cancelar pela contratação conclui ou cancela o pedido aberto. Concluir não pede valor: vale o da proposta. A avaliação continua sendo a do pedido aberto.
+- Corrigido: a conversa de uma contratação sem anúncio podia reaproveitar a conversa de outro profissional.
+- Telas da contratação com rótulos próprios ("Valor da proposta", "Combinado na proposta", "Prazo").
+
+**Verificação:** backend 97 testes (1 pulado); integração com banco descartável 18/18 (aceite, valor, pagamento Pix, conclusão e cancelamento nos dois sentidos, permissões); navegador 14/14 em 1280 px e 390 px.
+
+**Pendente:**
+- Aplicar a migration `20261111100000_proposal_orders` no banco real **antes** de publicar este código.
+- Pedidos abertos já aceitos antes desta versão não têm contratação, então não têm pagamento (só os novos). Se houver algum em andamento que precise de pagamento, é preciso criar a contratação por script.
+- Preencher dados automaticamente (identidade, cadastro) e CEP em todos os formulários de endereço (ainda não feito).
+- Cloudinary e chave de API da Brevo continuam por configurar no Render.

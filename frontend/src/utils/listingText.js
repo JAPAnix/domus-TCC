@@ -1,6 +1,6 @@
 import { formatMoney } from './format';
 
-export const MODE_LABELS = { client_place: 'Na casa do cliente', pro_place: 'No local do profissional', remote: 'Online / remoto' };
+export const MODE_LABELS = { client_place: 'Na casa do cliente', pro_place: 'No local do profissional', remote: 'Online / remoto', negotiated: 'Combinado na proposta' };
 export const MODE_HELP = {
   client_place: 'Você vai até o cliente. Dá para cobrar taxa de deslocamento.',
   pro_place: 'O cliente vai até você, no seu ateliê, loja ou escritório.',

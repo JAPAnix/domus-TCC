@@ -10,7 +10,7 @@ const bytes = value => Buffer.from(value.replaceAll('-', ''),'hex');
 let state;
 const client = { id:1n, uuid:bytes(uuid),firstName:'Cliente',lastName:'Teste' };
 const professional = { id:2n,uuid:bytes(proposalUuid),firstName:'Profissional',lastName:'Teste' };
-function reset() { state={status:'open',proposals:[],notifications:[],reviews:[],failNotification:false}; }
+function reset() { globalThis.workflowOrders=[]; state={status:'open',proposals:[],notifications:[],reviews:[],failNotification:false}; }
 const tx={
   $queryRaw:async()=>[],
   user:{findFirst:async()=>({id:1n})},
@@ -41,17 +41,27 @@ globalThis.workflowTestPrisma={$transaction:async(fn,options)=>{
 let source=fs.readFileSync(new URL('../src/services/serviceWorkflow.js',import.meta.url),'utf8');
 source=source.replace("import { prisma } from '../config/prisma.js';","const prisma=globalThis.workflowTestPrisma;");
 source=source.replace("'../utils/uuid.js'",JSON.stringify(pathToFileURL(resolve('src/utils/uuid.js')).href));
+// A contratação criada no aceite da proposta é testada à parte; aqui um substituto em memória mostra que o fluxo a chama.
+globalThis.workflowOrders=[];
+const orderStub="export const createOrderForProposal=async(tx,{service})=>{const o={uuid:Buffer.from('33333333333333333333333333333333','hex'),serviceId:service.id,status:'accepted'};globalThis.workflowOrders.push(o);return o;};"
+  +"export const completeOrderForService=async()=>{for(const o of globalThis.workflowOrders)if(o.status==='accepted')o.status='completed';};"
+  +"export const cancelOrderForService=async()=>{const o=globalThis.workflowOrders.find(x=>x.status==='accepted');if(o)o.status='cancelled';return o??null;};";
+source=source.replace("'./proposalOrders.js'",JSON.stringify('data:text/javascript;base64,'+Buffer.from(orderStub).toString('base64')));
 const flow=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 test('proposal -> client notification -> acceptance -> professional notification -> completion -> both reviews',async()=>{
   reset();
   await flow.submitProposal(uuid,2n,{proposed_price:100});
   assert.equal(state.notifications[0].userId,1n);
   assert.equal(state.notifications[0].href,'/servicos/'+uuid+'/propostas');
-  await flow.decideProposal(proposalUuid,1n,'accepted');
+  const accepted=await flow.decideProposal(proposalUuid,1n,'accepted');
   assert.equal(state.status,'in_progress');
   assert.equal(state.notifications[1].userId,2n);
+  assert.equal(globalThis.workflowOrders.length,1);
+  assert.match(accepted.orderUuid,/^33333333-3333-3333-3333-333333333333$/);
+  assert.equal(state.notifications[1].href,'/contratacoes/'+accepted.orderUuid);
   await assert.rejects(()=>flow.submitReview(uuid,2n,{rating:5}),e=>e.status===409);
   await flow.changeServiceStatus(uuid,1n,'completed');
+  assert.equal(globalThis.workflowOrders[0].status,'completed');
   assert.deepEqual(state.notifications.slice(2).map(n=>n.userId),[1n,2n]);
   await flow.submitReview(uuid,1n,{rating:5});
   await flow.submitReview(uuid,2n,{rating:4});

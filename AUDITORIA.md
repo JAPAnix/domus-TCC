@@ -654,3 +654,9 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Testes:** backend 164 (10 novos de regras do pedido aberto, 4 de máscara de contato, 3 de fumaça do admin pulados sem ambiente); integração com banco descartável 82/82 (publicar, máscara, oportunidades, contador, limites, propostas, edição, preferências, comparação, aceite com origem, pagamento, expiração, renovação, resumo, denúncia, moderação, auditoria, limite por dia), 8/8 com o recurso desligado, regressões 48/48 (propostas em pedidos por anúncio), 16/16 (mensagens), 12/12 (assistente) e 126/126 (Asaas simulado); navegador (Edge) 47/47 em 390 px e 46/46 em 1280 px.
 - **Correções encontradas pelos testes:** a máscara de contato escondia a palavra "Instalar" (casava "insta" + "lar"); texto escondido por `sr-only` fazia a página rolar na horizontal em tabelas largas no celular.
 - **Não feito:** subcategoria do pedido (só categoria; a busca por tipo de serviço preenche a categoria e o título); "tempo de resposta" do profissional na comparação (não há esse dado); notificação em tempo real de oportunidades (usa a consulta a cada 30 s e o resumo); denúncia de mensagens do chat.
+
+### Rodada 12 (QA de ponta a ponta) (08/11/2026)
+
+- **Feito:** suíte E2E isolada em `frontend/e2e/` (`npm run test:e2e` em `frontend/`; MariaDB descartável, Asaas simulado, Edge em 375/768/1280 px, relatório em `e2e/report/index.html`). Rodada final: 1273 verificações, 0 falhas. Backend 165 testes (161 passam, 4 pulados), frontend 26, lint limpo, build ok.
+- **Bug de produto corrigido:** texto digitado durante um envio lento de mensagem era apagado (`ConversationView.jsx`), com teste de regressão.
+- **Pendente (manual):** Asaas sandbox real (Pix, cartão, boleto, webhook por túnel), login Google, e-mail/Cloudinary reais, outros navegadores. Veja `RELATORIO-TESTE.md`.

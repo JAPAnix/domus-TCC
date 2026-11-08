@@ -71,7 +71,9 @@ npm run dev
 | `backend/` | `$env:RUN_DB_TESTS='1'; node --env-file=.env --test tests/personal-settings.test.mjs` | Usa o banco real do `.env`; cria e remove contas temporárias |
 | `backend/` | `node --env-file=.env tests/personal-settings-browser.mjs` | Automação com Edge; frontend na porta 5183. **Desatualizado** desde a nova navegação (procura textos e botões antigos); revisar antes de usar |
 
-O backend não tem build nem lint. O frontend não tem testes automatizados.
+O backend não tem build nem lint.
+
+**E2E:** `npm run test:e2e` em `frontend/` (veja `frontend/e2e/README.md`). Usa MariaDB descartável do XAMPP (porta 3307) e Asaas simulado, nunca o banco remoto nem o `.env`. Relatório em `frontend/e2e/report/` (fora do git). Resultado em `RELATORIO-TESTE.md`.
 
 **Para testar com banco descartável** (sem tocar no banco remoto): o XAMPP traz um MariaDB em `C:\xampp\mysql\bin`. Crie um diretório de dados com `mysql_install_db.exe`, suba o `mysqld.exe` em outra porta, aponte `DATABASE_*` e `DATABASE_URL` para ele, rode `npx prisma migrate deploy` e `npm run db:seed`. Em máquinas com pouca memória, use `NODE_OPTIONS=--max-old-space-size=...` e prefira servir o build estático em vez do `vite` em modo de desenvolvimento.
 
@@ -147,7 +149,7 @@ frontend/src/
 - **Pedido aberto e Oportunidades:** dois tipos de pedido. Por anúncio (o profissional vê em "Pedidos recebidos", só no painel `/pro`) e aberto (`Service` + `Proposal`; cliente: "Publicar um pedido" em `/servicos/novo` e "Meus pedidos abertos"; profissional: "Oportunidades" em `/pro/oportunidades`). Regras puras em `utils/openRequestRules.js`, fluxo em `services/openRequests.js` (rotinas de expiração e resumo iniciadas em `app.js`), propostas em `services/serviceWorkflow.js`, configuração e interruptor `OPEN_REQUESTS_ENABLED` em `config/openRequests.js`, contato escondido por `utils/contactMask.js` (idêntico no frontend). O aceite cria o `Order` com `origin='pedido_aberto'`. Moderação em `/admin/moderacao`. O `/health` mostra `database` (migrations pendentes).
 - **Assistente de ajuda:** botão "Ajuda" (`components/HelpAssistant.jsx`) que responde só com os artigos de `content/help/articles.js`, pelo motor `content/help/assistant.js` (no navegador, sem API externa; troque `assistantEngine` para usar IA no futuro). Grava perguntas sem dados pessoais em `help_assistant_questions` (`services/helpAssistant.js`); o relatório fica em `/admin/ajuda`. Ao criar um artigo novo, ele já entra na busca.
 - **Verificação de profissional:** análise manual por `node scripts/review-verification.mjs list|approve|reject`, em `backend/`.
-- **Testes:** `npm test` no backend roda 164 testes sem banco (regras de pedidos, anúncios, pagamentos, mensagens, BR Code, assinatura de webhook, uploads). `npm test` no frontend roda 26. Para fluxos completos use um MariaDB descartável (ver acima), nunca o banco remoto; os testes de API e de navegador usados nas rodadas 2 e 3 não estão no repositório.
+- **Testes:** `npm test` no backend roda 165 testes sem banco (regras de pedidos, anúncios, pagamentos, mensagens, BR Code, assinatura de webhook, uploads). `npm test` no frontend roda 26. Para fluxos completos use um MariaDB descartável (ver acima), nunca o banco remoto; os testes de API e de navegador usados nas rodadas 2 e 3 não estão no repositório.
 - **Segurança:** limite de taxa em `middleware/rateLimit.js` (em memória, uma instância); defina `TRUST_PROXY=1` atrás de proxy. Rotas antigas de `/users/:uuid` e `/professionals/*` foram removidas; só `GET /professionals/dashboard` permanece.
 
 ## Lacunas conhecidas

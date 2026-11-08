@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Teste de ponta a ponta: relatórios e logs gerados a cada rodada
+e2e/report
+e2e/.seed.json
+e2e/.sessions.json

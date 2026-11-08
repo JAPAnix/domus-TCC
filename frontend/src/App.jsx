@@ -6,6 +6,7 @@ import { ToastProvider } from './components/ui';
 import NotFound, { RouteError } from './pages/NotFound';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import HelpAssistant from './components/HelpAssistant';
 import ProtectedRoute from './components/ProtectedRoute';
 import RouteTitle from './components/RouteTitle';
 import { useAuth } from './context/useAuth';
@@ -61,6 +62,7 @@ const LegalPage = lazy(() => import('./pages/help/LegalPage'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const FavoriteList = lazy(() => import('./pages/FavoriteList'));
 const AdminPayments = lazy(() => import('./pages/AdminPayments'));
+const AdminHelp = lazy(() => import('./pages/AdminHelp'));
 const Messages = lazy(() => import('./pages/Messages'));
 const ProLayout = lazy(() => import('./pages/pro/ProLayout'));
 const ProDashboard = lazy(() => import('./pages/pro/ProDashboard'));
@@ -87,6 +89,7 @@ function ApplicationLayout() {
             </Suspense>
             {!identityPage && !wizard && <Footer />}
           </div>
+          <HelpAssistant />
           <ScrollRestoration />
         </ToastProvider>
       </ModeProvider>
@@ -143,6 +146,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="*" element={<Navigate to="/pro" replace />} />
     </Route>
     <Route path="/admin/pagamentos" element={<ProtectedRoute roles={['admin']}><AdminPayments /></ProtectedRoute>} />
+    <Route path="/admin/ajuda" element={<ProtectedRoute roles={['admin']}><AdminHelp /></ProtectedRoute>} />
     <Route path="/pro/comecar" element={<ProtectedRoute><ProStart /></ProtectedRoute>} />
     <Route path="/pro/anuncio/:uuid" element={<ProtectedRoute><ListingWizard /></ProtectedRoute>} />
     <Route path="/pro/anuncio/:uuid/etapa/:step" element={<ProtectedRoute><ListingWizard /></ProtectedRoute>} />

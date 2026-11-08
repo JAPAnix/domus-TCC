@@ -103,6 +103,7 @@ function AccountMenu({ onNavigate, unread, unreadMessages, orders, onOpenLocale 
       {item({ to: '/notificacoes', label: 'Notificações', icon: 'bell', badge: unread })}
       <div className="my-2 border-t border-line" />
       {user.roles?.includes('admin') && item({ to: '/admin/pagamentos', label: 'Administração', icon: 'settings' })}
+      {user.roles?.includes('admin') && item({ to: '/admin/ajuda', label: 'Dúvidas do assistente', icon: 'help' })}
       {item({ to: '/configuracoes', label: 'Configurações da conta', icon: 'settings', active: settingsActive })}
       <button type="button" onClick={() => { onNavigate?.(); onOpenLocale(); }} className={`${itemClass(false)} w-full text-left`}>
         <Icon path={icons.globe} />Idioma e moeda

@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { logger } from '../utils/logger.js';
 import { sendPlainEmail, smtpConfigured } from '../services/emailService.js';
+import { logQuestion, rateAnswer, assistantReport } from '../services/helpAssistant.js';
 
 const me = (req) => (req.user ? BigInt(req.user.id) : null);
 
@@ -11,6 +12,36 @@ export async function sendFeedback(req, res) {
   } catch (err) {
     logger.error('sendFeedback', err);
     res.status(500).json({ message: 'Não foi possível registrar sua resposta.' });
+  }
+}
+
+export async function assistantQuestion(req, res) {
+  try {
+    res.status(201).json(await logQuestion(req.body));
+  } catch (err) {
+    logger.error('assistantQuestion', err);
+    // O assistente funciona sem o registro: falhar aqui não pode atrapalhar quem perguntou.
+    res.status(202).json({ uuid: null });
+  }
+}
+
+export async function assistantRating(req, res) {
+  try {
+    await rateAnswer(req.params.uuid, req.body.helpful);
+    res.status(204).end();
+  } catch (err) {
+    logger.error('assistantRating', err);
+    res.status(500).json({ message: 'Não foi possível registrar sua resposta.' });
+  }
+}
+
+export async function assistantAdminReport(req, res) {
+  try {
+    const days = Math.min(365, Math.max(1, Number(req.query.days) || 30));
+    res.set('Cache-Control', 'no-store').json(await assistantReport({ days }));
+  } catch (err) {
+    logger.error('assistantAdminReport', err);
+    res.status(500).json({ message: 'Não foi possível carregar o relatório do assistente.' });
   }
 }
 

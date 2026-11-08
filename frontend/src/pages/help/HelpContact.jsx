@@ -36,7 +36,9 @@ export default function HelpContact() {
   const toast = useToast();
   const [params] = useSearchParams();
   const initialSubject = SUBJECTS.some(([slug]) => slug === params.get('assunto')) ? params.get('assunto') : '';
-  const [form, setForm] = useState({ category: initialSubject, subject: '', message: '', name: '', email: '' });
+  // Vindo do assistente de ajuda: a pergunta da pessoa já chega preenchida (ela pode editar antes de enviar).
+  const question = (params.get('mensagem') ?? '').slice(0, 500);
+  const [form, setForm] = useState({ category: initialSubject, subject: question.length >= 5 ? question.slice(0, 80) : '', message: question, name: '', email: '' });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(null);

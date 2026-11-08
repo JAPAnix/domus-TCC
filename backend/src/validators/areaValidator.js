@@ -110,6 +110,14 @@ export const feedbackSchema = z.object({
   helpful: z.boolean(),
 });
 
+export const assistantQuestionSchema = z.object({
+  question: z.string().trim().min(2, 'Escreva a pergunta.').max(500),
+  slug: z.string().regex(/^[a-z0-9-]{3,120}$/).nullable().optional(),
+  answered: z.boolean(),
+});
+
+export const assistantRatingSchema = z.object({ helpful: z.boolean() });
+
 export const ticketSchema = z.object({
   category: z.enum(TICKET_CATEGORIES, { error: 'Escolha um assunto.' }),
   subject: z.string().trim().min(5, 'O título precisa ter pelo menos 5 caracteres.').max(150),

@@ -549,6 +549,21 @@ model HelpFeedback {
   @@map("help_feedback")
 }
 
+/// Perguntas feitas ao assistente de ajuda. Guarda só o texto (sem e-mail, telefone ou documentos) e nada que identifique a pessoa.
+model HelpAssistantQuestion {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        Bytes    @unique @db.Binary(16)
+  question    String   @db.VarChar(200)
+  articleSlug String?  @map("article_slug") @db.VarChar(120)
+  answered    Boolean
+  helpful     Boolean?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([answered, createdAt])
+  @@index([articleSlug])
+  @@map("help_assistant_questions")
+}
+
 model SupportTicket {
   id        BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
   userId    BigInt?      @map("user_id") @db.UnsignedBigInt

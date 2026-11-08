@@ -60,9 +60,11 @@ function Composer({ uuid, canSend, replies, onSent }) {
   async function send() {
     if (busy || uploading || (!text.trim() && !photo[0])) return;
     setBusy(true);
+    const sentText = text;
     try {
       await api.post(`/conversations/${uuid}/messages`, { body: text, image_url: photo[0] ?? null });
-      setText('');
+      // Se a pessoa já começou a digitar a próxima mensagem enquanto esta ia, o que ela digitou não pode ser apagado.
+      setText((current) => (current === sentText ? '' : current));
       setPhoto([]);
       setPhotoOpen(false);
       onSent();

@@ -84,3 +84,27 @@ test('configuração de taxas: padrões, validação e coerência dos prazos', (
   assert.throws(() => readFeeConfig({ ESCROW_DAYS: '5', AUTO_CONFIRM_DAYS: '7' }), /ESCROW_DAYS/);
   assert.throws(() => readFeeConfig({ ESCROW_DAYS: '10.5' }), /ESCROW_DAYS/);
 });
+
+test('valores quebrados (R$ 99,99): pago = repasse ao profissional + comissão da plataforma + taxa do gateway, em centavos exatos', () => {
+  const cases = [
+    { clientFeePercent: 0, proCommissionPercent: 10 }, { clientFeePercent: 5, proCommissionPercent: 10 }, { clientFeePercent: 3.5, proCommissionPercent: 12.5 }, { clientFeePercent: 0, proCommissionPercent: 0 },
+  ];
+  for (const rule of cases) {
+    const split = computeCheckout({ serviceCents: toCents('99,99'), ...rule });
+    assert.equal(split.serviceCents, 9999);
+    assert.equal(split.totalCents, 9999 + split.clientFeeCents, 'o cliente paga o serviço mais a taxa de serviço');
+    assert.equal(split.proGrossCents + split.commissionCents, 9999, 'serviço = parte do profissional + comissão');
+    for (const gatewayFeeCents of [0, 99, 199, 399]) {
+      for (const gatewayFeePayer of ['professional', 'platform']) {
+        const net = split.totalCents - gatewayFeeCents;
+        const shares = splitNet({ netCents: net, proGrossCents: split.proGrossCents, platformGrossCents: split.platformGrossCents, gatewayFeePayer });
+        assert.equal(shares.proShareCents + shares.platformShareCents, net, `líquido fecha (${JSON.stringify(rule)}, taxa ${gatewayFeeCents}, ${gatewayFeePayer})`);
+        assert.equal(shares.proShareCents + shares.platformShareCents + gatewayFeeCents, split.totalCents, 'pago = profissional + plataforma + gateway');
+        assert.ok(shares.proShareCents >= 0 && shares.platformShareCents >= 0, 'nenhuma parte fica negativa');
+      }
+    }
+  }
+  // A conta que o cliente vê: R$ 99,99 de serviço com 10% de comissão deixa R$ 89,99 ao profissional e R$ 10,00 à plataforma.
+  const base = computeCheckout({ serviceCents: 9999, clientFeePercent: 0, proCommissionPercent: 10 });
+  assert.deepEqual([base.commissionCents, base.proGrossCents], [1000, 8999]);
+});

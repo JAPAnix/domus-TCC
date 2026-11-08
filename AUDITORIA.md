@@ -660,3 +660,5 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Feito:** suíte E2E isolada em `frontend/e2e/` (`npm run test:e2e` em `frontend/`; MariaDB descartável, Asaas simulado, Edge em 375/768/1280 px, relatório em `e2e/report/index.html`). Rodada final: 1273 verificações, 0 falhas. Backend 165 testes (161 passam, 4 pulados), frontend 26, lint limpo, build ok.
 - **Bug de produto corrigido:** texto digitado durante um envio lento de mensagem era apagado (`ConversationView.jsx`), com teste de regressão.
 - **Pendente (manual):** Asaas sandbox real (Pix, cartão, boleto, webhook por túnel), login Google, e-mail/Cloudinary reais, outros navegadores. Veja `RELATORIO-TESTE.md`.
+
+- **Pedidos abertos no painel do profissional:** os links "pedidos abertos" do painel, de Propostas e de Meus serviços, e o botão da Landing, agora levam a Oportunidades (`/pro/oportunidades`) e não à lista pública antiga `/servicos` (mantida para clientes e visitantes).

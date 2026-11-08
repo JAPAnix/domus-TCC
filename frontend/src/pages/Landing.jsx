@@ -97,7 +97,7 @@ export default function Landing() {
               <h3 className="font-semibold">{isProfessional ? 'Veja o que há de novo' : 'Pronto para receber pedidos?'}</h3>
               <p className="mt-1 text-sm text-ink-muted">{isProfessional ? 'Confira os pedidos abertos e envie suas propostas.' : 'Anuncie seus serviços com a mesma conta.'}</p>
             </div>
-            {isProfessional ? <Button to="/servicos">Ver pedidos abertos</Button> : <Button to={professionalPath}>Oferecer meus serviços</Button>}
+            {isProfessional ? <Button to="/pro/oportunidades">Ver oportunidades</Button> : <Button to={professionalPath}>Oferecer meus serviços</Button>}
           </Card>
         </div>
       </section>

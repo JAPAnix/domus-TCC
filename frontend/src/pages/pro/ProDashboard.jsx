@@ -65,7 +65,7 @@ export default function ProDashboard() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card><h3 className="font-semibold">Novo serviço</h3><p className="mt-1 text-sm text-ink-muted">{data.listings.published} publicado{data.listings.published === 1 ? '' : 's'}, {data.listings.draft} em rascunho.</p><Button className="mt-3" size="sm" onClick={create} loading={busy}>Criar anúncio</Button></Card>
           <Card><h3 className="font-semibold">Agenda</h3><p className="mt-1 text-sm text-ink-muted">Bloqueie os dias em que não atende.</p><Button className="mt-3" size="sm" variant="secondary" to="/pro/pedidos">Abrir agenda</Button></Card>
-          <Card><h3 className="font-semibold">Pedidos abertos</h3><p className="mt-1 text-sm text-ink-muted">Clientes que esperam propostas.</p><Button className="mt-3" size="sm" variant="secondary" to="/servicos">Ver pedidos</Button></Card>
+          <Card><h3 className="font-semibold">Pedidos abertos</h3><p className="mt-1 text-sm text-ink-muted">Clientes que esperam propostas.</p><Button className="mt-3" size="sm" variant="secondary" to="/pro/oportunidades">Ver oportunidades</Button></Card>
           <Card><h3 className="font-semibold">Impostos e recebimento</h3><p className="mt-1 text-sm text-ink-muted">CPF ou CNPJ e chave Pix.</p><Button className="mt-3" size="sm" variant="secondary" to="/configuracoes/impostos">Abrir</Button></Card>
         </div>
       </section>

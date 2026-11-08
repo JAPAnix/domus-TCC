@@ -191,7 +191,7 @@ export const helpArticles = [
       ['ol', ['Abra “Pedidos abertos” e escolha um pedido.', 'Toque em “Enviar proposta”.', 'Informe o valor, o prazo (opcional) e uma apresentação. Se escrever a apresentação, use pelo menos 20 caracteres.']],
       ['p', 'Você acompanha suas propostas em Pedidos e agenda. Se o cliente aceitar, o serviço passa a “Em andamento”; se aceitar outra proposta, a sua é marcada como recusada.'],
       ['p', 'Você só pode enviar uma proposta por pedido, e não pode responder a pedidos de quem bloqueou você.'],
-      ['link', 'Ver pedidos abertos', '/servicos'],
+      ['link', 'Ver oportunidades', '/pro/oportunidades'],
     ],
     related: ['publicar-um-pedido', 'pedidos-e-agenda'],
   },

@@ -78,7 +78,7 @@ export default function ProListings() {
         : resource.error ? <ErrorState title="Não foi possível carregar seus serviços" message={apiError(resource.error)} onRetry={resource.retry} />
           : !listings.length ? <EmptyState icon="list" title="Você ainda não criou nenhum serviço" description="Em poucos passos você monta um anúncio com fotos, preço e disponibilidade." action={<Button onClick={create} loading={creating}>Criar meu primeiro anúncio</Button>} />
             : <ul className="space-y-4">{listings.map((listing) => <ListingRow key={listing.uuid} listing={listing} busy={busy} onAction={(action, item) => (['delete'].includes(action) ? setPending({ action, listing: item }) : run(action, item))} />)}</ul>}
-      <p className="mt-6 text-sm text-ink-muted">Clientes também publicam <Link to="/servicos" className="font-semibold text-primary-strong underline underline-offset-2">pedidos abertos</Link>: responda com uma proposta.</p>
+      <p className="mt-6 text-sm text-ink-muted">Clientes também publicam <Link to="/pro/oportunidades" className="font-semibold text-primary-strong underline underline-offset-2">pedidos abertos</Link>: veja em Oportunidades e responda com uma proposta.</p>
       <ConfirmDialog open={!!pending} danger busy={busy} title="Excluir anúncio" confirmLabel="Excluir" message={`O anúncio "${pending?.listing.title || 'sem título'}" será removido. Pedidos já concluídos continuam no seu histórico. Não dá para excluir enquanto houver pedido em aberto.`} onConfirm={() => run('delete', pending.listing)} onCancel={() => setPending(null)} />
     </div>
   );

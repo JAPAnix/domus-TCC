@@ -56,7 +56,7 @@ function ProposalsSent() {
   return (
     <section aria-labelledby="propostas">
       <h2 id="propostas" className="mb-1 text-xl font-semibold">Propostas que enviei</h2>
-      <p className="mb-4 text-sm text-ink-muted">Respostas a <Link to="/pro/oportunidades" className="font-semibold text-primary-strong underline underline-offset-2">pedidos abertos</Link> de clientes.</p>
+      <p className="mb-4 text-sm text-ink-muted">Respostas a pedidos abertos de clientes.</p>
       {!proposals && resource.loading ? <SkeletonList count={2} label="Carregando propostas" itemClassName="h-24" />
         : resource.error ? <ErrorState title="Não foi possível carregar as propostas" message={apiError(resource.error)} onRetry={resource.retry} />
           : !proposals.length ? <EmptyState icon="list" title="Você ainda não enviou propostas" description="Veja as oportunidades e responda ao que combina com o seu trabalho." action={<Button variant="secondary" to="/pro/oportunidades">Ver oportunidades</Button>} />

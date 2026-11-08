@@ -7,38 +7,43 @@ import { proposalStatus } from '../../utils/status';
 import OrderCard from '../../components/OrderCard';
 import Pagination from '../../components/Pagination';
 import StatusBadge from '../../components/StatusBadge';
-import { Button, EmptyState, ErrorState, SkeletonList } from '../../components/ui';
+import { Button, EmptyState, ErrorState, SkeletonList, Tabs } from '../../components/ui';
 import AvailabilityCalendar from './AvailabilityCalendar';
 
-const FILTERS = [['new', 'Novos'], ['active', 'Aceitos e em andamento'], ['done', 'Concluídos'], ['closed', 'Recusados e cancelados'], ['', 'Todos']];
+const FILTERS = [['new', 'Novos'], ['proposed', 'Propostas enviadas'], ['accepted', 'Aceitos'], ['in_progress', 'Em andamento'], ['done', 'Concluídos'], ['closed', 'Recusados e expirados']];
 const EMPTY = {
-  new: 'Nenhum pedido novo. Quando um cliente solicitar um dos seus serviços, ele aparece aqui.',
-  active: 'Nenhum serviço aceito ou em andamento.',
-  done: 'Nenhum serviço concluído ainda.',
-  closed: 'Nenhum pedido recusado ou cancelado.',
-  '': 'Você ainda não recebeu pedidos.',
+  new: ['Nenhum pedido novo', 'Quando um cliente pedir um dos seus serviços, ele aparece aqui e você é avisado. Responda em até 72 horas.', 'Dica: anúncios com fotos, descrição completa e agenda aberta recebem mais pedidos.'],
+  proposed: ['Nenhuma proposta aguardando resposta', 'Em pedidos sob consulta, você envia o valor e o prazo e o cliente decide.', 'Dica: responda rápido e detalhe o que está incluso para se destacar.'],
+  accepted: ['Nenhum serviço aceito', 'Pedidos aceitos esperando o início aparecem aqui.', 'Dica: combine os detalhes pela conversa antes da data.'],
+  in_progress: ['Nenhum serviço em andamento', 'Os serviços que você iniciou aparecem aqui até serem concluídos.', null],
+  done: ['Nenhum serviço concluído ainda', 'Quando você concluir um serviço, ele fica guardado aqui junto com a avaliação.', null],
+  closed: ['Nada recusado ou expirado', 'Pedidos que você recusou, que foram cancelados ou que venceram sem resposta ficam aqui.', null],
 };
 
 function Orders() {
   const [status, setStatus] = useState('new');
   const [page, setPage] = useState(1);
-  const resource = useApiResource('/pro/orders', { page, limit: 10, ...(status && { status }) }, { keepPrevious: true });
+  const resource = useApiResource('/pro/orders', { page, limit: 10, status }, { keepPrevious: true });
+  const counts = useApiResource('/orders/counts', { side: 'professional' }, { keepPrevious: true });
   const orders = resource.data?.data;
+  const empty = EMPTY[status];
+  const tabs = FILTERS.map(([value, label]) => ({ value, label, count: counts.data ? counts.data[value] : undefined, alert: value === 'new' }));
+  const refresh = () => { resource.retry(); counts.retry(); };
   return (
     <section aria-labelledby="pedidos">
       <h2 id="pedidos" className="mb-3 text-xl font-semibold">Pedidos recebidos</h2>
-      <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filtrar pedidos">
-        {FILTERS.map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => { setStatus(value); setPage(1); }} className={`min-h-control-sm rounded-full border px-4 text-sm font-medium ${status === value ? 'border-primary bg-primary-soft text-primary-strong' : 'border-line-strong bg-surface text-ink-soft hover:bg-surface-muted'}`}>{label}</button>)}
+      <Tabs tabs={tabs} value={status} onChange={(value) => { setStatus(value); setPage(1); }} label="Filtrar pedidos" />
+      <div role="tabpanel" id={`panel-${status}`} aria-labelledby={`tab-${status}`}>
+        {!orders && resource.loading ? <SkeletonList count={3} label="Carregando pedidos" itemClassName="h-40" />
+          : resource.error ? <ErrorState title="Não foi possível carregar os pedidos" message={apiError(resource.error)} onRetry={resource.retry} />
+            : !orders.length ? <EmptyState icon="list" title={empty[0]} description={<>{empty[1]}{empty[2] && <span className="mt-2 block text-ink-muted">{empty[2]}</span>}</>} action={status === 'new' ? <Button variant="secondary" to="/pro/servicos">Melhorar meus anúncios</Button> : undefined} />
+              : (
+                <>
+                  <div className="space-y-4">{orders.map((order) => <OrderCard key={order.uuid} order={order} perspective="professional" onChanged={refresh} />)}</div>
+                  <Pagination page={page} pages={resource.data.meta.pages} onChange={setPage} label="Páginas de pedidos" />
+                </>
+              )}
       </div>
-      {!orders && resource.loading ? <SkeletonList count={3} label="Carregando pedidos" itemClassName="h-40" />
-        : resource.error ? <ErrorState title="Não foi possível carregar os pedidos" message={apiError(resource.error)} onRetry={resource.retry} />
-          : !orders.length ? <EmptyState icon="list" title="Nada por aqui" description={EMPTY[status]} action={status === 'new' || status === '' ? <Button variant="secondary" to="/pro/servicos">Ver meus serviços</Button> : undefined} />
-            : (
-              <>
-                <div className="space-y-4">{orders.map((order) => <OrderCard key={order.uuid} order={order} perspective="professional" onChanged={resource.retry} />)}</div>
-                <Pagination page={page} pages={resource.data.meta.pages} onChange={setPage} label="Páginas de pedidos" />
-              </>
-            )}
     </section>
   );
 }

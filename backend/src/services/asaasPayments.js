@@ -7,6 +7,8 @@ import { amountDue } from '../utils/paymentRules.js';
 import { canTransition, planPaymentEvent, REFUNDABLE } from '../utils/asaasEvents.js';
 import { computeCheckout, formatCents, refundCents, toCents } from '../utils/money.js';
 import { isValidCnpj, isValidCpf, onlyDigits } from '../utils/taxDocument.js';
+import { parseResolution } from '../utils/disputeRules.js';
+import { writeAudit } from './adminService.js';
 import { bufferToUuid, generateUuid, uuidToBuffer } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
 
@@ -207,33 +209,42 @@ export async function openDispute(paymentUuid, userId, reason) {
 }
 
 /** Decisão do administrador: liberar ao profissional ou estornar ao cliente. */
-export async function resolveDispute(adminId, disputeId, decision, note) {
-  if (!['release', 'refund'].includes(decision)) fail(400, 'Escolha liberar ou estornar.');
+export async function resolveDispute(adminId, disputeId, input = {}) {
   if (!/^\d{1,18}$/.test(String(disputeId))) fail(404, 'Reclamação não encontrada.');
   const dispute = await prisma.paymentDispute.findUnique({ where: { id: BigInt(disputeId) }, include: { payment: true } });
   if (!dispute) fail(404, 'Reclamação não encontrada.');
   if (dispute.status !== 'open') fail(409, 'Esta reclamação já foi resolvida.');
   const payment = dispute.payment;
   if (payment.status !== 'disputed') fail(409, 'O pagamento não está em análise.');
-  const resolution = String(note ?? '').trim().slice(0, 500) || null;
+  // release = mantém ao profissional; refund = devolve tudo ao cliente; partial = devolve parte e libera o resto.
+  const { kind, note: resolution, refundCents } = parseResolution(input, { amountCents: payment.amountCents ?? 0 });
   try {
-    if (decision === 'refund') await asaas().refund(payment, { reason: 'Reclamação resolvida a favor do cliente' });
+    if (kind === 'refund') await asaas().refund(payment, { reason: 'Reclamação resolvida a favor do cliente' });
+    else if (kind === 'partial') { await asaas().refund(payment, { cents: refundCents, reason: 'Reclamação resolvida com reembolso parcial' }); await releaseAtGateway(payment); }
     else await releaseAtGateway(payment);
   } catch (error) {
-    await prisma.paymentEvent.create({ data: { paymentId: payment.id, actorId: adminId, type: `alert:${decision}_failed`, fromStatus: 'disputed', toStatus: 'disputed', detail: String(error.message).slice(0, 300) } });
+    await prisma.paymentEvent.create({ data: { paymentId: payment.id, actorId: adminId, type: `alert:${kind === 'release' ? 'release' : 'refund'}_failed`, fromStatus: 'disputed', toStatus: 'disputed', detail: String(error.message).slice(0, 300) } });
     throw error;
   }
   return runTransaction(async (tx, emails) => {
     const locked = await lockPayment(tx, payment.id);
-    const refund = decision === 'refund';
-    await tx.payment.update({ where: { id: locked.id }, data: refund ? { status: 'refunded', refundedAt: new Date(), payoutStatus: 'refunded', refundedCents: locked.amountCents ?? 0 } : { status: 'confirmed', autoConfirmAt: null, payoutStatus: 'released', releasedAt: new Date() } });
-    await tx.paymentDispute.update({ where: { id: dispute.id }, data: { status: refund ? 'resolved_refund' : 'resolved_release', resolution, resolvedById: adminId, resolvedAt: new Date() } });
-    await record(tx, locked, adminId, refund ? 'dispute_refunded' : 'dispute_released', 'disputed', refund ? 'refunded' : 'confirmed', resolution);
+    const now = new Date();
+    const data = kind === 'refund'
+      ? { status: 'refunded', refundedAt: now, payoutStatus: 'refunded', refundedCents: locked.amountCents ?? 0 }
+      : { status: 'confirmed', autoConfirmAt: null, payoutStatus: 'released', releasedAt: now, ...(kind === 'partial' && { refundedCents: refundCents, refundedAt: now }) };
+    await tx.payment.update({ where: { id: locked.id }, data });
+    const disputeStatus = { release: 'resolved_release', refund: 'resolved_refund', partial: 'resolved_partial' }[kind];
+    await tx.paymentDispute.update({ where: { id: dispute.id }, data: { status: disputeStatus, resolution, resolvedById: adminId, resolvedAt: now, refundedCents: kind === 'release' ? 0 : refundCents } });
+    await record(tx, locked, adminId, { release: 'dispute_released', refund: 'dispute_refunded', partial: 'dispute_partial' }[kind], 'disputed', kind === 'refund' ? 'refunded' : 'confirmed', resolution);
+    await writeAudit(tx, { adminId, action: `dispute.${kind}`, targetType: 'dispute', targetId: dispute.id, detail: `${formatCents(locked.amountCents ?? 0)} pago${kind === 'release' ? '' : `, ${formatCents(refundCents)} estornado`}. ${resolution}` });
     const href = `/contratacoes/${bufferToUuid(locked.order.uuid)}`;
     const key = `asaas-resolve:${dispute.id}`;
-    await notify(tx, emails, locked.clientId, `${key}:c`, refund ? `A sua reclamação sobre "${locked.order.titleSnapshot}" foi resolvida: o valor será estornado.` : `A sua reclamação sobre "${locked.order.titleSnapshot}" foi analisada: o valor foi liberado ao profissional.`, href, 'payment_update');
-    await notify(tx, emails, locked.professionalId, `${key}:p`, refund ? `A reclamação sobre "${locked.order.titleSnapshot}" foi resolvida com estorno ao cliente.` : `A reclamação sobre "${locked.order.titleSnapshot}" foi resolvida a seu favor: o valor foi liberado.`, href, 'payment_update');
-    return { status: refund ? 'resolved_refund' : 'resolved_release' };
+    const title = locked.order.titleSnapshot;
+    const toClient = { release: `A sua reclamação sobre "${title}" foi analisada: o valor foi liberado ao profissional. Motivo: ${resolution}`, refund: `A sua reclamação sobre "${title}" foi resolvida: o valor será estornado. Motivo: ${resolution}`, partial: `A sua reclamação sobre "${title}" foi resolvida: ${formatCents(refundCents)} serão estornados e o restante foi liberado ao profissional. Motivo: ${resolution}` }[kind];
+    const toPro = { release: `A reclamação sobre "${title}" foi resolvida a seu favor: o valor foi liberado. Motivo: ${resolution}`, refund: `A reclamação sobre "${title}" foi resolvida com estorno ao cliente. Motivo: ${resolution}`, partial: `A reclamação sobre "${title}" foi resolvida com estorno parcial de ${formatCents(refundCents)} ao cliente; o restante foi liberado a você. Motivo: ${resolution}` }[kind];
+    await notify(tx, emails, locked.clientId, `${key}:c`, toClient.slice(0, 480), href, 'payment_update');
+    await notify(tx, emails, locked.professionalId, `${key}:p`, toPro.slice(0, 480), href, 'payment_update');
+    return { status: disputeStatus };
   });
 }
 

@@ -14,3 +14,6 @@ export function rateLimit({ limit, windowMs, message = 'Muitas solicitações. A
     next();
   };
 }
+
+// Por IP (e por e-mail, quando há) para frear tentativas em sequência sem travar quem divide a mesma rede.
+export const byIpAndEmail = (req) => `${req.ip}:${String(req.body?.email ?? '').toLowerCase().slice(0, 120)}`;

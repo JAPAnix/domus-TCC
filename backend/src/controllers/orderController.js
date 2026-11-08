@@ -1,7 +1,11 @@
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
-import { addressFor, availableActions, ORDER_STATUS_LABELS, roleIn } from '../utils/orderRules.js';
+import { addressFor, availableActions, ORDER_STATUS_LABELS, roleIn, urgency, deadlineOf, VALIDITY_OPTIONS, DEFAULT_VALIDITY_HOURS, RESPONSE_HOURS } from '../utils/orderRules.js';
+import { feeConfig } from '../config/fees.js';
+import { asaasActive } from '../services/payoutAccounts.js';
+import { platformFeePercent } from '../services/platformFee.js';
+import { computeCheckout, toCents, fromCents } from '../utils/money.js';
 import { createOrder, transitionOrder, orderReviewContext, submitOrderReview } from '../services/orderWorkflow.js';
 import { completeSchema } from '../validators/listingValidator.js';
 import { unitsTotal } from '../utils/bookingSlots.js';
@@ -37,7 +41,21 @@ export function serializeOrder(order, viewerId) {
     policy: order.policySnapshot, createdAt: order.createdAt, acceptedAt: order.acceptedAt, startedAt: order.startedAt, completedAt: order.completedAt, cancelledAt: order.cancelledAt,
     cancelledByMe: order.cancelledById != null && viewerId != null ? order.cancelledById === viewerId : null,
     role: viewerId == null ? null : roleIn(order, viewerId), actions: viewerId == null ? [] : availableActions(order, viewerId),
+    declineReason: order.declineReason ?? null,
+    region: regionOf(order),
+    deadline: deadlineOf(order) ?? null, urgency: urgency(order),
+    proposal: order.proposalAmount == null ? null : {
+      amount: Number(order.proposalAmount), days: order.proposalDays, date: order.proposalDate ? order.proposalDate.toISOString().slice(0, 10) : null,
+      included: order.proposalIncluded, note: order.proposalNote, validUntil: order.proposalValidUntil, sentAt: order.proposedAt,
+    },
   };
+}
+
+/** Bairro, cidade e estado do local do serviço: o suficiente para o profissional avaliar a distância, sem o endereço exato. */
+function regionOf(order) {
+  const address = order.serviceAddress;
+  if (!address || typeof address !== 'object') return null;
+  return [address.neighborhood, address.city, address.state].filter(Boolean).join(', ') || null;
 }
 
 export function sendWorkflowError(res, err, label) {
@@ -49,8 +67,8 @@ export function sendWorkflowError(res, err, label) {
 
 const pageParams = (req) => ({ page: Math.max(1, Number(req.query.page) || 1), limit: Math.min(50, Math.max(1, Number(req.query.limit) || 20)) });
 const STATUS_GROUPS = {
-  new: ['requested'], active: ['accepted', 'in_progress'], done: ['completed'], closed: ['declined', 'cancelled'],
-  requested: ['requested'], accepted: ['accepted'], in_progress: ['in_progress'], completed: ['completed'], declined: ['declined'], cancelled: ['cancelled'],
+  new: ['requested'], proposed: ['proposed'], active: ['accepted', 'in_progress'], done: ['completed'], closed: ['declined', 'cancelled', 'expired'],
+  requested: ['requested'], accepted: ['accepted'], in_progress: ['in_progress'], completed: ['completed'], declined: ['declined'], cancelled: ['cancelled'], expired: ['expired'],
 };
 
 export async function listOrders(req, res, side) {
@@ -64,6 +82,44 @@ export async function listOrders(req, res, side) {
     ]);
     res.set('Cache-Control', 'no-store').json({ data: rows.map((row) => serializeOrder(row, userId)), meta: { total, page, limit, pages: Math.ceil(total / limit) } });
   } catch (err) { sendWorkflowError(res, err, 'listOrders'); }
+}
+
+/** Quantidade de pedidos por aba, para os números ao lado dos nomes das abas. */
+export async function orderCounts(req, res) {
+  try {
+    const field = req.query.side === 'client' ? 'clientId' : 'professionalId';
+    const rows = await prisma.order.groupBy({ by: ['status'], where: { [field]: me(req) }, _count: { _all: true } });
+    const byStatus = Object.fromEntries(rows.map((row) => [row.status, row._count._all]));
+    const sum = (statuses) => statuses.reduce((total, status) => total + (byStatus[status] ?? 0), 0);
+    const counts = Object.fromEntries(Object.entries(STATUS_GROUPS).filter(([key]) => ['new', 'proposed', 'accepted', 'in_progress', 'active', 'done', 'closed'].includes(key)).map(([key, statuses]) => [key, sum(statuses)]));
+    res.set('Cache-Control', 'no-store').json({ ...counts, all: sum(Object.keys(byStatus)) });
+  } catch (err) { sendWorkflowError(res, err, 'orderCounts'); }
+}
+
+/** Números que pedem atenção no menu: pedidos novos (profissional) e propostas para decidir (cliente). */
+export async function orderBadges(req, res) {
+  try {
+    const userId = me(req);
+    const [proNew, clientProposed, openProposals] = await Promise.all([
+      prisma.order.count({ where: { professionalId: userId, status: 'requested' } }),
+      prisma.order.count({ where: { clientId: userId, status: 'proposed' } }),
+      prisma.proposal.count({ where: { status: 'pending', service: { clientId: userId, status: 'open', deletedAt: null } } }),
+    ]);
+    res.set('Cache-Control', 'no-store').json({ proNew, clientToDecide: clientProposed + openProposals });
+  } catch (err) { sendWorkflowError(res, err, 'orderBadges'); }
+}
+
+/** Quanto o profissional recebe por um valor: comissão da plataforma já descontada (a taxa do meio de pagamento não entra). */
+export function earningsPreview(req, res) {
+  try {
+    const amount = Number(req.body?.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000) return res.status(400).json({ message: 'Informe um valor maior que zero.' });
+    const cfg = feeConfig();
+    const commissionPercent = platformFeePercent();
+    const clientFeePercent = asaasActive() ? cfg.clientFeePercent : 0;
+    const split = computeCheckout({ serviceCents: toCents(amount), clientFeePercent, proCommissionPercent: commissionPercent });
+    res.json({ amount, commissionPercent, commission: fromCents(split.commissionCents), earnings: fromCents(split.proGrossCents), clientFeePercent, clientTotal: fromCents(split.totalCents), validityOptions: VALIDITY_OPTIONS, defaultValidityHours: DEFAULT_VALIDITY_HOURS, responseHours: RESPONSE_HOURS });
+  } catch (err) { sendWorkflowError(res, err, 'earningsPreview'); }
 }
 
 export const myOrders = (req, res) => listOrders(req, res, 'client');
@@ -100,6 +156,7 @@ export async function create(req, res) {
 export async function act(req, res) {
   try {
     let body = {};
+    if (['propose', 'decline'].includes(req.params.action)) body = req.body ?? {};
     if (req.params.action === 'complete') {
       const parsed = completeSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: 'Dados inválidos', errors: parsed.error.issues.map((issue) => ({ field: issue.path.join('.'), message: issue.message })) });

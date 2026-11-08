@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api, { apiError } from '../services/api';
+import api, { apiError, apiFieldErrors } from '../services/api';
 import { Button, Input } from '../components/ui';
 import AuthLayout from './AuthLayout';
 
@@ -30,7 +30,9 @@ export default function ResetPassword() {
       await api.post('/auth/reset-password', { token, newPassword: password });
       setDone(true);
     } catch (err) {
-      setError(apiError(err, 'Não foi possível redefinir sua senha.'));
+      const fields = apiFieldErrors(err);
+      if (fields.newPassword) setErrors({ password: fields.newPassword });
+      else setError(apiError(err, 'Não foi possível redefinir sua senha.'));
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ export default function ResetPassword() {
 
   if (done) {
     return (
-      <AuthLayout title="Senha redefinida" subtitle="Sua nova senha já está valendo.">
+      <AuthLayout title="Senha redefinida" subtitle="Sua nova senha já está valendo. Por segurança, os outros aparelhos foram desconectados.">
         <Button to="/login" block>Entrar</Button>
       </AuthLayout>
     );
@@ -56,7 +58,7 @@ export default function ResetPassword() {
     <AuthLayout title="Crie uma nova senha">
       <form onSubmit={submit} noValidate className="space-y-4">
         {error && <p role="alert" className="rounded-control border border-danger-line bg-danger-soft p-3 text-sm text-danger">{error} <Link to="/forgot-password" className="font-semibold underline">Pedir novo link</Link></p>}
-        <Input label="Nova senha" type="password" autoComplete="new-password" required hint="Use pelo menos 8 caracteres." value={password} onChange={(event) => setPassword(event.target.value)} error={errors.password} />
+        <Input label="Nova senha" type="password" autoComplete="new-password" required hint="Use pelo menos 8 caracteres e evite senhas comuns, como 12345678." value={password} onChange={(event) => setPassword(event.target.value)} error={errors.password} />
         <Input label="Confirmar nova senha" type="password" autoComplete="new-password" required value={confirm} onChange={(event) => setConfirm(event.target.value)} error={errors.confirm} />
         <Button type="submit" block loading={loading}>{loading ? 'Redefinindo...' : 'Redefinir senha'}</Button>
       </form>

@@ -1,6 +1,8 @@
 import { prisma } from '../config/prisma.js';
 import { formatCents } from '../utils/money.js';
 import { ALERT_TYPES } from '../utils/asaasEvents.js';
+import { daysOpen } from '../utils/disputeRules.js';
+import { ignoredText } from '../utils/adminAlerts.js';
 import { bufferToUuid } from '../utils/uuid.js';
 
 const nameOf = (user) => user.preferredName?.trim() || [user.firstName, user.lastName].filter(Boolean).join(' ');
@@ -98,7 +100,8 @@ export async function adminDisputes(status = 'open') {
     include: { payment: { include: { order: { select: { uuid: true, titleSnapshot: true } }, client: { select: personSelect }, professional: { select: personSelect } } }, openedBy: { select: personSelect } },
   });
   return rows.map((row) => ({
-    id: row.id.toString(), status: row.status, reason: row.reason, resolution: row.resolution, createdAt: row.createdAt, resolvedAt: row.resolvedAt,
+    id: row.id.toString(), status: row.status, reason: row.reason, resolution: row.resolution, createdAt: row.createdAt, resolvedAt: row.resolvedAt, daysOpen: row.status === 'open' ? daysOpen(row.createdAt) : null, refundedCents: row.refundedCents,
+    opener: nameOf(row.openedBy), method: row.payment.method,
     payment: { uuid: bufferToUuid(row.payment.uuid), status: row.payment.status, amountCents: row.payment.amountCents, formatted: formatCents(row.payment.amountCents ?? 0) },
     service: row.payment.order.titleSnapshot, orderUuid: bufferToUuid(row.payment.order.uuid), client: nameOf(row.payment.client), professional: nameOf(row.payment.professional),
   }));
@@ -114,5 +117,5 @@ export async function adminAlerts() {
 
 export async function adminWebhookEvents(status) {
   const rows = await prisma.webhookEvent.findMany({ where: { provider: 'asaas', ...(status && { status }) }, orderBy: { id: 'desc' }, take: 100 });
-  return rows.map((row) => ({ id: row.id.toString(), event: row.eventName, reference: row.reference, status: row.status, error: row.error, processedAt: row.processedAt }));
+  return rows.map((row) => ({ id: row.id.toString(), event: row.eventName, reference: row.reference, status: row.status, error: row.status === 'ignored' ? null : row.error, note: row.status === 'ignored' ? ignoredText(row.error) : null, processedAt: row.processedAt }));
 }

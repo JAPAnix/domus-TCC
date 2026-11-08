@@ -22,7 +22,7 @@ export async function summary(req, res) {
   try {
     const professionalId = me(req);
     const now = new Date();
-    const [newOrders, inProgress, upcoming, month, profile, byStatus, proposalsPending] = await Promise.all([
+    const [newOrders, inProgress, upcoming, month, profile, byStatus, openProposals, orderProposals] = await Promise.all([
       prisma.order.count({ where: { professionalId, status: 'requested' } }),
       prisma.order.count({ where: { professionalId, status: 'in_progress' } }),
       prisma.order.findMany({ where: { professionalId, status: { in: ['accepted', 'in_progress'] }, scheduledDate: { gte: utcDay(now) } }, orderBy: [{ scheduledDate: 'asc' }, { id: 'asc' }], take: 5, include: orderInclude }),
@@ -30,7 +30,9 @@ export async function summary(req, res) {
       prisma.professionalProfile.findUnique({ where: { userId: professionalId }, select: { averageRating: true, totalReviews: true, isVerified: true } }),
       prisma.listing.groupBy({ by: ['status'], where: { ownerId: professionalId, deletedAt: null }, _count: { _all: true } }),
       prisma.proposal.count({ where: { professionalId, status: 'pending', service: { deletedAt: null } } }),
+      prisma.order.count({ where: { professionalId, status: 'proposed' } }),
     ]);
+    const proposalsPending = openProposals + orderProposals;
     res.set('Cache-Control', 'no-store').json({
       newOrders, inProgress, proposalsPending, receivingWarning: await receivingWarning(professionalId),
       monthEarnings: { amount: num(month._sum.finalAmount) ?? 0, count: month._count._all },

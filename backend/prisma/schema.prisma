@@ -592,11 +592,13 @@ enum CancellationPolicy {
 
 enum OrderStatus {
   requested
+  proposed
   accepted
   in_progress
   completed
   declined
   cancelled
+  expired
 }
 
 enum VerificationStatus {
@@ -715,6 +717,17 @@ model Order {
   quantity             Int?                @db.UnsignedSmallInt
   referenceImages      Json?               @map("reference_images")
   serviceAddress       Json?               @map("service_address")
+  // Proposta do profissional (pedidos "sob consulta"): valor, prazo, o que inclui e até quando vale.
+  proposalAmount       Decimal?            @map("proposal_amount") @db.Decimal(10, 2)
+  proposalDays         Int?                @map("proposal_days") @db.UnsignedSmallInt
+  proposalDate         DateTime?           @map("proposal_date") @db.Date
+  proposalIncluded     String?             @map("proposal_included") @db.VarChar(500)
+  proposalNote         String?             @map("proposal_note") @db.VarChar(1000)
+  proposalValidUntil   DateTime?           @map("proposal_valid_until")
+  proposedAt           DateTime?           @map("proposed_at")
+  // Até quando o profissional pode responder a um pedido novo; depois disso o pedido expira.
+  expiresAt            DateTime?           @map("expires_at")
+  declineReason        String?             @map("decline_reason") @db.VarChar(200)
   titleSnapshot        String              @map("title_snapshot") @db.VarChar(120)
   pricingModelSnapshot PricingModel?       @map("pricing_model_snapshot")
   priceSnapshot        Decimal?            @map("price_snapshot") @db.Decimal(10, 2)
@@ -743,6 +756,8 @@ model Order {
   @@index([professionalId, status])
   @@index([listingId])
   @@index([professionalId, scheduledDate])
+  @@index([status, expiresAt])
+  @@index([status, proposalValidUntil])
   @@map("orders")
 }
 
@@ -817,19 +832,24 @@ model Payment {
 
 // Histórico imutável de cada mudança de um pagamento.
 model PaymentEvent {
-  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  paymentId  BigInt   @map("payment_id") @db.UnsignedBigInt
-  actorId    BigInt?  @map("actor_id") @db.UnsignedBigInt
-  type       String   @db.VarChar(30)
-  fromStatus String?  @map("from_status") @db.VarChar(20)
-  toStatus   String   @map("to_status") @db.VarChar(20)
-  detail     String?  @db.VarChar(300)
-  createdAt  DateTime @default(now()) @map("created_at")
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  paymentId      BigInt    @map("payment_id") @db.UnsignedBigInt
+  actorId        BigInt?   @map("actor_id") @db.UnsignedBigInt
+  type           String    @db.VarChar(30)
+  fromStatus     String?   @map("from_status") @db.VarChar(20)
+  toStatus       String    @map("to_status") @db.VarChar(20)
+  detail         String?   @db.VarChar(300)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  // Alertas (type "alert:...") ficam abertos até um administrador marcar como resolvido, com uma nota.
+  resolvedAt     DateTime? @map("resolved_at")
+  resolvedById   BigInt?   @map("resolved_by_id") @db.UnsignedBigInt
+  resolutionNote String?   @map("resolution_note") @db.VarChar(500)
 
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([paymentId, createdAt])
+  @@index([resolvedAt])
   @@map("payment_events")
 }
 
@@ -1007,15 +1027,17 @@ model PayoutAccount {
 
 // Reclamação do cliente antes da liberação do valor. O administrador decide: liberar ao profissional ou estornar.
 model PaymentDispute {
-  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  paymentId    BigInt    @map("payment_id") @db.UnsignedBigInt
-  openedById   BigInt    @map("opened_by_id") @db.UnsignedBigInt
-  reason       String    @db.VarChar(500)
-  status       String    @default("open") @db.VarChar(20)
-  resolution   String?   @db.VarChar(500)
-  resolvedById BigInt?   @map("resolved_by_id") @db.UnsignedBigInt
-  resolvedAt   DateTime? @map("resolved_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  paymentId     BigInt    @map("payment_id") @db.UnsignedBigInt
+  openedById    BigInt    @map("opened_by_id") @db.UnsignedBigInt
+  reason        String    @db.VarChar(500)
+  status        String    @default("open") @db.VarChar(20)
+  resolution    String?   @db.VarChar(500)
+  resolvedById  BigInt?   @map("resolved_by_id") @db.UnsignedBigInt
+  resolvedAt    DateTime? @map("resolved_at")
+  // Valor estornado ao cliente nesta decisão (em centavos). Menor que o total = reembolso parcial.
+  refundedCents Int?      @map("refunded_cents")
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   openedBy   User    @relation("DisputeOpener", fields: [openedById], references: [id], onDelete: Cascade)
@@ -1024,4 +1046,19 @@ model PaymentDispute {
   @@index([status])
   @@index([paymentId])
   @@map("payment_disputes")
+}
+
+/// Registro das decisões do administrador (reclamações e alertas): quem decidiu, o quê e quando.
+model AdminAuditLog {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  adminId    BigInt   @map("admin_id") @db.UnsignedBigInt
+  action     String   @db.VarChar(40)
+  targetType String   @map("target_type") @db.VarChar(30)
+  targetId   String   @map("target_id") @db.VarChar(64)
+  detail     String?  @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([adminId])
+  @@map("admin_audit_logs")
 }

@@ -35,6 +35,7 @@ export default function ForgotPassword() {
           <Button type="submit" block loading={loading}>{loading ? 'Enviando...' : 'Enviar link'}</Button>
         </form>
       )}
+      <p className="mt-4 text-center text-xs leading-5 text-ink-muted">Criou a conta com o Google e nunca definiu uma senha? Peça o link mesmo assim: você poderá criar uma senha e continuar entrando com o Google.</p>
       <p className="mt-5 text-center text-sm"><Link to="/login" className="font-medium text-primary-strong underline-offset-2 hover:underline">Voltar para o login</Link></p>
     </AuthLayout>
   );

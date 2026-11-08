@@ -31,11 +31,11 @@ export default function ProDashboard() {
   return (
     <div className="space-y-10">
       <section aria-label="Resumo" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Stat label="Pedidos novos" value={data.newOrders} to="/pro/pedidos" note={data.newOrders ? 'Aguardando a sua resposta' : 'Nada esperando por você'} />
+        <Stat label="Novos pedidos" value={data.newOrders} to="/pro/pedidos" note={data.newOrders ? 'Aguardando a sua resposta' : 'Nada esperando por você'} />
         <Stat label="Em andamento" value={data.inProgress} to="/pro/pedidos" />
         <Stat label="Ganhos do mês" value={formatMoney(data.monthEarnings.amount)} to="/pro/ganhos" note={`${data.monthEarnings.count} ${data.monthEarnings.count === 1 ? 'serviço concluído' : 'serviços concluídos'}. Valores informados por você.`} />
         <Stat label="Nota média" value={data.rating.total ? `★ ${data.rating.average.toFixed(1)}` : '—'} note={data.rating.total ? `${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}` : 'Ainda sem avaliações'} />
-        <Stat label="Propostas pendentes" value={data.proposalsPending} to="/pro/pedidos" note="Enviadas a pedidos abertos" />
+        <Stat label="Propostas pendentes" value={data.proposalsPending} to="/pro/pedidos" note="Aguardando resposta do cliente" />
         <Stat label="Mensagens não lidas" value={unread.data?.count ?? '—'} to="/mensagens" note={unread.data?.count ? 'Clientes esperando resposta' : 'Tudo em dia'} />
       </section>
 

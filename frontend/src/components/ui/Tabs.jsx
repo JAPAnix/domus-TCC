@@ -9,8 +9,8 @@ export function TabNav({ tabs, label }) {
   return (
     <nav aria-label={label} className="mb-8 border-b border-line">
       <ul className="-mb-px flex gap-6 overflow-x-auto">
-        {tabs.map(({ to, label: text, end }) => (
-          <li key={to}><NavLink to={to} end={end} className={({ isActive }) => tabClass(isActive)}>{text}</NavLink></li>
+        {tabs.map(({ to, label: text, end, badge }) => (
+          <li key={to}><NavLink to={to} end={end} className={({ isActive }) => tabClass(isActive)}>{text}{badge > 0 && <span className="ml-2 rounded-full bg-primary px-2 text-xs font-semibold text-white" aria-label={`, ${badge} novos`}>{badge > 99 ? '99+' : badge}</span>}</NavLink></li>
         ))}
       </ul>
     </nav>
@@ -44,7 +44,7 @@ export function Tabs({ tabs, value, onChange, label }) {
           onKeyDown={(event) => onKeyDown(event, index)}
           className={`-mb-px ${tabClass(value === tab.value)}`}
         >
-          {tab.label}
+          {tab.label}{tab.count != null && <span className={`ml-2 rounded-full px-2 text-xs font-semibold ${tab.alert && tab.count > 0 ? 'bg-primary text-white' : 'bg-surface-muted text-ink-soft'}`} aria-label={`, ${tab.count}`}>{tab.count > 99 ? '99+' : tab.count}</span>}
         </button>
       ))}
     </div>

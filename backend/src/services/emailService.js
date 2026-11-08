@@ -43,17 +43,32 @@ async function deliver({ to, subject, text, html, replyTo }) {
   return transport.sendMail({ from: process.env.EMAIL_FROM, to, subject, text, ...(html && { html }), ...(replyTo && { replyTo }) });
 }
 
-export async function sendPasswordResetEmail({ email, link }) {
+export async function sendPasswordResetEmail({ email, link, hasPassword = true }) {
   if (!smtpConfigured()) {
     console.warn('Envio de e-mail não configurado; link de redefinição não foi enviado.');
+    // Em desenvolvimento o link aparece no log para testar o fluxo sem provedor de e-mail. Nunca em produção.
+    if (process.env.NODE_ENV !== 'production') console.info(`[DEV] Link de redefinição de senha para ${email}: ${link}`);
     return;
   }
-  const logo = process.env.EMAIL_LOGO_URL
+  const title = hasPassword ? 'Redefina sua senha' : 'Crie uma senha para a sua conta';
+  const intro = hasPassword
+    ? 'Recebemos uma solicitação para redefinir a senha da sua conta.'
+    : 'Sua conta do DOMMOS foi criada com o Google e ainda não tem senha. Você pode continuar entrando com o Google. Se preferir, crie uma senha pelo botão abaixo e passe a entrar também com e-mail e senha.';
+  const action = hasPassword ? 'Redefinir minha senha' : 'Criar minha senha';  const logo = process.env.EMAIL_LOGO_URL
     ? `<img src="${process.env.EMAIL_LOGO_URL}" alt="DOMMOS" width="140" style="display:block;margin:0 auto;max-width:140px" />`
     : '<div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:#7C3AED">dommos<span style="color:#111827">.</span></div>';
-  const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#F9FAFB;font-family:Arial,sans-serif;color:#111827"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 16px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border:1px solid #E5E7EB;border-radius:20px;overflow:hidden"><tr><td align="center" style="padding:32px 32px 22px">${logo}</td></tr><tr><td style="padding:0 32px 32px"><h1 style="font-size:24px;margin:0 0 14px">Redefina sua senha</h1><p style="font-size:16px;line-height:1.55;color:#4B5563;margin:0 0 24px">Recebemos uma solicitação para redefinir a senha da sua conta.</p><p style="text-align:center;margin:0 0 24px"><a href="${link}" style="display:inline-block;background:#7C3AED;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700">Redefinir minha senha</a></p><p style="font-size:14px;line-height:1.5;color:#6B7280;margin:0 0 12px">Este link expira em 30 minutos.</p><p style="font-size:14px;line-height:1.5;color:#6B7280;margin:0">Se você não fez esta solicitação, ignore este email.</p></td></tr></table></td></tr></table></body></html>`;
-  const result = await deliver({ to: email, subject: 'Redefina sua senha do DOMMOS', text: `Recebemos uma solicitação para redefinir sua senha. Este link expira em 30 minutos: ${link}`, html });
+  const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#F9FAFB;font-family:Arial,sans-serif;color:#111827"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 16px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border:1px solid #E5E7EB;border-radius:20px;overflow:hidden"><tr><td align="center" style="padding:32px 32px 22px">${logo}</td></tr><tr><td style="padding:0 32px 32px"><h1 style="font-size:24px;margin:0 0 14px">${title}</h1><p style="font-size:16px;line-height:1.55;color:#4B5563;margin:0 0 24px">${intro}</p><p style="text-align:center;margin:0 0 24px"><a href="${link}" style="display:inline-block;background:#7C3AED;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700">${action}</a></p><p style="font-size:14px;line-height:1.5;color:#6B7280;margin:0 0 12px">Este link expira em 30 minutos.</p><p style="font-size:14px;line-height:1.5;color:#6B7280;margin:0">Se você não fez esta solicitação, ignore este email.</p></td></tr></table></td></tr></table></body></html>`;
+  const result = await deliver({ to: email, subject: hasPassword ? 'Redefina sua senha do DOMMOS' : 'Crie uma senha para a sua conta do DOMMOS', text: `${intro} Este link expira em 30 minutos: ${link}`, html });
   console.info(`E-mail de recuperação aceito pelo provedor: ${result.accepted?.length ?? 0} destinatário(s).`);
+}
+
+/** Aviso de segurança: a senha foi trocada. Se não foi a própria pessoa, ela precisa agir rápido. */
+export async function sendPasswordChangedEmail({ email, firstName }) {
+  if (!smtpConfigured()) return { delivery: 'skipped' };
+  const recover = `${(process.env.FRONTEND_URL || '').replace(/\/$/, '')}/forgot-password`;
+  const text = `Olá${firstName ? `, ${firstName}` : ''}. A senha da sua conta do DOMMOS acabou de ser alterada e os outros aparelhos foram desconectados. Se foi você, não precisa fazer nada. Se não foi, redefina a senha agora em ${recover} e fale com o suporte.`;
+  await deliver({ to: email, subject: 'Sua senha do DOMMOS foi alterada', text });
+  return { delivery: 'provider-accepted' };
 }
 
 export async function sendEmailVerification({ email, code }) {

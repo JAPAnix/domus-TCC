@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { passwordSchema } from './passwordRules.js';
 import { SUPPORTED_LANGUAGES, SUPPORTED_CURRENCIES } from '../utils/locales.js';
 import { isValidCpf, isValidCnpj, onlyDigits } from '../utils/taxDocument.js';
 import { normalizeBrazilianPhone } from '../utils/userData.js';
@@ -6,7 +7,7 @@ import { normalizeBrazilianPhone } from '../utils/userData.js';
 // ---- Conta e segurança ----
 export const changePasswordSchema = z.object({
   current_password: z.string().max(255).optional(),
-  new_password: z.string().min(8, 'A nova senha deve ter pelo menos 8 caracteres.').max(255),
+  new_password: passwordSchema('A nova senha'),
 });
 export const passwordConfirmSchema = z.object({ password: z.string().max(255).optional() });
 export const googleLinkSchema = z.object({ credential: z.string().min(20) });

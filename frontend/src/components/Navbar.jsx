@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useCategories } from '../hooks/useCategories';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
+import { useOrderBadges } from '../hooks/useOrderBadges';
 import { categoryStyle } from '../utils/categoryColors';
 import { fullName } from '../utils/format';
 import { PRO_HOME_PATH, PRO_START_PATH } from '../utils/routes';
@@ -55,20 +56,20 @@ function ThemeSwitch() {
 }
 
 /** Conteúdo do menu da conta, o mesmo no dropdown (desktop) e na gaveta (mobile). */
-function AccountMenu({ onNavigate, unread, unreadMessages, onOpenLocale }) {
+function AccountMenu({ onNavigate, unread, unreadMessages, orders, onOpenLocale }) {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const itemClass = (active) => `flex min-h-control items-center gap-3 rounded-control px-3 py-2 text-sm transition-colors ${active ? 'bg-primary-soft font-semibold text-primary-strong' : 'text-ink-soft hover:bg-surface-muted'}`;
   const settingsActive = pathname.startsWith('/configuracoes');
 
-  const item = ({ to, label, icon, active, badge }) => {
+  const item = ({ to, label, icon, active, badge, badgeLabel = 'não lidas' }) => {
     const isActive = active ?? (pathname === to || pathname.startsWith(`${to}/`));
     return (
       <Link key={to} to={to} onClick={onNavigate} aria-current={isActive ? 'page' : undefined} className={itemClass(isActive)}>
         <Icon path={icons[icon]} />
         <span className="flex-1">{label}</span>
-        {badge > 0 && <span className="rounded-full bg-primary px-2 text-xs font-semibold text-white" aria-label={`${badge} não lidas`}>{unreadLabel(badge)}</span>}
+        {badge > 0 && <span className="rounded-full bg-primary px-2 text-xs font-semibold text-white" aria-label={`${badge} ${badgeLabel}`}>{unreadLabel(badge)}</span>}
       </Link>
     );
   };
@@ -95,7 +96,8 @@ function AccountMenu({ onNavigate, unread, unreadMessages, onOpenLocale }) {
         </Link>
       )}
       {item({ to: '/favoritos', label: 'Favoritos', icon: 'heart' })}
-      {item({ to: '/meus-servicos', label: 'Pedidos e contratações', icon: 'orders' })}
+      {user.roles?.includes('professional') && item({ to: '/pro/pedidos', label: 'Pedidos recebidos', icon: 'orders', badge: orders.proNew, badgeLabel: 'pedidos novos' })}
+      {item({ to: '/meus-servicos', label: 'Pedidos e contratações', icon: 'orders', badge: orders.clientToDecide, badgeLabel: 'propostas para decidir' })}
       {item({ to: '/mensagens', label: 'Mensagens', icon: 'chat', badge: unreadMessages })}
       {item({ to: '/perfil', label: 'Perfil', icon: 'user', active: pathname.startsWith('/perfil') })}
       {item({ to: '/notificacoes', label: 'Notificações', icon: 'bell', badge: unread })}
@@ -170,7 +172,7 @@ function CategoryTabs() {
   );
 }
 
-function BottomNav({ onOpenMenu, menuOpen, unread, unreadMessages }) {
+function BottomNav({ onOpenMenu, menuOpen, unread, unreadMessages, orders }) {
   const { user } = useAuth();
   const { mode } = useMode();
   const links = !user
@@ -195,11 +197,12 @@ function BottomNav({ onOpenMenu, menuOpen, unread, unreadMessages }) {
         <NavLink key={to} to={to} end={end} className={({ isActive }) => `${itemClass(isActive)} relative`}>
           <Icon path={icons[icon]} /><span className="truncate">{label}</span>
           {to === '/mensagens' && unreadMessages > 0 && <span role="status" aria-label={`${unreadMessages} mensagens não lidas`} className="absolute right-[calc(50%-1.25rem)] top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-4 text-white">{unreadLabel(unreadMessages)}</span>}
+          {(to === '/pro/pedidos' ? orders.proNew : to === '/meus-servicos' ? orders.clientToDecide : 0) > 0 && <span role="status" aria-label={to === '/pro/pedidos' ? `${orders.proNew} pedidos novos` : `${orders.clientToDecide} propostas para decidir`} className="absolute right-[calc(50%-1.25rem)] top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-4 text-white">{unreadLabel(to === '/pro/pedidos' ? orders.proNew : orders.clientToDecide)}</span>}
         </NavLink>
       ))}
       <button type="button" onClick={onOpenMenu} aria-label="Abrir menu" aria-expanded={menuOpen} className={`${itemClass(menuOpen)} relative`}>
         <Icon path={icons.menu} /><span>Menu</span>
-        {(unread > 0 || (mode === 'professional' && unreadMessages > 0)) && <span aria-hidden="true" className="absolute right-[calc(50%-1rem)] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />}
+        {unread + unreadMessages + orders.proNew + orders.clientToDecide > 0 && <span aria-hidden="true" className="absolute right-[calc(50%-1rem)] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />}
       </button>
     </nav>
   );
@@ -214,6 +217,9 @@ export default function Navbar({ simplified = false }) {
   const [localeOpen, setLocaleOpen] = useState(false);
   const unread = useUnreadNotifications(!!user);
   const unreadMessages = useUnreadMessages(!!user);
+  const orders = useOrderBadges(!!user);
+  // O número no avatar soma o que está pendente (notificações e mensagens); cada item do menu tem o seu próprio contador.
+  const attention = unread + unreadMessages;
   const homePath = mode === 'professional' ? PRO_HOME_PATH : user ? '/buscar' : '/';
   // A busca e as categorias só aparecem onde se procura serviço: a busca de profissionais e serviços e os pedidos abertos.
   const showSearch = ['/buscar', '/servicos'].includes(pathname);
@@ -251,10 +257,10 @@ export default function Navbar({ simplified = false }) {
                 <button type="button" onClick={toggle} aria-label="Abrir menu" aria-expanded={open} className="relative flex min-h-control items-center gap-2 rounded-full border border-line-strong bg-surface py-1 pl-3 pr-1.5 transition-shadow hover:shadow-card">
                   <Icon path={icons.menu} className="h-4 w-4 text-ink-soft" />
                   {user ? <Avatar src={user.profilePictureUrl} name={fullName(user)} size="sm" decorative /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-ink-soft"><Icon path={icons.user} className="h-4 w-4" /></span>}
-                  {unread > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1.5 text-xs font-semibold text-white" aria-label={`${unread} notificações não lidas`}>{unreadLabel(unread)}</span>}
+                  {attention > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1.5 text-xs font-semibold text-white" aria-label={`${unread} notificações e ${unreadMessages} mensagens não lidas`}>{unreadLabel(attention)}</span>}
                 </button>
               )}>
-                {({ close }) => <AccountMenu onNavigate={close} unread={unread} unreadMessages={unreadMessages} onOpenLocale={() => setLocaleOpen(true)} />}
+                {({ close }) => <AccountMenu onNavigate={close} unread={unread} unreadMessages={unreadMessages} orders={orders} onOpenLocale={() => setLocaleOpen(true)} />}
               </Dropdown>
             </div>
           </div>
@@ -269,10 +275,10 @@ export default function Navbar({ simplified = false }) {
         {showSearch && <CategoryTabs />}
       </header>
 
-      <BottomNav onOpenMenu={() => setMenuOpen(true)} menuOpen={menuOpen} unread={unread} unreadMessages={unreadMessages} />
+      <BottomNav onOpenMenu={() => setMenuOpen(true)} menuOpen={menuOpen} unread={unread} unreadMessages={unreadMessages} orders={orders} />
 
       <Modal open={menuOpen} title={user ? fullName(user) || 'Sua conta' : 'Menu'} onClose={() => setMenuOpen(false)} placement="drawer" closeLabel="Fechar menu">
-        <AccountMenu onNavigate={() => setMenuOpen(false)} unread={unread} unreadMessages={unreadMessages} onOpenLocale={() => setLocaleOpen(true)} />
+        <AccountMenu onNavigate={() => setMenuOpen(false)} unread={unread} unreadMessages={unreadMessages} orders={orders} onOpenLocale={() => setLocaleOpen(true)} />
       </Modal>
 
       <Modal open={searchOpen} title="Buscar profissionais" onClose={() => setSearchOpen(false)} placement="full" closeLabel="Fechar busca">

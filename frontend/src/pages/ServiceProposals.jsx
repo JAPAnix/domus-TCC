@@ -13,6 +13,36 @@ const actions = {
   rejected: { title: 'Recusar proposta', confirmLabel: 'Recusar proposta', danger: true, success: 'Proposta recusada.', message: (name) => `A proposta de ${name} será recusada. Essa ação não pode ser desfeita.` },
 };
 
+/** Lado a lado: valor, prazo e nota de cada profissional, com a menor oferta destacada. */
+function Comparison({ rows, onDecide }) {
+  const cheapest = Math.min(...rows.map((row) => Number(row.proposal.proposedPrice)));
+  return (
+    <section aria-labelledby="comparar" className="mb-8">
+      <h2 id="comparar" className="mb-3 text-lg font-semibold">Comparar propostas</h2>
+      <div className="overflow-x-auto rounded-card border border-line">
+        <table className="w-full min-w-[34rem] text-left text-sm">
+          <caption className="sr-only">Comparação de valor, prazo e nota dos profissionais</caption>
+          <thead className="bg-surface-muted text-ink-soft"><tr><th scope="col" className="p-3 font-medium">Profissional</th><th scope="col" className="p-3 font-medium">Valor</th><th scope="col" className="p-3 font-medium">Prazo</th><th scope="col" className="p-3 font-medium">Nota</th><th scope="col" className="p-3 font-medium"><span className="sr-only">Ações</span></th></tr></thead>
+          <tbody>
+            {rows.map(({ proposal, name, canDecide }) => {
+              const rating = proposal.professional?.totalReviews ? `★ ${Number(proposal.professional.averageRating).toFixed(1)} (${proposal.professional.totalReviews})` : 'Sem avaliações';
+              return (
+                <tr key={proposal.uuid} className="border-t border-line">
+                  <th scope="row" className="p-3 font-medium">{name}</th>
+                  <td className="p-3 font-semibold">{formatMoney(proposal.proposedPrice)}{rows.length > 1 && Number(proposal.proposedPrice) === cheapest && <span className="ml-2 rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success">Menor valor</span>}</td>
+                  <td className="p-3">{proposal.deliveryTimeDays != null ? `${proposal.deliveryTimeDays} ${proposal.deliveryTimeDays === 1 ? 'dia' : 'dias'}` : 'A combinar'}</td>
+                  <td className="p-3">{rating}</td>
+                  <td className="p-3">{canDecide && <div className="flex gap-2"><Button size="sm" onClick={() => onDecide(proposal, 'accepted', name)}>Aceitar</Button><Button size="sm" variant="dangerOutline" onClick={() => onDecide(proposal, 'rejected', name)}>Recusar</Button></div>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function ServiceProposals() {
   const { uuid } = useParams();
   const navigate = useNavigate();
@@ -69,6 +99,13 @@ export default function ServiceProposals() {
       ) : proposals.length === 0 ? (
         <EmptyState icon="list" title="Nenhuma proposta ainda" description="As propostas dos profissionais aparecerão aqui. Avisaremos você nas notificações." action={<Button to={`/servicos/${uuid}`} variant="secondary">Ver o pedido</Button>} />
       ) : (
+        <>
+        {proposals.filter((proposal) => proposal.status === 'pending').length > 1 && (
+          <Comparison
+            rows={proposals.filter((proposal) => proposal.status === 'pending').map((proposal) => ({ proposal, name: proposal.professional?.displayName || fullName(proposal.professional?.user), canDecide: service.status === 'open' && service.client?.uuid === user?.uuid }))}
+            onDecide={(proposal, status, name) => setPending({ proposal, status, name })}
+          />
+        )}
         <ul className="space-y-4">
           {proposals.map((proposal) => {
             const professional = proposal.professional?.user;
@@ -103,6 +140,7 @@ export default function ServiceProposals() {
             );
           })}
         </ul>
+        </>
       )}
 
       <ConfirmDialog

@@ -9,6 +9,7 @@ import { setEmailDispatcher } from './services/serviceWorkflow.js';
 import { dispatchEventEmails } from './services/eventEmails.js';
 import { attachRealtime } from './services/realtime.js';
 import { startScheduler } from './services/messageService.js';
+import { startOrderExpiry } from './services/orderExpiry.js';
 import { startAsaasJobs } from './services/asaasJobs.js';
 import { prisma } from './config/prisma.js';
 
@@ -67,6 +68,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const server = app.listen(port, '0.0.0.0', () => console.log(`Servidor rodando na porta ${port}`));
   attachRealtime(server);
   startScheduler();
+  startOrderExpiry();
   startAsaasJobs();
   for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => {
     const timer = setTimeout(() => process.exit(1), 10000).unref();

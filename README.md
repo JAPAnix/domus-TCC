@@ -141,6 +141,10 @@ Há duas formas, e `EMAIL_FROM` (por exemplo `Dommos <seu@gmail.com>`) é obriga
 
 Sem nenhuma das duas, o app funciona, mas não envia e-mails.
 
+**Brevo e IPs autorizados:** se a conta da Brevo tiver o bloqueio por IP ligado (Segurança > IPs autorizados), a API recusa as chamadas do Render com "unrecognised IP address", porque o IP dele muda. Desative esse bloqueio em https://app.brevo.com/security/authorised_ips. Para conferir a configuração sem mostrar nenhuma chave: `node --env-file=.env scripts/check-email.mjs --send seu-email@exemplo.com`.
+
+**"Esqueci minha senha":** o link vale 30 minutos, só pode ser usado uma vez e, ao redefinir, todas as sessões da pessoa são encerradas e ela recebe um e-mail avisando da troca. A resposta do site é sempre a mesma, exista ou não conta com aquele e-mail. Quem criou a conta só com o Google recebe um e-mail explicando isso e pode criar uma senha pelo mesmo link. Em desenvolvimento, sem provedor de e-mail configurado, o link aparece no terminal do backend (`[DEV] Link de redefinição de senha ...`); em produção nunca.
+
 ### Tempo real (mensagens)
 
 As mensagens usam **WebSocket no próprio servidor** (`/ws`, biblioteca `ws`) e, se ele não estiver disponível, as telas consultam a API a cada poucos segundos. Não há serviço externo. Com mais de uma instância do backend, o estado em memória (presença, "digitando", limite de taxa) precisa ir para um Redis. Alternativas gratuitas avaliadas: Supabase Realtime (plano gratuito com 200 conexões e 100 mensagens por segundo, segundo a documentação) e Firebase; não foram usadas para não criar dependência externa.

@@ -34,4 +34,9 @@ export const startAsaasSchemaExtras = z.object({
 });
 
 export const disputeSchema = z.object({ reason: z.string({ error: 'Conte o que aconteceu.' }).trim().min(10, 'Conte o que aconteceu, de 10 a 500 caracteres.').max(500, 'Use no máximo 500 caracteres.') });
-export const resolveSchema = z.object({ decision: z.enum(['release', 'refund'], { error: 'Escolha liberar ou estornar.' }), note: z.string().trim().max(500).optional() });
+export const resolveSchema = z.object({
+  decision: z.enum(['release', 'refund'], { error: 'Escolha reembolsar o cliente ou manter o pagamento ao profissional.' }),
+  note: z.string({ error: 'Escreva a justificativa da decisão.' }).trim().min(10, 'Escreva a justificativa da decisão, de 10 a 500 caracteres.').max(500, 'A justificativa pode ter até 500 caracteres.'),
+  refund_cents: z.number().int('Informe o valor em centavos.').positive('O reembolso precisa ser maior que zero.').max(100000000).optional(),
+});
+export const resolveAlertSchema = z.object({ note: z.string({ error: 'Escreva o que foi feito.' }).trim().min(5, 'Escreva o que foi feito, de 5 a 500 caracteres.').max(500) });

@@ -4,7 +4,7 @@ import { validate } from '../middleware/validateMiddleware.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { bookingSchema } from '../validators/listingValidator.js';
 import { createReviewSchema } from '../validators/reviewValidator.js';
-import { create, myOrders, getOrder, act, reviewContext, review } from '../controllers/orderController.js';
+import { create, myOrders, getOrder, act, reviewContext, review, orderCounts, orderBadges, earningsPreview } from '../controllers/orderController.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -13,6 +13,9 @@ const bookingLimit = rateLimit({ limit: 20, windowMs: 60 * 60 * 1000, message: '
 
 router.post('/', bookingLimit, validate(bookingSchema), create);
 router.get('/mine', myOrders);
+router.get('/counts', orderCounts);
+router.get('/badges', orderBadges);
+router.post('/earnings-preview', earningsPreview);
 router.get('/:uuid', getOrder);
 router.get('/:uuid/review-context', reviewContext);
 router.post('/:uuid/reviews', validate(createReviewSchema), review);

@@ -7,7 +7,8 @@ import { generateUuid, bufferToUuid } from '../utils/uuid.js';
 import { normalizeBrazilianPhone, normalizeEmail } from '../utils/userData.js';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
-import { sendPasswordResetEmail } from '../services/emailService.js';
+import { sendPasswordChangedEmail, sendPasswordResetEmail } from '../services/emailService.js';
+import { requestPasswordReset, resetPassword as performPasswordReset } from '../services/passwordReset.js';
 import { createSession } from '../services/sessionService.js';
 
 const googleClient = new OAuth2Client();
@@ -126,32 +127,21 @@ export const me = async (req, res) => {
   }
 };
 
-export const forgotPassword = async (req, res) => {
-  try {
-    const user = await prisma.user.findFirst({ where: { email: normalizeEmail(req.body.email), deletedAt: null } });
-    if (user) {
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-      await prisma.$transaction([
-        prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } }),
-        prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 30 * 60 * 1000) } })
-      ]);
-      await sendPasswordResetEmail({ email: user.email, link: `${process.env.FRONTEND_URL.replace(/\/$/, '')}/reset-password?token=${rawToken}` });
-    }
-  } catch (err) { logger.error(`forgotPassword: ${String(err?.message ?? err).slice(0, 220)}`, err); }
+export const forgotPassword = (req, res) => {
+  // A resposta sai antes de qualquer trabalho: o tempo de resposta não revela se o e-mail tem conta.
   res.json(genericResetResponse);
+  requestPasswordReset(prisma, { email: normalizeEmail(req.body.email), frontendUrl: process.env.FRONTEND_URL, send: sendPasswordResetEmail })
+    .catch((err) => logger.error(`forgotPassword: ${String(err?.message ?? err).slice(0, 220)}`, err));
 };
 
 export const resetPassword = async (req, res) => {
   try {
-    const tokenHash = crypto.createHash('sha256').update(req.body.token).digest('hex');
-    const reset = await prisma.passwordResetToken.findFirst({ where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } } });
-    if (!reset) return res.status(400).json({ message: 'Este link expirou ou já foi utilizado. Solicite um novo.' });
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: reset.userId }, data: { passwordHash: await bcrypt.hash(req.body.newPassword, 10) } }),
-      prisma.passwordResetToken.updateMany({ where: { userId: reset.userId, usedAt: null }, data: { usedAt: new Date() } })
-    ]);
-    res.json({ message: 'Senha redefinida com sucesso.' });
+    const result = await performPasswordReset(prisma, {
+      token: req.body.token, newPassword: req.body.newPassword, hash: (password) => bcrypt.hash(password, 10),
+      notifyChanged: (user) => sendPasswordChangedEmail({ email: user.email, firstName: user.firstName }).catch((err) => logger.error(`passwordChangedEmail: ${String(err?.message ?? err).slice(0, 200)}`)),
+    });
+    if (!result.ok) return res.status(400).json({ message: 'Este link expirou ou já foi utilizado. Peça um novo link para continuar.' });
+    res.json({ message: 'Senha redefinida com sucesso. Entre com a nova senha.' });
   } catch (err) { logger.error('resetPassword', err); res.status(500).json({ message: 'Não foi possível redefinir sua senha.' }); }
 };
 

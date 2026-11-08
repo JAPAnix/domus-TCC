@@ -564,3 +564,44 @@ Fonte: documentação oficial em docs.asaas.com, lida em 06/11/2026 (as páginas
 - Aplicar a migration `20261112100000_service_location` no banco real **antes** de publicar este código (as listas de pedidos abertos leem as colunas novas).
 - A chave da Brevo do `.env` local é recusada ("Key not found"); conferir a chave configurada no Render com `check-email.mjs`.
 - Telas logadas ainda sem teste automatizado em celular além dos fluxos acima.
+
+## Rodada 9 (quatro pontos pedidos em 07/11/2026)
+
+### Ponto 1: notificações e contadores (feito)
+- O estado lida/não lida já ficava no banco (`notifications.read_at`, por usuário). Novo: `GET /notifications/unread-count` (leve), `POST /notifications/read` (até 100 ids; ids de outro usuário são ignorados) e `POST /notifications/read-all`, em `services/notificationService.js`.
+- Abrir a página marca como lidas as que aparecem (com o destaque "Nova" mantido só naquela visita), há "Marcar todas como lidas" e clicar numa notificação marca e leva ao destino. Notificações novas aparecem sozinhas (consulta a cada 15 s). Fila de leitura com nova tentativa se a rede falhar, que sobrevive à troca de página (`utils/readQueue.js`).
+- O contador some (nunca mostra 0), atualiza na hora ao marcar (evento) e em outras abas (`storage`) e aparelhos (consulta a cada 15 s). O número no avatar soma notificações e mensagens; cada item do menu tem o seu contador (o de Pedidos vem com o ponto 2).
+- Testes: 7 no backend (dono, lote, todas, reaparece), 6 no frontend (fila e nova tentativa), e navegador 18/18 com banco descartável.
+
+### Ponto 4: esqueci minha senha (feito)
+O fluxo já existia (link no login, token com hash, uso único, 30 min, limite 5/h por IP+e-mail). Completado:
+- **Sessões antigas encerradas** ao redefinir e **e-mail de aviso "sua senha foi alterada"**.
+- **Conta só com o Google:** o e-mail explica que a conta não tem senha e oferece criar uma pelo link (o login com Google continua).
+- **Resposta imediata e idêntica** (o trabalho roda depois de responder, então o tempo não revela se há conta). Uso único atômico (cliques simultâneos: só um vale).
+- **Mesma regra de senha** no cadastro, na redefinição e na troca (`validators/passwordRules.js`: mínimo de 8, recusa senhas comuns e repetitivas); a tela mostra a mensagem do servidor.
+- Em desenvolvimento, sem provedor de e-mail, o link aparece no log do servidor (nunca em produção). README atualizado (Brevo, IPs autorizados, `check-email.mjs`).
+- Testes: 12 no backend (`password-reset.test.mjs`: pedir link, hash, expirado, usado 2x/simultâneo, e-mail inexistente, Google, sessões, aviso, senha fraca, limite) e navegador 13/13 com banco descartável.
+- **Descoberto em produção:** a Brevo bloqueava o envio pelo IP (IPs autorizados). É preciso desativar esse bloqueio na conta (ver README).
+
+### Ponto 3: página do admin (feito)
+Reescrita de `AdminPayments.jsx` (a rota continua `/admin/pagamentos`, protegida por papel `admin`):
+- **Cada seção** tem título, "O que é", "O que fazer", um "?" com a explicação curta e estado vazio explicativo (`content/adminHelp.js`), e há um **Glossário** com 14 termos em linguagem simples. Seções: Resumo (com "Precisa da sua atenção"), Transações, Reclamações, Alertas, Avisos do gateway e Auditoria.
+- **Reclamações:** mostra partes, valor, meio, quem abriu, há quantos dias está aberta (destaque a partir de 3 dias) e o motivo. Decisões: "Reembolsar o cliente" (total ou **parcial**, o restante vai ao profissional) e "Manter pagamento ao profissional". **Justificativa obrigatória** (10 a 500 caracteres), registro de quem decidiu e quando, e as duas partes são notificadas com o motivo. Se o gateway recusar o estorno, a reclamação continua aberta e vira alerta.
+- **Alertas:** gravidade, significado, por que importa e o que fazer, com botão de ação sugerida. Guardados (chargeback, reembolso e repasse com falha, divisão, pagamento após encerramento) ficam abertos até serem **marcados como resolvidos com uma nota**, com histórico (Abertos, Resolvidos, Todos). Calculados na hora (pagamento pendente há mais de 3 dias, aviso do gateway com falha, profissional sem conta de recebimento ativa) somem sozinhos.
+- **Transações e comissões:** totais por período (volume pago, comissão, estornos), tabela e **CSV** para Excel.
+- **Avisos do gateway:** os "ignorados" (eventos que o Dommos não usa, como "o cliente abriu o checkout") deixam de aparecer em vermelho como erro: viram "Ignorado (sem efeito)" com explicação, e há filtro.
+- **Auditoria:** nova tabela `admin_audit_logs` registra decisões de reclamações e alertas (quem, o quê, quando).
+- Migration `20261113100000_admin_audit_alerts` (**a aplicar no banco real**): resolução de alertas, valor reembolsado na reclamação e a tabela de auditoria.
+- Testes: 14 no backend (`admin.test.mjs`: decisão, parcial, textos, alertas, resolver, relatório, CSV), integração com banco descartável 126/126 (permissões 401/403 em todas as rotas, parcial, justificativa, alerta por falha e resolução, CSV, auditoria; inclui todo o fluxo antigo de pagamento) e navegador 20/20 em 1280 px e 390 px.
+- **Não feito:** mensagens e fotos anexadas à reclamação (o modelo de dados não guarda anexos; exigiria nova tabela e envio de arquivos pelo cliente).
+
+### Ponto 2: caminho do profissional até pedidos e propostas (feito)
+- **Estados do pedido:** `requested` (solicitado) → `proposed` (proposta enviada) → `accepted` → pago → `in_progress` → `completed`, mais `declined`, `cancelled` e `expired`. Regras puras em `utils/orderRules.js` (ações `propose`, `accept_proposal`, `reject_proposal`, `decline` com motivo). Pedido de preço fixo continua com aceite direto ("contratação imediata", sem proposta); pedido "sob consulta" só avança por proposta (aceitar direto devolve 409).
+- **Proposta:** valor, prazo em dias ou data de execução, o que inclui, observações e validade (24 h, 48 h padrão, 72 h ou 7 dias), validada por `parseProposal`. Ao aceitar, o valor da proposta vira o preço do pedido e o fluxo de pagamento existente (manual e Asaas) segue sem mudança. Prévia do que o profissional recebe: `POST /orders/earnings-preview`, usando a comissão e as taxas centrais (`computeCheckout`, `platformFeePercent`).
+- **Expiração:** pedido novo sem resposta vence em 72 h; proposta vence na validade. `services/orderExpiry.js` roda a cada 10 min (iniciado em `app.js`): avisa as duas partes quando falta 24 h ou menos (uma vez só, `eventKey` único) e expira, também com aviso. Se alguém agir depois do prazo e a rotina ainda não passou, a própria ação expira o pedido e devolve 409 com explicação.
+- **Contadores:** `GET /orders/counts?side=` (números das abas) e `GET /orders/badges` (pedidos novos do profissional; propostas para o cliente decidir, incluindo propostas de pedidos abertos). Selos no menu da conta, na barra inferior e na aba "Pedidos e agenda"; "Novos pedidos" no painel; "Propostas pendentes" agora soma as propostas enviadas a pedidos.
+- **Telas:** `/pro/pedidos` com abas e contagem (Novos, Propostas enviadas, Aceitos, Em andamento, Concluídos, Recusados e expirados), cartões com serviço, cliente, data/hora, região, quanto tempo faz que chegou e urgência por cor; estados vazios com dica. Detalhe do pedido com a proposta, validade, "Enviar proposta" (formulário com prévia de ganhos), "Pedir mais informações" (conversa ligada ao pedido) e "Recusar" com motivo opcional (vai na notificação ao cliente). Cliente vê a proposta, aceita (segue ao pagamento), recusa ou conversa. `ServiceProposals` ganhou tabela lado a lado (valor, prazo, nota) quando há mais de uma proposta pendente.
+- **Segurança e limites:** só as partes acessam o pedido (404 para os demais); o endereço exato só aparece depois de aceito (região antes); máximo de 20 pedidos por cliente em 24 h (429) além do limite por hora; uma proposta por pedido.
+- Migration `20261114100000_order_proposals` (**a aplicar no banco real**): novos valores do enum de status e colunas de proposta, `expires_at` e `decline_reason`. Pedidos existentes não mudam e não expiram sozinhos.
+- Testes: 7 unitários novos (`order-proposals.test.mjs`: transições válidas e inválidas, permissões, `parseProposal`, urgência, `planExpiry`); integração com banco descartável 48/48 (pedido → proposta → aceite → pagamento direto → início → conclusão, recusa com motivo, recusa de proposta, avisos e expiração pela rotina real, limite diário, permissões); navegador (Edge) 16/16 em 390 e 1280 px. Não estão no repositório: os scripts de integração e de navegador.
+- **Não feito:** orçamento do cliente no pedido (o pedido por anúncio não tem esse campo); conversa entre cliente e profissional antes do aceite de propostas de pedido aberto (a conversa nasce com a contratação); e-mail só respeita as preferências já existentes do tipo "atualização de pedido".

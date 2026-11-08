@@ -1,6 +1,6 @@
 import { runTransaction, notify } from './serviceWorkflow.js';
 import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
-import { resolveTransition, computeAmounts, bookingDateError, weekdayOf } from '../utils/orderRules.js';
+import { resolveTransition, computeAmounts, bookingDateError, weekdayOf, parseProposal, deadlineOf, RESPONSE_HOURS } from '../utils/orderRules.js';
 import { addDays, daysOf, hasConflict, normalizeQuantity, slotError } from '../utils/bookingSlots.js';
 import { syncPaymentsWithOrder } from './paymentWorkflow.js';
 import { platformFeePercent } from './platformFee.js';
@@ -9,7 +9,10 @@ import { registerConnectionSource } from '../utils/connections.js';
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const nameOf = (user) => user.preferredName?.trim() || [user.firstName, user.lastName].filter(Boolean).join(' ');
+const brl = (value) => `R$ ${Number(value).toFixed(2).replace('.', ',')}`;
 const brDate = (value) => (value instanceof Date ? value.toISOString().slice(0, 10) : String(value)).split('-').reverse().join('/');
+/** Limites contra spam: pedidos novos por cliente em 24 horas e por cliente a cada profissional em aberto. */
+export const MAX_ORDERS_PER_DAY = 20;
 const personSelect = { id: true, uuid: true, firstName: true, lastName: true, preferredName: true, city: true };
 
 export { platformFeePercent };
@@ -44,6 +47,9 @@ export async function createOrder(userId, body, now = new Date()) {
     const blocked = await tx.userBlock.findFirst({ where: { OR: [{ blockerId: userId, blockedId: listing.ownerId }, { blockerId: listing.ownerId, blockedId: userId }] }, select: { blockerId: true } });
     if (blocked) fail(403, 'Não é possível contratar este anúncio.');
 
+    const today = await tx.order.count({ where: { clientId: userId, createdAt: { gte: new Date(now.getTime() - 24 * 3600000) } } });
+    if (today >= MAX_ORDERS_PER_DAY) fail(429, `Você já fez ${MAX_ORDERS_PER_DAY} pedidos nas últimas 24 horas. Aguarde um pouco para pedir de novo.`);
+
     const modes = [listing.atClientPlace && 'client_place', listing.atProPlace && 'pro_place', listing.isRemote && 'remote'].filter(Boolean);
     if (!modes.includes(body.service_mode)) fail(400, 'Esta forma de atendimento não está disponível neste anúncio.');
     if (body.service_mode === 'client_place' && !body.service_address) fail(422, 'Informe o endereço onde o serviço será feito.');
@@ -53,7 +59,7 @@ export async function createOrder(userId, body, now = new Date()) {
     const dateError = bookingDateError(listing.availability, body.date, now, new Set(blockedDay ? [body.date] : []));
     if (dateError) fail(422, dateError);
 
-    const duplicate = await tx.order.findFirst({ where: { listingId: listing.id, clientId: userId, scheduledDate, status: { in: ['requested', 'accepted', 'in_progress'] } }, select: { id: true } });
+    const duplicate = await tx.order.findFirst({ where: { listingId: listing.id, clientId: userId, scheduledDate, status: { in: ['requested', 'proposed', 'accepted', 'in_progress'] } }, select: { id: true } });
     if (duplicate) fail(409, 'Você já solicitou este serviço para essa data.');
 
     // Horário (por hora) e intervalo de datas (por diária), com a mesma regra que a tela usa.
@@ -86,6 +92,7 @@ export async function createOrder(userId, body, now = new Date()) {
         packageName: body.package_name || null, note: body.note || null, scheduledTime: listing.pricingModel === 'hourly' ? body.time : null,
         endDate: endDate ? new Date(`${endDate}T00:00:00.000Z`) : null, quantity, ...(body.image_urls?.length && { referenceImages: body.image_urls }), ...(body.service_mode === 'client_place' && body.service_address && { serviceAddress: body.service_address }), titleSnapshot: listing.title, pricingModelSnapshot: listing.pricingModel,
         priceSnapshot: amounts.price, travelFeeSnapshot: amounts.travelFee, policySnapshot: listing.cancellationPolicy, platformFeePercent: platformFeePercent(),
+        expiresAt: new Date(now.getTime() + RESPONSE_HOURS * 3600000),
       },
     });
     const uuid = bufferToUuid(order.uuid);
@@ -96,18 +103,42 @@ export async function createOrder(userId, body, now = new Date()) {
 
 const MESSAGES = {
   accept: (order, actor) => `${actor} aceitou o seu pedido "${order.titleSnapshot}" para ${brDate(order.scheduledDate)}.`,
-  decline: (order, actor) => `${actor} não pôde atender ao pedido "${order.titleSnapshot}".`,
+  decline: (order, actor) => `${actor} não pôde atender ao pedido "${order.titleSnapshot}".${order.declineReason ? ` Motivo: ${order.declineReason}` : ''}`,
+  propose: (order, actor) => `${actor} enviou uma proposta de ${brl(order.proposalAmount)} para "${order.titleSnapshot}". Veja e decida.`,
+  accept_proposal: (order, actor) => `${actor} aceitou a sua proposta para "${order.titleSnapshot}".`,
+  reject_proposal: (order, actor) => `${actor} recusou a sua proposta para "${order.titleSnapshot}".`,
   start: (order) => `O serviço "${order.titleSnapshot}" foi iniciado.`,
   cancel: (order, actor) => `${actor} cancelou o pedido "${order.titleSnapshot}".`,
 };
 
+const DECIDING = ['accept', 'decline', 'propose', 'accept_proposal', 'reject_proposal'];
+
 export async function transitionOrder(uuid, userId, action, body = {}) {
+  const result = await applyTransition(uuid, userId, action, body);
+  // O vencimento é gravado antes de avisar quem tentou agir tarde demais.
+  if (result.expired) fail(409, result.message);
+  return result;
+}
+
+async function applyTransition(uuid, userId, action, body) {
   return runTransaction(async (tx, emails) => {
     const user = await tx.user.findFirst({ where: { id: userId, deletedAt: null }, select: { id: true } });
     if (!user) fail(401, 'Conta indisponível. Entre novamente.');
     const order = await lockedOrder(tx, uuid);
     const { to, role } = resolveTransition(order, userId, action);
     const now = new Date();
+    // Prazo vencido e a rotina ainda não passou: encerra aqui, sem deixar agir sobre um pedido expirado.
+    const limit = deadlineOf(order);
+    if (DECIDING.includes(action) && limit && new Date(limit) <= now) {
+      await expireOrder(tx, emails, order, now);
+      return { expired: true, status: 'expired', message: order.status === 'proposed' ? 'Esta proposta venceu. Peça uma nova ao profissional.' : 'O prazo para responder a este pedido acabou.' };
+    }
+    const proposal = action === 'propose' ? parseProposal(body, now) : null;
+    if (action === 'decline') {
+      const reason = String(body.reason ?? '').trim();
+      if (reason.length > 200) fail(400, 'O motivo pode ter até 200 caracteres.');
+      order.declineReason = reason || null;
+    }
     // Contratação de proposta: o valor é o da proposta aceita, não um valor digitado na hora de concluir.
     if (order.serviceId && to === 'completed') body = { ...body, final_amount: Number(order.priceSnapshot) };
     const data = {
@@ -116,6 +147,17 @@ export async function transitionOrder(uuid, userId, action, body = {}) {
       ...(to === 'in_progress' && { startedAt: now }),
       ...(to === 'completed' && { completedAt: now, finalAmount: body.final_amount }),
       ...(to === 'cancelled' && { cancelledAt: now, cancelledById: userId }),
+      ...(action === 'decline' && { declineReason: order.declineReason }),
+      ...(proposal && {
+        proposalAmount: proposal.amount, proposalDays: proposal.days, proposalDate: proposal.date ? new Date(`${proposal.date}T00:00:00.000Z`) : null,
+        proposalIncluded: proposal.included, proposalNote: proposal.note, proposalValidUntil: proposal.validUntil, proposedAt: now, expiresAt: null,
+      }),
+      // A proposta aceita vira o preço combinado do pedido; o resto do fluxo (pagamento, conclusão) usa esse valor.
+      ...(action === 'accept_proposal' && {
+        pricingModelSnapshot: 'fixed', priceSnapshot: order.proposalAmount, travelFeeSnapshot: null, proposalValidUntil: null,
+        ...(order.proposalDate && { scheduledDate: order.proposalDate }),
+      }),
+      ...(['accept', 'accept_proposal', 'decline', 'reject_proposal', 'cancel'].includes(action) && { expiresAt: null }),
     };
     if (action === 'accept' && ['hourly', 'daily'].includes(order.pricingModelSnapshot)) {
       // Dois pedidos para o mesmo horário: só o primeiro aceito vale.
@@ -131,16 +173,26 @@ export async function transitionOrder(uuid, userId, action, body = {}) {
 
     const orderUuid = bufferToUuid(order.uuid);
     const actor = nameOf(role === 'professional' ? order.professional : order.client);
+    if (proposal) order.proposalAmount = proposal.amount;
     const other = role === 'professional' ? order.clientId : order.professionalId;
     if (action === 'complete') {
       for (const recipient of [order.clientId, order.professionalId]) {
         await notify(tx, emails, recipient, `order-completed:${orderUuid}:${recipient}`, `O serviço "${order.titleSnapshot}" foi concluído. Conte como foi sua experiência.`, order.service ? `/servicos/${bufferToUuid(order.service.uuid)}/avaliar` : `/contratacoes/${orderUuid}/avaliar`, 'service_completed');
       }
     } else {
-      await notify(tx, emails, other, `order-${to}:${orderUuid}`, MESSAGES[action](order, actor), `/contratacoes/${orderUuid}`, 'order_update');
+      await notify(tx, emails, other, `order-${action}:${orderUuid}${action === 'propose' ? `:${now.getTime()}` : ''}`, MESSAGES[action](order, actor), `/contratacoes/${orderUuid}`, 'order_update');
     }
     return { status: to };
   });
+}
+
+/** Marca como expirado e avisa as duas partes. Roda dentro de uma transação, com o pedido já travado. */
+export async function expireOrder(tx, emails, order, now = new Date()) {
+  await tx.order.update({ where: { id: order.id }, data: { status: 'expired', expiresAt: null, proposalValidUntil: order.proposalValidUntil } });
+  const uuid = bufferToUuid(order.uuid);
+  const wasProposal = order.status === 'proposed';
+  await notify(tx, emails, order.clientId, `order-expired:${uuid}:c`, wasProposal ? `A proposta para "${order.titleSnapshot}" venceu. Você pode pedir de novo ou escolher outro profissional.` : `O profissional não respondeu ao seu pedido "${order.titleSnapshot}" a tempo. Peça a outro profissional.`, `/contratacoes/${uuid}`, 'order_update');
+  await notify(tx, emails, order.professionalId, `order-expired:${uuid}:p`, wasProposal ? `A sua proposta para "${order.titleSnapshot}" venceu sem resposta do cliente.` : `O pedido "${order.titleSnapshot}" expirou porque não foi respondido.`, `/contratacoes/${uuid}`, 'order_update');
 }
 
 function reviewTarget(order, userId) {

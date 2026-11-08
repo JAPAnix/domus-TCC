@@ -1,8 +1,10 @@
+import { prisma } from '../config/prisma.js';
 import { logger } from '../utils/logger.js';
 import { handleAsaasWebhook } from '../services/asaasWebhook.js';
-import { approveInSandbox, createPayoutAccount, getPayoutState, refreshPayoutStatus, receivingWarning } from '../services/payoutAccounts.js';
+import { approveInSandbox, asaasActive, createPayoutAccount, getPayoutState, refreshPayoutStatus, receivingWarning } from '../services/payoutAccounts.js';
+import { listAlerts, listAudit, resolveAlert, transactionsCsv, transactionsReport } from '../services/adminService.js';
 import { confirmService, openDispute, resolveDispute } from '../services/asaasPayments.js';
-import { adminAlerts, adminDisputes, adminPayments, adminSummary, adminWebhookEvents, earningsCsv, earningsFor } from '../services/asaasReports.js';
+import { adminDisputes, adminPayments, adminSummary, adminWebhookEvents, earningsCsv, earningsFor } from '../services/asaasReports.js';
 
 const me = (req) => BigInt(req.user.id);
 
@@ -54,7 +56,19 @@ export async function earnings(req, res) {
 // ---- Administrador --------------------------------------------------------------------------------------------------------
 export const adminOverview = handler('admin.summary', () => adminSummary());
 export const adminPaymentList = handler('admin.payments', (req) => adminPayments({ status: req.query.status, page: Math.max(1, Number(req.query.page) || 1) }));
-export const adminDisputeList = handler('admin.disputes', (req) => adminDisputes(req.query.status === 'all' ? 'all' : req.query.status === 'resolved_release' || req.query.status === 'resolved_refund' ? req.query.status : 'open'));
-export const adminResolve = handler('admin.resolve', (req) => resolveDispute(me(req), req.params.id, req.body.decision, req.body.note));
-export const adminAlertList = handler('admin.alerts', () => adminAlerts());
+export const adminDisputeList = handler('admin.disputes', (req) => adminDisputes(['all', 'resolved_release', 'resolved_refund', 'resolved_partial'].includes(req.query.status) ? req.query.status : 'open'));
+export const adminResolve = handler('admin.resolve', (req) => resolveDispute(me(req), req.params.id, { decision: req.body.decision, note: req.body.note, refundCents: req.body.refund_cents }));
+export const adminAlertList = handler('admin.alerts', (req) => listAlerts(prisma, { status: ['open', 'resolved', 'all'].includes(req.query.status) ? req.query.status : 'open', asaasEnabled: asaasActive() }));
+export const adminAlertResolve = handler('admin.alertResolve', (req) => resolveAlert(prisma, me(req), req.params.id, req.body.note));
+export const adminAuditList = handler('admin.audit', () => listAudit(prisma));
+export async function adminTransactions(req, res) {
+  try {
+    const report = await transactionsReport(prisma, { from: req.query.de, to: req.query.ate });
+    if (req.query.formato === 'csv') {
+      res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="transacoes-dommos.csv"', 'Cache-Control': 'no-store' });
+      return res.send(transactionsCsv(report.rows));
+    }
+    return res.set('Cache-Control', 'no-store').json(report);
+  } catch (err) { return fail(res, err, 'admin.transactions'); }
+}
 export const adminWebhookList = handler('admin.webhooks', (req) => adminWebhookEvents(['done', 'ignored', 'failed', 'processing'].includes(req.query.status) ? req.query.status : undefined));

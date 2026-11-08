@@ -15,11 +15,13 @@ export const proposalStatus = {
 
 export const orderStatus = {
   requested: { label: 'Aguardando resposta', tone: 'bg-warning-soft text-warning' },
+  proposed: { label: 'Proposta enviada', tone: 'bg-info-soft text-info' },
   accepted: { label: 'Aceito', tone: 'bg-info-soft text-info' },
   in_progress: { label: 'Em andamento', tone: 'bg-primary-soft text-primary-strong' },
   completed: { label: 'Concluído', tone: 'bg-success-soft text-success' },
   declined: { label: 'Recusado', tone: 'bg-danger-soft text-danger' },
   cancelled: { label: 'Cancelado', tone: 'bg-surface-muted text-ink-soft' },
+  expired: { label: 'Expirado', tone: 'bg-surface-muted text-ink-soft' },
 };
 
 export const listingStatus = {

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../config/prisma.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { markAllRead, markRead, parseIds, unreadCount } from '../services/notificationService.js';
 const router = Router();
 router.use(authMiddleware);
 router.use(async (req, res, next) => {
@@ -17,6 +18,19 @@ router.get('/', async (req, res) => {
     prisma.notification.count({ where }), prisma.notification.count({ where: { ...where, readAt: null } })
   ]);
   res.set('Cache-Control', 'no-store').json({ data: data.map(n => ({ ...n, id: n.id.toString() })), unread, pages: Math.ceil(total/20) });
+});
+// Contador leve para o ícone do menu (a lista completa é pesada para consultar a cada poucos segundos).
+router.get('/unread-count', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ count: await unreadCount(prisma, BigInt(req.user.id)) });
+});
+// Marca várias como lidas de uma vez (as que ficaram visíveis na tela).
+router.post('/read', async (req, res) => {
+  const ids = parseIds(req.body?.ids);
+  if (!ids) return res.status(400).json({ message: 'Informe de 1 a 100 notificações.' });
+  res.set('Cache-Control', 'no-store').json({ unread: await markRead(prisma, BigInt(req.user.id), ids) });
+});
+router.post('/read-all', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ unread: await markAllRead(prisma, BigInt(req.user.id)) });
 });
 router.patch('/:id/read', async (req, res) => {
   if (!/^[1-9][0-9]{0,19}$/.test(req.params.id)) return res.status(400).json({ message: 'Notificação inválida.' });

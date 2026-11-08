@@ -6,6 +6,7 @@
 export const NOTIFICATION_CATALOG = {
   account: [
     { key: 'proposal_received', title: 'Nova proposta recebida', description: 'Quando um profissional responde a um pedido seu.', channels: ['app', 'email'] },
+    { key: 'new_opportunity', title: 'Novas oportunidades', description: 'Resumo de pedidos abertos novos que combinam com os seus serviços (no máximo um a cada poucas horas).', channels: ['app', 'email'] },
     { key: 'proposal_accepted', title: 'Proposta aceita', description: 'Quando um cliente aceita a sua proposta.', channels: ['app', 'email'] },
     { key: 'service_completed', title: 'Serviço concluído', description: 'Quando um serviço é concluído e a avaliação é liberada.', channels: ['app', 'email'] },
     { key: 'order_received', title: 'Novo pedido de contratação', description: 'Quando alguém solicita um dos seus serviços.', channels: ['app', 'email'] },

@@ -4,6 +4,9 @@ import api from '../services/api';
 import { useAuth } from '../context/useAuth';
 import ServiceWorkflowActions from '../components/ServiceWorkflowActions';
 import ServiceProposalActions from '../components/ServiceProposalActions';
+import RequestOwnerActions from '../components/RequestOwnerActions';
+import ReportRequestDialog from '../components/ReportRequestDialog';
+import { timeLeftLabel } from '../utils/orderText';
 import { Avatar, Breadcrumb, EmptyState, ErrorState, Button, Skeleton } from '../components/ui';
 import { fullName } from '../utils/format';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -13,7 +16,9 @@ const states = {
   open: ['Recebendo propostas', 'Profissionais podem enviar propostas para este pedido.', 'bg-info-soft text-info'],
   in_progress: ['Em andamento', 'Uma proposta já foi aceita. Ao final do trabalho, o cliente poderá concluir o serviço.', 'bg-warning-soft text-warning'],
   completed: ['Concluído', 'O trabalho foi concluído. Cliente e profissional podem avaliar a experiência.', 'bg-success-soft text-success'],
-  cancelled: ['Cancelado', 'Este pedido foi encerrado e não recebe propostas.', 'bg-surface-muted text-ink-soft']
+  cancelled: ['Cancelado', 'Este pedido foi encerrado e não recebe propostas.', 'bg-surface-muted text-ink-soft'],
+  expired: ['Expirado', 'O prazo deste pedido acabou. Quem publicou pode reabri-lo.', 'bg-surface-muted text-ink-soft'],
+  removed: ['Removido', 'Este pedido foi removido pela moderação.', 'bg-danger-soft text-danger']
 };
 const money = value => value == null ? 'Não informado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
 function date(value) {
@@ -31,6 +36,7 @@ function ServiceContent({uuid}) {
   const [error,setError]=useState(null);
   useDocumentMeta({ title: service?.title ?? (error ? 'Pedido não encontrado' : 'Pedido') });
   const [retry,setRetry]=useState(0);
+  const [reporting,setReporting]=useState(false);
   useEffect(()=>{
     let active=true;
     async function load(){
@@ -54,6 +60,9 @@ function ServiceContent({uuid}) {
           <div className="mb-4 flex flex-wrap gap-2"><span className="rounded-full bg-primary-softer px-3 py-1 text-xs font-semibold text-primary-strong">{service.category?.name ?? 'Sem categoria'}</span><span className={'rounded-full px-3 py-1 text-xs font-semibold '+color}>{label}</span></div>
           <h1 className="break-words text-2xl font-bold sm:text-3xl">{service.title}</h1>
           <p className="mt-3 text-sm text-ink-muted">{description}</p>
+          {service.status==='open' && service.expiresAt && <p className="mt-2 text-sm text-ink-muted">Recebe propostas por mais {timeLeftLabel(service.expiresAt)} e aceita até {service.maxProposals} {service.maxProposals===1?'proposta':'propostas'}.</p>}
+          {(service.onlyVerified || service.minRating) && <p className="mt-2 text-sm text-ink-muted">Preferência do cliente: {[service.onlyVerified && 'profissionais verificados', service.minRating && `nota mínima ${Number(service.minRating).toFixed(1)}`].filter(Boolean).join(' e ')}.</p>}
+          {user?.uuid===service.client?.uuid && <div className="mt-4"><RequestOwnerActions service={service} onChanged={()=>setRetry(value=>value+1)} /></div>}
         </header>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[['Orçamento mínimo',money(service.budgetMin)],['Orçamento máximo',money(service.budgetMax)],['Prazo solicitado',date(service.deadline)],...(service.city?[['Onde será o serviço',[service.neighborhood,service.city].filter(Boolean).join(', ')+'/'+service.state]]:[])].map(([title,value])=><div key={title} className="rounded-control border border-line bg-surface p-5"><p className="text-xs text-ink-muted">{title}</p><p className="mt-2 break-words font-semibold">{value}</p></div>)}
@@ -66,9 +75,11 @@ function ServiceContent({uuid}) {
         <section className="rounded-card border border-line bg-surface p-6">
           <h2 className="mb-4 font-semibold">{service.status==='open'?'Participar deste pedido':'Acompanhamento'}</h2>
           <ServiceProposalActions uuid={uuid} status={service.status} />
+          {user && user.uuid!==service.client?.uuid && ['open','in_progress'].includes(service.status) && <div className="mt-4 border-t border-line pt-3"><button type="button" onClick={()=>setReporting(true)} className="text-sm font-semibold text-ink-muted underline underline-offset-2 hover:text-ink">Denunciar este pedido</button></div>}
           {user && ['in_progress','completed'].includes(service.status) && <ServiceWorkflowActions key={uuid+':'+user.uuid+':'+service.status} uuid={uuid} onCompleted={()=>setService(previous=>({...previous,status:'completed'}))} />}
         </section>
       </article>}
     </div>
+    <ReportRequestDialog serviceUuid={uuid} open={reporting} onClose={()=>setReporting(false)} />
   </main>;
 }

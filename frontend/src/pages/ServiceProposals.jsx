@@ -4,6 +4,9 @@ import { useApiResource } from '../hooks/useApiResource';
 import { useAuth } from '../context/useAuth';
 import api, { apiError } from '../services/api';
 import { formatMoney, fullName } from '../utils/format';
+import { timeLeftLabel } from '../utils/orderText';
+import MessageButton from '../components/MessageButton';
+import ReportRequestDialog from '../components/ReportRequestDialog';
 import { proposalStatus } from '../utils/status';
 import StatusBadge from '../components/StatusBadge';
 import { Avatar, Breadcrumb, Button, Card, ConfirmDialog, EmptyState, ErrorState, SkeletonList, useToast } from '../components/ui';
@@ -14,15 +17,15 @@ const actions = {
 };
 
 /** Lado a lado: valor, prazo e nota de cada profissional, com a menor oferta destacada. */
-function Comparison({ rows, onDecide }) {
+function Comparison({ rows, onDecide, serviceUuid }) {
   const cheapest = Math.min(...rows.map((row) => Number(row.proposal.proposedPrice)));
   return (
     <section aria-labelledby="comparar" className="mb-8">
       <h2 id="comparar" className="mb-3 text-lg font-semibold">Comparar propostas</h2>
-      <div className="overflow-x-auto rounded-card border border-line">
+      <div className="relative overflow-x-auto rounded-card border border-line">
         <table className="w-full min-w-[34rem] text-left text-sm">
           <caption className="sr-only">Comparação de valor, prazo e nota dos profissionais</caption>
-          <thead className="bg-surface-muted text-ink-soft"><tr><th scope="col" className="p-3 font-medium">Profissional</th><th scope="col" className="p-3 font-medium">Valor</th><th scope="col" className="p-3 font-medium">Prazo</th><th scope="col" className="p-3 font-medium">Nota</th><th scope="col" className="p-3 font-medium"><span className="sr-only">Ações</span></th></tr></thead>
+          <thead className="bg-surface-muted text-ink-soft"><tr><th scope="col" className="p-3 font-medium">Profissional</th><th scope="col" className="p-3 font-medium">Valor</th><th scope="col" className="p-3 font-medium">Prazo</th><th scope="col" className="p-3 font-medium">Incluso</th><th scope="col" className="p-3 font-medium">Válida por</th><th scope="col" className="p-3 font-medium">Nota</th><th scope="col" className="p-3 font-medium"><span className="sr-only">Ações</span></th></tr></thead>
           <tbody>
             {rows.map(({ proposal, name, canDecide }) => {
               const rating = proposal.professional?.totalReviews ? `★ ${Number(proposal.professional.averageRating).toFixed(1)} (${proposal.professional.totalReviews})` : 'Sem avaliações';
@@ -31,8 +34,10 @@ function Comparison({ rows, onDecide }) {
                   <th scope="row" className="p-3 font-medium">{name}</th>
                   <td className="p-3 font-semibold">{formatMoney(proposal.proposedPrice)}{rows.length > 1 && Number(proposal.proposedPrice) === cheapest && <span className="ml-2 rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success">Menor valor</span>}</td>
                   <td className="p-3">{proposal.deliveryTimeDays != null ? `${proposal.deliveryTimeDays} ${proposal.deliveryTimeDays === 1 ? 'dia' : 'dias'}` : 'A combinar'}</td>
-                  <td className="p-3">{rating}</td>
-                  <td className="p-3">{canDecide && <div className="flex gap-2"><Button size="sm" onClick={() => onDecide(proposal, 'accepted', name)}>Aceitar</Button><Button size="sm" variant="dangerOutline" onClick={() => onDecide(proposal, 'rejected', name)}>Recusar</Button></div>}</td>
+                  <td className="max-w-[14rem] p-3 text-ink-soft">{proposal.included || '—'}</td>
+                  <td className="p-3 text-ink-soft">{proposal.validUntil ? timeLeftLabel(proposal.validUntil) : '—'}</td>
+                  <td className="p-3">{rating}{proposal.professional?.isVerified && <span className="ml-2 rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success">Verificado</span>}</td>
+                  <td className="p-3">{canDecide && <div className="flex gap-2"><Button size="sm" onClick={() => onDecide(proposal, 'accepted', name)}>Aceitar</Button><Button size="sm" variant="dangerOutline" onClick={() => onDecide(proposal, 'rejected', name)}>Recusar</Button><MessageButton size="sm" serviceUuid={serviceUuid} professionalUuid={proposal.professional?.user?.uuid}>Conversar</MessageButton></div>}</td>
                 </tr>
               );
             })}
@@ -52,6 +57,7 @@ export default function ServiceProposals() {
   const serviceResource = useApiResource(`/services/${uuid}`, undefined, { keepPrevious: true });
   const [pending, setPending] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [reporting, setReporting] = useState(null);
 
   const proposals = proposalsResource.data;
   const service = serviceResource.data;
@@ -102,6 +108,7 @@ export default function ServiceProposals() {
         <>
         {proposals.filter((proposal) => proposal.status === 'pending').length > 1 && (
           <Comparison
+            serviceUuid={uuid}
             rows={proposals.filter((proposal) => proposal.status === 'pending').map((proposal) => ({ proposal, name: proposal.professional?.displayName || fullName(proposal.professional?.user), canDecide: service.status === 'open' && service.client?.uuid === user?.uuid }))}
             onDecide={(proposal, status, name) => setPending({ proposal, status, name })}
           />
@@ -128,13 +135,17 @@ export default function ServiceProposals() {
                     <div className="rounded-control bg-surface-muted p-3"><dt className="text-xs text-ink-muted">Valor proposto</dt><dd className="mt-0.5 text-sm font-semibold">{formatMoney(proposal.proposedPrice)}</dd></div>
                     <div className="rounded-control bg-surface-muted p-3"><dt className="text-xs text-ink-muted">Prazo</dt><dd className="mt-0.5 text-sm font-semibold">{proposal.deliveryTimeDays != null ? `${proposal.deliveryTimeDays} ${proposal.deliveryTimeDays === 1 ? 'dia' : 'dias'}` : 'A combinar'}</dd></div>
                   </dl>
+                  {proposal.included && <p className="mt-4 text-sm leading-6 text-ink-soft"><strong className="text-ink">Incluso:</strong> {proposal.included}</p>}
                   {proposal.coverLetter && <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-ink-soft">{proposal.coverLetter}</p>}
+                  {proposal.status === 'pending' && proposal.validUntil && <p className="mt-3 text-xs text-ink-muted">Esta proposta vale por mais {timeLeftLabel(proposal.validUntil)}{proposal.editedAt ? ' · atualizada pelo profissional' : ''}.</p>}
                   {canDecide && (
                     <div className="mt-5 flex flex-wrap gap-3">
                       <Button onClick={() => setPending({ proposal, status: 'accepted', name })}>Aceitar</Button>
                       <Button variant="dangerOutline" onClick={() => setPending({ proposal, status: 'rejected', name })}>Recusar</Button>
+                      <MessageButton serviceUuid={uuid} professionalUuid={professional?.uuid}>Conversar</MessageButton>
                     </div>
                   )}
+                  {proposal.status === 'pending' && <button type="button" onClick={() => setReporting(proposal.uuid)} className="mt-4 text-xs font-semibold text-ink-muted underline underline-offset-2 hover:text-ink">Denunciar esta proposta</button>}
                 </Card>
               </li>
             );
@@ -143,6 +154,7 @@ export default function ServiceProposals() {
         </>
       )}
 
+      <ReportRequestDialog serviceUuid={uuid} proposalUuid={reporting} open={!!reporting} onClose={() => setReporting(null)} />
       <ConfirmDialog
         open={!!pending}
         busy={busy}

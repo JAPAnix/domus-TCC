@@ -5,13 +5,16 @@ import { validate } from '../middleware/validateMiddleware.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { resolveAlertSchema, resolveSchema } from '../validators/payoutValidator.js';
 import { adminAlertList, adminAlertResolve, adminAuditList, adminDisputeList, adminOverview, adminPaymentList, adminResolve, adminTransactions, adminWebhookList } from '../controllers/asaasController.js';
-import { assistantAdminReport } from '../controllers/helpController.js';
+import { assistantAdminReport, moderationList, moderationResolve } from '../controllers/helpController.js';
+import { resolveReportSchema } from '../validators/serviceValidator.js';
 
 // Tudo aqui exige login e o papel "admin". Para criar um administrador: node scripts/grant-admin.mjs e-mail@exemplo.com
 const router = Router();
 router.use(authMiddleware, roleMiddleware('admin'), rateLimit({ limit: 300, windowMs: 10 * 60 * 1000 }));
 
 router.get('/help-assistant', assistantAdminReport);
+router.get('/moderation', moderationList);
+router.post('/moderation/:id/resolve', validate(resolveReportSchema), moderationResolve);
 router.get('/summary', adminOverview);
 router.get('/payments', adminPaymentList);
 router.get('/disputes', adminDisputeList);

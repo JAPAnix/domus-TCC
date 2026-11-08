@@ -59,6 +59,7 @@ export default function OrderPage() {
         <div className="min-w-0"><h1 className="break-words text-2xl font-bold sm:text-3xl">{order.title}</h1><p className="mt-1 text-ink-muted">{order.service ? 'Prazo' : 'Para'} {formatDay(order.scheduledDate, { dateStyle: 'full' })}</p></div>
         <div className="flex flex-wrap items-center gap-2">
           {notice && <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${notice.tone}`}>{notice.text}</span>}
+          {order.origin === 'pedido_aberto' && <span className="rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-ink-soft">Pedido aberto</span>}
           <StatusBadge status={order.status} map={orderStatus} />
         </div>
       </div>

@@ -34,9 +34,26 @@ const sharesReceipts = async (db, userId) => {
 };
 
 // ---- Conversas ---------------------------------------------------------------------------------------------
-export async function openConversation(userId, { listingUuid, orderUuid }) {
+export async function openConversation(userId, { listingUuid, orderUuid, serviceUuid, professionalUuid }) {
   let listingId, clientId, professionalId, title;
-  if (orderUuid) {
+  if (serviceUuid) {
+    // Pergunta sobre um pedido aberto: o profissional escreve ao dono do pedido (sem revelar contato) ou o dono fala com quem propôs.
+    if (!UUID.test(serviceUuid)) fail(404, 'Pedido não encontrado.');
+    const service = await prisma.service.findFirst({ where: { uuid: uuidToBuffer(serviceUuid), deletedAt: null, status: { in: ['open', 'in_progress', 'expired'] } }, select: { id: true, clientId: true, title: true } });
+    if (!service) fail(404, 'Pedido não encontrado.');
+    listingId = null; title = service.title; clientId = service.clientId;
+    if (service.clientId === userId) {
+      if (!UUID.test(professionalUuid ?? '')) fail(400, 'Escolha com qual profissional conversar.');
+      const pro = await prisma.user.findFirst({ where: { uuid: uuidToBuffer(professionalUuid), deletedAt: null }, select: { id: true } });
+      const proposal = pro && await prisma.proposal.findFirst({ where: { serviceId: service.id, professionalId: pro.id }, select: { id: true } });
+      if (!proposal) fail(404, 'Esse profissional não enviou proposta para o seu pedido.');
+      professionalId = pro.id;
+    } else {
+      const profile = await prisma.professionalProfile.findUnique({ where: { userId }, select: { userId: true } });
+      if (!profile) fail(403, 'Só profissionais podem fazer perguntas sobre pedidos abertos.');
+      professionalId = userId;
+    }
+  } else if (orderUuid) {
     if (!UUID.test(orderUuid)) fail(404, 'Pedido não encontrado.');
     const order = await prisma.order.findFirst({ where: { uuid: uuidToBuffer(orderUuid), OR: [{ clientId: userId }, { professionalId: userId }] } });
     if (!order) fail(404, 'Pedido não encontrado.');

@@ -18,6 +18,21 @@ function handle(res, err, label) {
 const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const utcDay = (date) => new Date(`${dateKey(date)}T00:00:00.000Z`);
 
+import { listOpportunities, markSeen, dismissOpportunity, opportunityCount } from '../services/openRequests.js';
+
+export async function opportunities(req, res) {
+  try { res.set('Cache-Control', 'no-store').json(await listOpportunities(me(req), req.query)); } catch (err) { handle(res, err, 'pro.opportunities'); }
+}
+export async function opportunitiesCount(req, res) {
+  try { res.set('Cache-Control', 'no-store').json({ count: await opportunityCount(me(req)) }); } catch (err) { handle(res, err, 'pro.opportunitiesCount'); }
+}
+export async function opportunitySeen(req, res) {
+  try { res.json(await markSeen(me(req), req.params.uuid)); } catch (err) { handle(res, err, 'pro.opportunitySeen'); }
+}
+export async function opportunityDismiss(req, res) {
+  try { res.json(await dismissOpportunity(me(req), req.params.uuid)); } catch (err) { handle(res, err, 'pro.opportunityDismiss'); }
+}
+
 export async function summary(req, res) {
   try {
     const professionalId = me(req);

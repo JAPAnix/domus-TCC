@@ -23,7 +23,9 @@ const tx={
     findFirst:async()=>state.proposals[0]?{...state.proposals[0],service:{uuid:bytes(uuid)}}:null,
     findUnique:async()=>state.proposals[0],
     update:async({data})=>Object.assign(state.proposals[0],data),
-    updateMany:async()=>({count:0})
+    updateMany:async()=>({count:0}),
+    count:async()=>0,
+    findMany:async()=>[]
   },
   notification:{create:async({data})=>{if(state.failNotification)throw Error('notification failed');state.notifications.push(data);return data;}},
   review:{
@@ -31,7 +33,7 @@ const tx={
     create:async({data})=>{if(state.reviews.some(r=>r.reviewerId===data.reviewerId))throw Object.assign(Error('duplicate'),{code:'P2002'});state.reviews.push(data);return data;},
     aggregate:async()=>({_avg:{rating:5},_count:{rating:1}})
   },
-  professionalProfile:{update:async()=>({})}
+  professionalProfile:{update:async()=>({}),findUnique:async()=>({isVerified:false,averageRating:0,displayName:'Pro'})}
 };
 globalThis.workflowTestPrisma={$transaction:async(fn,options)=>{
   assert.equal(options.isolationLevel,'ReadCommitted');
@@ -41,6 +43,9 @@ globalThis.workflowTestPrisma={$transaction:async(fn,options)=>{
 let source=fs.readFileSync(new URL('../src/services/serviceWorkflow.js',import.meta.url),'utf8');
 source=source.replace("import { prisma } from '../config/prisma.js';","const prisma=globalThis.workflowTestPrisma;");
 source=source.replace("'../utils/uuid.js'",JSON.stringify(pathToFileURL(resolve('src/utils/uuid.js')).href));
+for (const file of ['config/openRequests.js','utils/openRequestRules.js','utils/contactMask.js']) source=source.replace(`'../${file}'`,JSON.stringify(pathToFileURL(resolve('src/'+file)).href));
+// Perfil, pedidos abertos e regras de elegibilidade têm teste próprio; aqui o profissional sempre pode propor.
+source=source.replace("'./openRequests.js'",JSON.stringify('data:text/javascript;base64,'+Buffer.from('export const blockersFor=async()=>[];').toString('base64')));
 // A contratação criada no aceite da proposta é testada à parte; aqui um substituto em memória mostra que o fluxo a chama.
 globalThis.workflowOrders=[];
 const orderStub="export const createOrderForProposal=async(tx,{service})=>{const o={uuid:Buffer.from('33333333333333333333333333333333','hex'),serviceId:service.id,status:'accepted'};globalThis.workflowOrders.push(o);return o;};"

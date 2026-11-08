@@ -5,7 +5,7 @@ import { useAuth } from '../context/useAuth';
 import { Button, useToast } from './ui';
 
 /** Abre (ou cria) a conversa ligada a um anúncio ou a um pedido. Visitantes passam pelo login e voltam. */
-export default function MessageButton({ listingUuid, orderUuid, children = 'Enviar mensagem', variant = 'secondary', block = false }) {
+export default function MessageButton({ listingUuid, orderUuid, serviceUuid, professionalUuid, children = 'Enviar mensagem', variant = 'secondary', block = false, size = 'md' }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,12 +16,12 @@ export default function MessageButton({ listingUuid, orderUuid, children = 'Envi
     if (!user) { navigate('/login', { state: { from: location.pathname + location.search } }); return; }
     setBusy(true);
     try {
-      const { data } = await api.post('/conversations', orderUuid ? { order_uuid: orderUuid } : { listing_uuid: listingUuid });
+      const { data } = await api.post('/conversations', serviceUuid ? { service_uuid: serviceUuid, ...(professionalUuid && { professional_uuid: professionalUuid }) } : orderUuid ? { order_uuid: orderUuid } : { listing_uuid: listingUuid });
       navigate(`/mensagens/${data.uuid}`);
     } catch (err) {
       toast.error(apiError(err, 'Não foi possível abrir a conversa.'));
       setBusy(false);
     }
   }
-  return <Button variant={variant} block={block} onClick={open} loading={busy}>{children}</Button>;
+  return <Button variant={variant} size={size} block={block} onClick={open} loading={busy}>{children}</Button>;
 }

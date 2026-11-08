@@ -3,8 +3,8 @@ import { MESSAGE_LIMITS } from '../utils/messageRules.js';
 
 const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Identificador inválido');
 
-export const openConversationSchema = z.object({ listing_uuid: uuid.optional(), order_uuid: uuid.optional() })
-  .refine((value) => !!value.listing_uuid !== !!value.order_uuid, { message: 'Informe o serviço ou o pedido.' });
+export const openConversationSchema = z.object({ listing_uuid: uuid.optional(), order_uuid: uuid.optional(), service_uuid: uuid.optional(), professional_uuid: uuid.optional() })
+  .refine((value) => [value.listing_uuid, value.order_uuid, value.service_uuid].filter(Boolean).length === 1, { message: 'Informe o serviço ou o pedido.' });
 
 export const sendMessageSchema = z.object({
   body: z.string().max(MESSAGE_LIMITS.body, `A mensagem pode ter no máximo ${MESSAGE_LIMITS.body} caracteres.`).default(''),

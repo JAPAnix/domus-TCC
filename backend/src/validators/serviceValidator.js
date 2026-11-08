@@ -17,7 +17,17 @@ const serviceBaseSchema = z.object({
   city: z.string().trim().min(2, "Informe a cidade").max(100).optional(),
   state: z.string().trim().length(2, "Use a sigla do estado, com 2 letras").transform((value) => value.toUpperCase()).optional(),
   neighborhood: z.string().trim().max(100).optional(),
+  // Pedido aberto: validade, quem pode responder e como o serviço pode ser feito.
+  valid_days: z.number().int().refine((value) => [3, 7, 15, 30].includes(value), 'Escolha uma validade de 3, 7, 15 ou 30 dias.').optional(),
+  only_verified: z.boolean().optional(),
+  min_rating: z.number().min(1).max(5).optional(),
+  modes: z.array(z.enum(['client_place', 'pro_place', 'remote'])).max(3).optional(),
 });
+
+export const draftSchema = z.object({ data: z.record(z.string(), z.unknown()) });
+export const renewSchema = z.object({ days: z.number().int().refine((value) => [3, 7, 15, 30].includes(value), 'Escolha uma validade de 3, 7, 15 ou 30 dias.') });
+export const reportSchema = z.object({ reason: z.enum(['contact', 'scam', 'prohibited', 'offensive', 'spam', 'other'], { error: 'Escolha o motivo da denúncia.' }), details: z.string().trim().max(500).optional(), proposal_uuid: z.string().uuid().optional() });
+export const resolveReportSchema = z.object({ action: z.enum(['remove', 'dismiss'], { error: 'Escolha remover ou ignorar.' }), note: z.string().trim().min(5, 'Escreva uma justificativa curta (mínimo 5 caracteres).').max(500) });
 
 export const createServiceSchema = serviceBaseSchema.extend({
   // Pedido novo precisa dizer onde será o serviço; edição de rascunho continua parcial.

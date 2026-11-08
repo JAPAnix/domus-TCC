@@ -63,10 +63,13 @@ const Favorites = lazy(() => import('./pages/Favorites'));
 const FavoriteList = lazy(() => import('./pages/FavoriteList'));
 const AdminPayments = lazy(() => import('./pages/AdminPayments'));
 const AdminHelp = lazy(() => import('./pages/AdminHelp'));
+const AdminModeration = lazy(() => import('./pages/AdminModeration'));
 const Messages = lazy(() => import('./pages/Messages'));
 const ProLayout = lazy(() => import('./pages/pro/ProLayout'));
 const ProDashboard = lazy(() => import('./pages/pro/ProDashboard'));
 const ProOrders = lazy(() => import('./pages/pro/ProOrders'));
+const Opportunities = lazy(() => import('./pages/pro/Opportunities'));
+const OpportunityDetail = lazy(() => import('./pages/pro/OpportunityDetail'));
 const ProListings = lazy(() => import('./pages/pro/ProListings'));
 const ProEarnings = lazy(() => import('./pages/pro/ProEarnings'));
 const QuickReplies = lazy(() => import('./pages/messages/QuickReplies'));
@@ -140,12 +143,15 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/pro" element={<ProtectedRoute roles={['professional']}><ProLayout /></ProtectedRoute>}>
       <Route index element={<ProDashboard />} />
       <Route path="pedidos" element={<ProOrders />} />
+      <Route path="oportunidades" element={<Opportunities />} />
+      <Route path="oportunidades/:uuid" element={<OpportunityDetail />} />
       <Route path="servicos" element={<ProListings />} />
       <Route path="ganhos" element={<ProEarnings />} />
       <Route path="mensagens" element={<Navigate to="/mensagens" replace />} />
       <Route path="*" element={<Navigate to="/pro" replace />} />
     </Route>
     <Route path="/admin/pagamentos" element={<ProtectedRoute roles={['admin']}><AdminPayments /></ProtectedRoute>} />
+    <Route path="/admin/moderacao" element={<ProtectedRoute roles={['admin']}><AdminModeration /></ProtectedRoute>} />
     <Route path="/admin/ajuda" element={<ProtectedRoute roles={['admin']}><AdminHelp /></ProtectedRoute>} />
     <Route path="/pro/comecar" element={<ProtectedRoute><ProStart /></ProtectedRoute>} />
     <Route path="/pro/anuncio/:uuid" element={<ProtectedRoute><ListingWizard /></ProtectedRoute>} />
@@ -191,6 +197,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/perfil/avaliacoes-escritas" element={<ProtectedRoute><WrittenReviews /></ProtectedRoute>} />
     <Route path="/perfil/profissional" element={<Navigate to="/pro/comecar" replace />} />
     <Route path="/servicos/novo" element={<ProtectedRoute roles={['client']}><CreateService /></ProtectedRoute>} />
+    <Route path="/servicos/:uuid/editar" element={<ProtectedRoute roles={['client']}><CreateService /></ProtectedRoute>} />
     <Route path="/meus-servicos" element={<ProtectedRoute><MyServices /></ProtectedRoute>} />
     <Route path="/servicos/:uuid/propostas" element={<ProtectedRoute roles={['client']}><ServiceProposals /></ProtectedRoute>} />
     <Route path="/servicos/:uuid/enviar-proposta" element={<ProtectedRoute><SendProposal /></ProtectedRoute>} />

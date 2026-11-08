@@ -3,18 +3,20 @@ import {
   createProposal,
   listProposals,
   getProposal,
-  updateProposalStatus
+  updateProposalStatus,
+  editProposalHandler
 } from '../controllers/proposalController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import roleMiddleware from '../middleware/roleMiddleware.js';
 import { validate } from '../middleware/validateMiddleware.js';
-import { createProposalSchema, updateProposalStatusSchema } from '../validators/proposalValidator.js';
+import { createProposalSchema, updateProposalStatusSchema, editProposalSchema } from '../validators/proposalValidator.js';
 
 const router = Router();
 
 router.post('/:uuid/proposals', authMiddleware, roleMiddleware('professional'), validate(createProposalSchema), createProposal);
 router.get('/:uuid/proposals', authMiddleware, roleMiddleware('client'), listProposals);
 router.get('/:uuid', authMiddleware, getProposal);
+router.put('/:uuid', authMiddleware, roleMiddleware('professional'), validate(editProposalSchema), editProposalHandler);
 router.patch('/:uuid/status', authMiddleware, validate(updateProposalStatusSchema), updateProposalStatus);
 
 export default router;

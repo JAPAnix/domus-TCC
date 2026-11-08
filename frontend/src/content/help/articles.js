@@ -37,6 +37,19 @@ export const helpArticles = [
     related: ['comecar-a-oferecer-servicos', 'buscar-profissionais'],
   },
   {
+    slug: 'pedido-por-anuncio-e-pedido-aberto', category: 'contratar', title: 'Pedido por anúncio e pedido aberto',
+    summary: 'Dois jeitos de contratar: escolher um serviço pronto de um profissional ou descrever o que você precisa e receber propostas.',
+    body: [
+      ['h', 'Pedido por anúncio'],
+      ['p', 'Você escolhe um serviço específico de um profissional e solicita ou contrata. O profissional vê o pedido em "Pedidos recebidos", no painel dele, e aceita ou recusa.'],
+      ['h', 'Pedido aberto'],
+      ['p', 'Você não escolhe um anúncio: descreve o que precisa ("Publicar um pedido") e os profissionais enviam propostas com valor e prazo. Você compara, escolhe uma e segue para o pagamento. O profissional vê os pedidos abertos em "Oportunidades".'],
+      ['tip', 'Nos dois casos, depois que a proposta ou o pedido é aceito, o fluxo é o mesmo: pagamento, execução, conclusão e avaliação.'],
+      ['link', 'Publicar um pedido', '/servicos/novo'],
+    ],
+    related: ['publicar-um-pedido', 'solicitar-um-servico'],
+  },
+  {
     slug: 'completar-perfil', category: 'primeiros-passos', title: 'Como completar seu perfil',
     summary: 'Foto, apresentação e outras informações ajudam as pessoas a confiarem em você.',
     body: [

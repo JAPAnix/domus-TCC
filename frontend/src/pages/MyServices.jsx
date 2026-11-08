@@ -40,9 +40,9 @@ export default function MyServices() {
     <main className="mx-auto max-w-content px-4 py-10 sm:px-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold sm:text-3xl">Pedidos e contratações</h1>
-        <p className="mt-2 text-ink-muted">Acompanhe o que você contratou e os pedidos abertos que você publicou.</p>
+        <p className="mt-2 text-ink-muted">Contratações por anúncio: você escolheu um serviço de um profissional. Pedidos abertos: você descreveu o que precisa e recebe propostas.</p>
       </div>
-      <Tabs label="Seções" value={tab} onChange={(value) => setParams(value === 'pedidos' ? { aba: 'pedidos' } : {})} tabs={[{ value: 'contratacoes', label: 'Contratações' }, { value: 'pedidos', label: 'Pedidos abertos' }]} />
+      <Tabs label="Seções" value={tab} onChange={(value) => setParams(value === 'pedidos' ? { aba: 'pedidos' } : {})} tabs={[{ value: 'contratacoes', label: 'Contratações por anúncio' }, { value: 'pedidos', label: 'Meus pedidos abertos' }]} />
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>{tab === 'pedidos' ? <OpenRequests /> : <Hirings />}</div>
     </main>
   );

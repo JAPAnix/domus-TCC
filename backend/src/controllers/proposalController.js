@@ -1,9 +1,10 @@
-import { submitProposal, decideProposal, workflowHandler } from '../services/serviceWorkflow.js';
+import { submitProposal, decideProposal, editProposal, workflowHandler } from '../services/serviceWorkflow.js';
 import { prisma } from '../config/prisma.js';
 import { uuidToBuffer, bufferToUuid, generateUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
 
 export const createProposal = workflowHandler(submitProposal, 201);
+export const editProposalHandler = workflowHandler(editProposal);
 
 export const listProposals = async (req, res) => {
   const { uuid: serviceUuid } = req.params;

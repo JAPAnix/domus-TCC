@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { logger } from '../utils/logger.js';
 import { sendPlainEmail, smtpConfigured } from '../services/emailService.js';
 import { logQuestion, rateAnswer, assistantReport } from '../services/helpAssistant.js';
+import { listReports, resolveReport } from '../services/openRequests.js';
 
 const me = (req) => (req.user ? BigInt(req.user.id) : null);
 
@@ -42,6 +43,27 @@ export async function assistantAdminReport(req, res) {
   } catch (err) {
     logger.error('assistantAdminReport', err);
     res.status(500).json({ message: 'Não foi possível carregar o relatório do assistente.' });
+  }
+}
+
+export async function moderationList(req, res) {
+  try {
+    const status = ['open', 'dismissed', 'removed', 'all'].includes(req.query.status) ? req.query.status : 'open';
+    res.set('Cache-Control', 'no-store').json(await listReports({ status, page: Math.max(1, Number(req.query.page) || 1) }));
+  } catch (err) {
+    logger.error('moderationList', err);
+    res.status(500).json({ message: 'Não foi possível carregar a fila de moderação.' });
+  }
+}
+
+export async function moderationResolve(req, res) {
+  try {
+    if (!/^\d{1,18}$/.test(req.params.id)) return res.status(404).json({ message: 'Denúncia não encontrada.' });
+    res.json(await resolveReport(BigInt(req.user.id), req.params.id, req.body));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    logger.error('moderationResolve', err);
+    res.status(500).json({ message: 'Não foi possível concluir a ação. Tente novamente.' });
   }
 }
 

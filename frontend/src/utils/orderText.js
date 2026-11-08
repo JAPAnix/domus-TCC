@@ -27,3 +27,11 @@ export function proposalTerm(proposal, formatDay) {
   if (proposal.days) return `Prazo de ${proposal.days} ${proposal.days === 1 ? 'dia' : 'dias'}`;
   return 'Prazo a combinar';
 }
+
+/** "5 horas", "3 dias" ou "menos de 1 hora" até uma data. */
+export function timeLeftLabel(until, now = Date.now()) {
+  const hours = Math.max(0, Math.ceil((new Date(until).getTime() - now) / 3600000));
+  if (hours <= 1) return 'menos de 1 hora';
+  if (hours < 48) return `${hours} horas`;
+  return `${Math.ceil(hours / 24)} dias`;
+}

@@ -7,6 +7,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
 import { useOrderBadges } from '../hooks/useOrderBadges';
+import { useFeatures } from '../hooks/useFeatures';
 import { categoryStyle } from '../utils/categoryColors';
 import { fullName } from '../utils/format';
 import { PRO_HOME_PATH, PRO_START_PATH } from '../utils/routes';
@@ -17,6 +18,7 @@ import { Avatar, Button, Dropdown, Modal } from './ui';
 
 const icons = {
   compass: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-5-4-2.5 5.5L8 16l2.5-5.5L16 8Z',
+  opportunities: 'M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9L12 3Z',
   panel: 'M4 5h7v6H4V5Zm9 0h7v3h-7V5ZM4 13h7v6H4v-6Zm9-3h7v9h-7v-9Z',
   heart: 'M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 6.6a4.5 4.5 0 0 1 8 2.9c0 6.1-8 11-8 11Z',
   orders: 'M9 5h6M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1ZM8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2M9 12h6M9 16h6',
@@ -102,6 +104,7 @@ function AccountMenu({ onNavigate, unread, unreadMessages, orders, onOpenLocale 
       {item({ to: '/notificacoes', label: 'Notificações', icon: 'bell', badge: unread })}
       <div className="my-2 border-t border-line" />
       {user.roles?.includes('admin') && item({ to: '/admin/pagamentos', label: 'Administração', icon: 'settings' })}
+      {user.roles?.includes('admin') && item({ to: '/admin/moderacao', label: 'Moderação', icon: 'settings' })}
       {user.roles?.includes('admin') && item({ to: '/admin/ajuda', label: 'Dúvidas do assistente', icon: 'help' })}
       {item({ to: '/configuracoes', label: 'Configurações da conta', icon: 'settings', active: settingsActive })}
       <button type="button" onClick={() => { onNavigate?.(); onOpenLocale(); }} className={`${itemClass(false)} w-full text-left`}>
@@ -175,6 +178,7 @@ function CategoryTabs() {
 function BottomNav({ onOpenMenu, menuOpen, unread, unreadMessages, orders }) {
   const { user } = useAuth();
   const { mode } = useMode();
+  const { openRequests } = useFeatures();
   const links = !user
     ? [{ to: '/', label: 'Explorar', icon: 'compass', end: true }, { to: '/ajuda', label: 'Ajuda', icon: 'help' }, { to: '/login', label: 'Entrar', icon: 'login' }]
     : mode === 'professional'
@@ -182,7 +186,7 @@ function BottomNav({ onOpenMenu, menuOpen, unread, unreadMessages, orders }) {
         { to: PRO_HOME_PATH, label: 'Painel', icon: 'panel', end: true },
         { to: '/pro/pedidos', label: 'Pedidos', icon: 'orders' },
         { to: '/pro/servicos', label: 'Serviços', icon: 'briefcase' },
-        { to: '/pro/ganhos', label: 'Ganhos', icon: 'heart' },
+        openRequests ? { to: '/pro/oportunidades', label: 'Oportunidades', icon: 'opportunities' } : { to: '/pro/ganhos', label: 'Ganhos', icon: 'heart' },
       ]
       : [
         { to: '/', label: 'Explorar', icon: 'compass', end: true },
@@ -197,12 +201,12 @@ function BottomNav({ onOpenMenu, menuOpen, unread, unreadMessages, orders }) {
         <NavLink key={to} to={to} end={end} className={({ isActive }) => `${itemClass(isActive)} relative`}>
           <Icon path={icons[icon]} /><span className="truncate">{label}</span>
           {to === '/mensagens' && unreadMessages > 0 && <span role="status" aria-label={`${unreadMessages} mensagens não lidas`} className="absolute right-[calc(50%-1.25rem)] top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-4 text-white">{unreadLabel(unreadMessages)}</span>}
-          {(to === '/pro/pedidos' ? orders.proNew : to === '/meus-servicos' ? orders.clientToDecide : 0) > 0 && <span role="status" aria-label={to === '/pro/pedidos' ? `${orders.proNew} pedidos novos` : `${orders.clientToDecide} propostas para decidir`} className="absolute right-[calc(50%-1.25rem)] top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-4 text-white">{unreadLabel(to === '/pro/pedidos' ? orders.proNew : orders.clientToDecide)}</span>}
+          {(to === '/pro/pedidos' ? orders.proNew : to === '/pro/oportunidades' ? orders.opportunities : to === '/meus-servicos' ? orders.clientToDecide : 0) > 0 && <span role="status" aria-label={to === '/pro/pedidos' ? `${orders.proNew} pedidos novos` : to === '/pro/oportunidades' ? `${orders.opportunities} oportunidades novas` : `${orders.clientToDecide} propostas para decidir`} className="absolute right-[calc(50%-1.25rem)] top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-4 text-white">{unreadLabel(to === '/pro/pedidos' ? orders.proNew : to === '/pro/oportunidades' ? orders.opportunities : orders.clientToDecide)}</span>}
         </NavLink>
       ))}
       <button type="button" onClick={onOpenMenu} aria-label="Abrir menu" aria-expanded={menuOpen} className={`${itemClass(menuOpen)} relative`}>
         <Icon path={icons.menu} /><span>Menu</span>
-        {unread + unreadMessages + orders.proNew + orders.clientToDecide > 0 && <span aria-hidden="true" className="absolute right-[calc(50%-1rem)] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />}
+        {unread + unreadMessages + orders.proNew + orders.clientToDecide + orders.opportunities > 0 && <span aria-hidden="true" className="absolute right-[calc(50%-1rem)] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />}
       </button>
     </nav>
   );
@@ -218,6 +222,7 @@ export default function Navbar({ simplified = false }) {
   const unread = useUnreadNotifications(!!user);
   const unreadMessages = useUnreadMessages(!!user);
   const orders = useOrderBadges(!!user);
+  const { openRequests } = useFeatures();
   // O número no avatar soma o que está pendente (notificações e mensagens); cada item do menu tem o seu próprio contador.
   // O número do avatar é a soma exata do que aparece, item por item, no menu da conta.
   const attention = unread + unreadMessages + orders.clientToDecide;
@@ -252,6 +257,13 @@ export default function Navbar({ simplified = false }) {
 
           <div className={`ml-auto flex shrink-0 items-center gap-2 ${authPage ? 'hidden' : ''}`}>
             {landing && <div className="flex items-center gap-2"><Button to="/login" variant="ghost">Entrar</Button><Button to="/cadastro">Criar conta</Button></div>}
+            {!landing && mode === 'professional' && openRequests && user?.roles?.includes('professional') && (
+              <Link to="/pro/oportunidades" aria-label={orders.opportunities > 0 ? `Oportunidades, ${orders.opportunities} novas` : 'Oportunidades'} aria-current={pathname.startsWith('/pro/oportunidades') ? 'page' : undefined}
+                className={`relative hidden min-h-control items-center gap-2 rounded-control px-3 text-sm font-semibold transition-colors md:flex ${pathname.startsWith('/pro/oportunidades') ? 'bg-primary-soft text-primary-strong' : 'text-ink-soft hover:bg-surface-muted'}`}>
+                <Icon path={icons.opportunities} />Oportunidades
+                {orders.opportunities > 0 && <span className="rounded-full bg-primary px-2 text-xs font-semibold text-white" aria-hidden="true">{unreadLabel(orders.opportunities)}</span>}
+              </Link>
+            )}
             {!landing && <ModeButton />}
             <div className={landing ? 'hidden' : 'hidden md:block'}>
               <Dropdown trigger={({ open, toggle }) => (

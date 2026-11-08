@@ -6,6 +6,7 @@ import { logger } from '../utils/logger.js';
 const SUBJECTS = {
   proposal_received: 'Você recebeu uma nova proposta',
   proposal_accepted: 'Sua proposta foi aceita',
+  new_opportunity: 'Há pedidos novos para você',
   service_completed: 'Serviço concluído',
   review_received: 'Você recebeu uma avaliação',
   order_received: 'Você recebeu um novo pedido',

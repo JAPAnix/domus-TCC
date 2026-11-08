@@ -6,7 +6,9 @@ import { listingDraftSchema, verificationSchema, availabilityToggleSchema } from
 import {
   myListings, createDraft, getOwnListing, updateListing, publishListing, pauseListing, duplicateListing, deleteListing,
 } from '../controllers/listingController.js';
-import { summary, earnings, availability, setBlockedDate, getVerification, saveVerification } from '../controllers/proController.js';
+import { summary, earnings, availability, setBlockedDate, getVerification, saveVerification, opportunities, opportunitiesCount, opportunitySeen, opportunityDismiss } from '../controllers/proController.js';
+import { opportunityDetail } from '../controllers/serviceController.js';
+import { requireOpenRequests } from '../config/openRequests.js';
 import { proOrders } from '../controllers/orderController.js';
 
 const router = Router();
@@ -27,6 +29,11 @@ router.put('/verification', validate(verificationSchema), saveVerification);
 // Painel, pedidos, ganhos e agenda: só para quem já é profissional.
 router.get('/summary', roleMiddleware('professional'), summary);
 router.get('/orders', roleMiddleware('professional'), proOrders);
+router.get('/opportunities', roleMiddleware('professional'), requireOpenRequests, opportunities);
+router.get('/opportunities/count', roleMiddleware('professional'), requireOpenRequests, opportunitiesCount);
+router.get('/opportunities/:uuid', roleMiddleware('professional'), requireOpenRequests, opportunityDetail);
+router.post('/opportunities/:uuid/seen', roleMiddleware('professional'), requireOpenRequests, opportunitySeen);
+router.post('/opportunities/:uuid/dismiss', roleMiddleware('professional'), requireOpenRequests, opportunityDismiss);
 router.get('/earnings', roleMiddleware('professional'), earnings);
 router.get('/availability', roleMiddleware('professional'), availability);
 router.put('/availability/:date', roleMiddleware('professional'), validate(availabilityToggleSchema), setBlockedDate);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { NOTIFICATIONS_CHANGED } from './useUnreadNotifications';
 
-const NONE = { proNew: 0, clientToDecide: 0 };
+const NONE = { proNew: 0, clientToDecide: 0, opportunities: 0 };
 
 /**
  * Números dos menus de pedidos: pedidos novos esperando o profissional e propostas esperando decisão do cliente.
@@ -21,7 +21,7 @@ export function useOrderBadges(enabled) {
       pending = true;
       try {
         const { data } = await api.get('/orders/badges');
-        if (active) setBadges({ proNew: data.proNew ?? 0, clientToDecide: data.clientToDecide ?? 0 });
+        if (active) setBadges({ proNew: data.proNew ?? 0, clientToDecide: data.clientToDecide ?? 0, opportunities: data.opportunities ?? 0 });
       } catch {
         // Falha temporária: o último valor continua valendo.
       } finally {

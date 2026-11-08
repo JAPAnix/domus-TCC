@@ -6,7 +6,7 @@ import { searchArticles } from '../src/content/help/search.js';
 
 // Caminhos que as páginas de ajuda podem citar. Atualize junto com o App.jsx.
 const VALID_LINKS = new Set([
-  '/buscar', '/perfil/editar', '/meus-servicos', '/favoritos', '/servicos', '/forgot-password', '/ajuda/contato',
+  '/buscar', '/perfil/editar', '/meus-servicos', '/favoritos', '/servicos', '/servicos/novo', '/pro/oportunidades', '/forgot-password', '/ajuda/contato',
   '/configuracoes/impostos', '/configuracoes/notificacoes', '/configuracoes/privacidade', '/politica-de-privacidade', '/politica-de-cancelamento',
 ]);
 

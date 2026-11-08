@@ -3,6 +3,8 @@ import { uuidToBuffer, bufferToUuid } from '../utils/uuid.js';
 import { logger } from '../utils/logger.js';
 import { addressFor, availableActions, ORDER_STATUS_LABELS, roleIn, urgency, deadlineOf, VALIDITY_OPTIONS, DEFAULT_VALIDITY_HOURS, RESPONSE_HOURS } from '../utils/orderRules.js';
 import { feeConfig } from '../config/fees.js';
+import { openRequestConfig } from '../config/openRequests.js';
+import { opportunityCount } from '../services/openRequests.js';
 import { asaasActive } from '../services/payoutAccounts.js';
 import { platformFeePercent } from '../services/platformFee.js';
 import { computeCheckout, toCents, fromCents } from '../utils/money.js';
@@ -42,6 +44,7 @@ export function serializeOrder(order, viewerId) {
     cancelledByMe: order.cancelledById != null && viewerId != null ? order.cancelledById === viewerId : null,
     role: viewerId == null ? null : roleIn(order, viewerId), actions: viewerId == null ? [] : availableActions(order, viewerId),
     declineReason: order.declineReason ?? null,
+    origin: order.origin ?? 'anuncio',
     region: regionOf(order),
     deadline: deadlineOf(order) ?? null, urgency: urgency(order),
     proposal: order.proposalAmount == null ? null : {
@@ -100,12 +103,13 @@ export async function orderCounts(req, res) {
 export async function orderBadges(req, res) {
   try {
     const userId = me(req);
-    const [proNew, clientProposed, openProposals] = await Promise.all([
+    const [proNew, clientProposed, openProposals, opportunities] = await Promise.all([
       prisma.order.count({ where: { professionalId: userId, status: 'requested' } }),
       prisma.order.count({ where: { clientId: userId, status: 'proposed' } }),
       prisma.proposal.count({ where: { status: 'pending', service: { clientId: userId, status: 'open', deletedAt: null } } }),
+      openRequestConfig().enabled ? opportunityCount(userId).catch(() => 0) : 0,
     ]);
-    res.set('Cache-Control', 'no-store').json({ proNew, clientToDecide: clientProposed + openProposals });
+    res.set('Cache-Control', 'no-store').json({ proNew, clientToDecide: clientProposed + openProposals, opportunities });
   } catch (err) { sendWorkflowError(res, err, 'orderBadges'); }
 }
 

@@ -24,7 +24,7 @@ export function trustedMessageImage(url, req) {
   } catch { return false; }
 }
 
-export const open = handler('messages.open', (req) => openConversation(me(req), { listingUuid: req.body.listing_uuid, orderUuid: req.body.order_uuid }), 201);
+export const open = handler('messages.open', (req) => openConversation(me(req), { listingUuid: req.body.listing_uuid, orderUuid: req.body.order_uuid, serviceUuid: req.body.service_uuid, professionalUuid: req.body.professional_uuid }), 201);
 export const list = handler('messages.list', (req) => listConversations(me(req), {
   archived: req.query.arquivadas === '1', q: String(req.query.q ?? ''), page: Math.max(1, Number(req.query.page) || 1), limit: Math.min(50, Math.max(1, Number(req.query.limit) || 30)),
 }));

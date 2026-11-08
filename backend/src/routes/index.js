@@ -23,6 +23,7 @@ import orderRoutes from './orders.js';
 import paymentRoutes from './payments.js';
 import reviewReplyRoutes from './reviewReplies.js';
 import adminRoutes from './admin.js';
+import { features } from '../controllers/serviceController.js';
 import conversationRoutes, { quickReplyRouter, feedbackRouter } from './conversations.js';
 
 const router = Router();
@@ -37,6 +38,7 @@ router.use('/help', helpRoutes);
 router.use('/listings', listingRoutes);
 router.use('/pro', proRoutes);
 router.use('/orders', orderRoutes);
+router.get('/features', features);
 router.use('/payments', paymentRoutes);
 router.use('/reviews', reviewReplyRoutes);
 router.use('/admin', adminRoutes);

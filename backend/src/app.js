@@ -10,6 +10,8 @@ import { dispatchEventEmails } from './services/eventEmails.js';
 import { attachRealtime } from './services/realtime.js';
 import { startScheduler } from './services/messageService.js';
 import { startOrderExpiry } from './services/orderExpiry.js';
+import { pendingMigrations } from './services/schemaCheck.js';
+import { startOpenRequestJobs } from './services/openRequests.js';
 import { startAsaasJobs } from './services/asaasJobs.js';
 import { prisma } from './config/prisma.js';
 
@@ -49,7 +51,7 @@ app.use(cors({
 app.use(express.json({ limit: '100kb' }));
 // Mostra quais serviços externos estão configurados (só os nomes, nunca valores), para conferir o deploy abrindo /health.
 const emailMode = () => (process.env.EMAIL_FROM && process.env.BREVO_API_KEY ? (process.env.BREVO_API_KEY.trim().startsWith('xsmtpsib-') ? 'brevo-chave-errada-use-xkeysib' : 'brevo') : process.env.EMAIL_FROM && process.env.SMTP_HOST ? 'smtp' : 'none');
-app.get('/health', (_req, res) => res.json({ status: 'ok', storage: process.env.STORAGE_PROVIDER || 'local', email: emailMode(), payments: process.env.PAYMENT_PROVIDER || 'manual', commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7) }));
+app.get('/health', async (_req, res) => { const schema = await pendingMigrations(); res.json({ database: schema.ok ? (schema.pending.length ? 'migrations-pendentes' : 'ok') : 'nao-verificado', ...(schema.pending.length && { pendingMigrations: schema.pending }), status: 'ok', storage: process.env.STORAGE_PROVIDER || 'local', email: emailMode(), payments: process.env.PAYMENT_PROVIDER || 'manual', commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7) }); });
 
 // Imagens do provedor local. Só arquivos gerados pelo servidor; nosniff impede interpretar como outro tipo.
 app.use('/uploads', express.static(uploadDirectory, {
@@ -69,6 +71,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   attachRealtime(server);
   startScheduler();
   startOrderExpiry();
+  startOpenRequestJobs();
   startAsaasJobs();
   for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => {
     const timer = setTimeout(() => process.exit(1), 10000).unref();

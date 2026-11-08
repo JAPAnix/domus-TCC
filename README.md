@@ -145,6 +145,14 @@ Sem nenhuma das duas, o app funciona, mas não envia e-mails.
 
 **"Esqueci minha senha":** o link vale 30 minutos, só pode ser usado uma vez e, ao redefinir, todas as sessões da pessoa são encerradas e ela recebe um e-mail avisando da troca. A resposta do site é sempre a mesma, exista ou não conta com aquele e-mail. Quem criou a conta só com o Google recebe um e-mail explicando isso e pode criar uma senha pelo mesmo link. Em desenvolvimento, sem provedor de e-mail configurado, o link aparece no terminal do backend (`[DEV] Link de redefinição de senha ...`); em produção nunca.
 
+### Pedido aberto e Oportunidades
+
+Existem dois tipos de pedido: o **pedido por anúncio** (o cliente escolhe um serviço de um profissional; ele aparece em "Pedidos recebidos", no painel) e o **pedido aberto** (o cliente descreve o que precisa em "Publicar um pedido" e os profissionais enviam propostas; eles os veem em "Oportunidades"). Depois do aceite, os dois seguem o mesmo fluxo de pagamento, execução e avaliação (o pedido interno guarda a origem em `orders.origin`).
+
+Variáveis (todas opcionais, em `backend/.env.example`): `OPEN_REQUESTS_ENABLED` (`false` desliga tudo), `OPEN_REQUEST_MAX_PROPOSALS` (5), `OPEN_REQUEST_DEFAULT_DAYS` (7), `OPEN_REQUEST_MAX_PER_DAY` (5), `OPEN_REQUEST_MAX_ACTIVE` (10), `OPEN_REQUEST_DIGEST_HOURS` (6) e `OPEN_REQUEST_PROPOSAL_VALIDITY_HOURS` (72). A rotina que expira pedidos e propostas e envia o resumo de oportunidades roda sozinha a cada 10 minutos dentro do servidor.
+
+**Conferir as migrations em produção:** abra `https://SUA-API/health`. O campo `database` mostra `ok` ou `migrations-pendentes` (com a lista em `pendingMigrations`). Se houver pendentes: faça backup, rode `npx prisma migrate deploy` na pasta `backend` e confira de novo. Telas do administrador com "Não foi possível concluir a ação" quase sempre significam migration pendente.
+
 ### Tempo real (mensagens)
 
 As mensagens usam **WebSocket no próprio servidor** (`/ws`, biblioteca `ws`) e, se ele não estiver disponível, as telas consultam a API a cada poucos segundos. Não há serviço externo. Com mais de uma instância do backend, o estado em memória (presença, "digitando", limite de taxa) precisa ir para um Redis. Alternativas gratuitas avaliadas: Supabase Realtime (plano gratuito com 200 conexões e 100 mensagens por segundo, segundo a documentação) e Firebase; não foram usadas para não criar dependência externa.

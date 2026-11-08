@@ -15,7 +15,7 @@ export async function createOrderForProposal(tx, { service, proposal }) {
       uuid: generateUuid(), listingId: null, serviceId: service.id, proposalId: proposal.id,
       clientId: service.clientId, professionalId: proposal.professionalId, status: 'accepted', acceptedAt: now,
       scheduledDate: service.deadline && service.deadline > day ? service.deadline : day,
-      serviceMode: 'negotiated', note: proposal.coverLetter ? proposal.coverLetter.slice(0, 1000) : null,
+      serviceMode: 'negotiated', origin: 'pedido_aberto', note: proposal.coverLetter ? proposal.coverLetter.slice(0, 1000) : null,
       titleSnapshot: String(service.title).slice(0, 120), pricingModelSnapshot: 'fixed',
       priceSnapshot: proposal.proposedPrice, policySnapshot: 'moderate', platformFeePercent: platformFeePercent(),
     },

@@ -9,6 +9,8 @@ import { MODE_LABELS } from '../utils/listingText';
 import ListingCard from '../components/ListingCard';
 import Pagination from '../components/Pagination';
 import { Button, EmptyState, ErrorState, Input, Modal, Select, SkeletonList } from '../components/ui';
+import PublishRequestCta from '../components/PublishRequestCta';
+import { useFeatures } from '../hooks/useFeatures';
 
 const SORTS = { relevance: 'Mais relevantes', rating: 'Melhor avaliação', price_asc: 'Menor preço', price_desc: 'Maior preço', newest: 'Mais recentes' };
 
@@ -57,6 +59,7 @@ export default function ListingSearch() {
   const favorites = useFavoriteStatus('listing', listings.map((item) => item.uuid));
   const categoryName = categories.find((item) => String(item.id) === categoryId)?.name;
   const total = resource.data?.meta?.total ?? 0;
+  const { openRequests } = useFeatures();
   const hasTerms = !!(city || date || serviceId || categoryId || activeFilters);
   const heading = serviceName || categoryName || 'Profissionais e serviços';
 
@@ -94,13 +97,14 @@ export default function ListingSearch() {
           icon="search"
           title="Nenhum serviço encontrado"
           description={hasTerms ? 'Tente outra cidade ou data, ou retire algum filtro. Você também pode publicar um pedido e receber propostas.' : 'Ainda não há anúncios publicados. Publique um pedido e receba propostas de profissionais.'}
-          action={<>{hasTerms && <Button variant="secondary" to="/buscar">Ver todos os serviços</Button>}<Button to="/servicos/novo">Publicar um pedido</Button></>}
+          action={<>{hasTerms && <Button variant="secondary" to="/buscar">Ver todos os serviços</Button>}{openRequests && <Button to="/servicos/novo">Publicar um pedido</Button>}</>}
         />
       ) : (
         <>
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {listings.map((item) => <li key={item.uuid}><ListingCard listing={item} saved={favorites.isSaved(item.uuid)} onSavedChange={(value) => favorites.mark(item.uuid, value)} /></li>)}
           </ul>
+          <PublishRequestCta className="mt-8" />
           <Pagination page={page} pages={resource.data.meta.pages} onChange={(next) => { const updated = new URLSearchParams(params); updated.set('pagina', String(next)); setParams(updated); }} label="Páginas de resultados" />
         </>
       )}

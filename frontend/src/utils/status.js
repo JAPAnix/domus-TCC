@@ -4,6 +4,8 @@ export const serviceStatus = {
   in_progress: { label: 'Em andamento', tone: 'bg-warning-soft text-warning' },
   completed: { label: 'Concluído', tone: 'bg-success-soft text-success' },
   cancelled: { label: 'Cancelado', tone: 'bg-surface-muted text-ink-soft' },
+  expired: { label: 'Expirado', tone: 'bg-surface-muted text-ink-soft' },
+  removed: { label: 'Removido', tone: 'bg-danger-soft text-danger' },
 };
 
 export const proposalStatus = {
@@ -11,6 +13,7 @@ export const proposalStatus = {
   accepted: { label: 'Aceita', tone: 'bg-success-soft text-success' },
   rejected: { label: 'Rejeitada', tone: 'bg-danger-soft text-danger' },
   withdrawn: { label: 'Retirada', tone: 'bg-surface-muted text-ink-soft' },
+  expired: { label: 'Vencida', tone: 'bg-surface-muted text-ink-soft' },
 };
 
 export const orderStatus = {

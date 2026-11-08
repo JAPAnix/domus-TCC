@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { apiError } from '../../services/api';
 import { useApiResource } from '../../hooks/useApiResource';
+import { useMarkConversationRead } from '../../hooks/useMarkConversationRead';
 import { isRealtimeOpen, notifyMessagesChanged, signalTyping, subscribe } from '../../services/realtime';
 import ImageUploader from '../../components/ImageUploader';
 import { Avatar, Button, ConfirmDialog, Dropdown, ErrorState, Modal, Select, SkeletonList, Textarea, useToast } from '../../components/ui';
@@ -126,7 +127,7 @@ export default function ConversationView({ uuid, onChanged }) {
   const scroller = useRef(null);
   const data = resource.data;
   const lastUuid = data?.messages.at(-1)?.uuid;
-  const lastIncomingUnread = !!data && data.messages.length > 0 && !data.messages.at(-1).mine;
+  const lastIncomingUuid = data?.messages.findLast((message) => !message.mine)?.uuid;
   const { retry } = resource;
   const { retry: retryReplies } = repliesResource;
 
@@ -143,11 +144,8 @@ export default function ConversationView({ uuid, onChanged }) {
     return () => clearInterval(timer);
   }, [retry, onChanged]);
 
-  // Marca como lida ao abrir e quando chega mensagem nova com a conversa à vista.
-  useEffect(() => {
-    if (!lastUuid || !lastIncomingUnread || document.hidden) return;
-    api.post(`/conversations/${uuid}/read`).then(() => { notifyMessagesChanged(); onChanged?.(); }).catch(() => {});
-  }, [uuid, lastUuid, lastIncomingUnread, onChanged]);
+  // Marca como lida ao abrir, quando chega mensagem nova e ao voltar para a aba, com nova tentativa se a rede falhar.
+  useMarkConversationRead(uuid, lastIncomingUuid, () => { notifyMessagesChanged(); onChanged?.(); });
 
   useEffect(() => { if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight; }, [lastUuid]);
 

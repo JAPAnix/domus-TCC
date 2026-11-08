@@ -96,7 +96,6 @@ function AccountMenu({ onNavigate, unread, unreadMessages, orders, onOpenLocale 
         </Link>
       )}
       {item({ to: '/favoritos', label: 'Favoritos', icon: 'heart' })}
-      {user.roles?.includes('professional') && item({ to: '/pro/pedidos', label: 'Pedidos recebidos', icon: 'orders', badge: orders.proNew, badgeLabel: 'pedidos novos' })}
       {item({ to: '/meus-servicos', label: 'Pedidos e contratações', icon: 'orders', badge: orders.clientToDecide, badgeLabel: 'propostas para decidir' })}
       {item({ to: '/mensagens', label: 'Mensagens', icon: 'chat', badge: unreadMessages })}
       {item({ to: '/perfil', label: 'Perfil', icon: 'user', active: pathname.startsWith('/perfil') })}
@@ -220,7 +219,8 @@ export default function Navbar({ simplified = false }) {
   const unreadMessages = useUnreadMessages(!!user);
   const orders = useOrderBadges(!!user);
   // O número no avatar soma o que está pendente (notificações e mensagens); cada item do menu tem o seu próprio contador.
-  const attention = unread + unreadMessages;
+  // O número do avatar é a soma exata do que aparece, item por item, no menu da conta.
+  const attention = unread + unreadMessages + orders.clientToDecide;
   const homePath = mode === 'professional' ? PRO_HOME_PATH : user ? '/buscar' : '/';
   // A busca e as categorias só aparecem onde se procura serviço: a busca de profissionais e serviços e os pedidos abertos.
   const showSearch = ['/buscar', '/servicos'].includes(pathname);
@@ -258,7 +258,7 @@ export default function Navbar({ simplified = false }) {
                 <button type="button" onClick={toggle} aria-label="Abrir menu" aria-expanded={open} className="relative flex min-h-control items-center gap-2 rounded-full border border-line-strong bg-surface py-1 pl-3 pr-1.5 transition-shadow hover:shadow-card">
                   <Icon path={icons.menu} className="h-4 w-4 text-ink-soft" />
                   {user ? <Avatar src={user.profilePictureUrl} name={fullName(user)} size="sm" decorative /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-ink-soft"><Icon path={icons.user} className="h-4 w-4" /></span>}
-                  {attention > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1.5 text-xs font-semibold text-white" aria-label={`${unread} notificações e ${unreadMessages} mensagens não lidas`}>{unreadLabel(attention)}</span>}
+                  {attention > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1.5 text-xs font-semibold text-white" aria-label={`${unread} notificações não lidas, ${unreadMessages} mensagens não lidas e ${orders.clientToDecide} propostas para decidir`}>{unreadLabel(attention)}</span>}
                 </button>
               )}>
                 {({ close }) => <AccountMenu onNavigate={close} unread={unread} unreadMessages={unreadMessages} orders={orders} onOpenLocale={() => setLocaleOpen(true)} />}

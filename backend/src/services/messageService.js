@@ -191,7 +191,10 @@ export async function sendMessage(userId, uuid, input) {
 export async function markRead(userId, uuid) {
   const { conversation, role } = await loadConversation(prisma, uuid, userId);
   const receipts = await sharesReceipts(prisma, userId);
-  const now = new Date();
+  // A leitura vale até a última mensagem da conversa. Se o relógio do banco estiver adiantado em relação ao do servidor,
+  // "agora" ficaria antes de mensagens recentes e o contador nunca zeraria.
+  const latest = await prisma.message.findFirst({ where: { conversationId: conversation.id }, orderBy: { id: 'desc' }, select: { createdAt: true } });
+  const now = new Date(Math.max(Date.now(), latest?.createdAt?.getTime() ?? 0));
   await prisma.conversation.update({ where: { id: conversation.id }, data: { [field(role, 'LastReadAt')]: now, ...(receipts && { [field(role, 'ReceiptAt')]: now }) } });
   if (receipts) publish([role === 'client' ? conversation.professionalId : conversation.clientId], { type: 'read', conversation: uuid, at: now });
   publish([userId], { type: 'unread' });

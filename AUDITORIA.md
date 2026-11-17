@@ -669,4 +669,4 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Senha:** só de `SEED_DEMO_PASSWORD` (mínimo de 8 caracteres). Sem ela o seed não roda; nunca é impressa nem gravada.
 - **Correções sobre a primeira versão:** e-mail do admin (era `dommos.newnew@gmail.com`, e o seed renomeia a conta antiga); catálogo oficial restaurado (a versão anterior trocou por 10 categorias e criou categorias extras "X: Y").
 - **Riscos:** `db:reset` apaga tudo, inclusive admin; faça backup antes. O banco remoto já recebeu resets feitos antes desta correção; um novo `db:reset` limpa as categorias extras.
-- **Pendente:** rodar o reset e a validação (login, contagens, idempotência) depois que `SEED_DEMO_PASSWORD` estiver no `backend/.env` local.
+- **Validado (17/11/2026):** reset e seed rodados no banco remoto; seed duas vezes sem mudar as contagens; login do admin, de um cliente e de um profissional ok; um único admin (`dommos.new@gmail.com`).

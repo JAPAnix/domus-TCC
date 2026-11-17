@@ -674,3 +674,5 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Demo mais completo (17/11/2026):** histórico de 17 pedidos concluídos com avaliações (Elisa 12 avaliações, Bruno 8), notas e contadores do perfil calculados das avaliações reais, 15 notificações (lidas e não lidas). Seed rodado duas vezes sem mudar as contagens.
 
 - **Fotos do demo (17/11/2026):** os 11 anúncios usam 2 fotos reais do Unsplash cada (licença Unsplash, uso livre), no lugar dos placeholders. O seed atualiza as URLs das fotos já existentes. Pendente: fotos de perfil das contas demo (hoje mostram a inicial).
+
+- **Painel de pagamentos do demo (17/11/2026):** o Resumo do admin só conta pagamentos com provedor `asaas` e alertas dos tipos conhecidos; o seed usava `asaas-demo` e um alerta de tipo próprio, então o painel mostrava zeros. Agora os pagamentos demo usam `asaas` (continuam marcados como demonstração na nota e em `feeSnapshot`, sem cobrança real) e o alerta é `split_problem`. Cuidado: reembolsar ou liberar um pagamento demo pelo admin tentaria falar com o Asaas com um id fictício.

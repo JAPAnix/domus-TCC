@@ -672,3 +672,5 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Validado (17/11/2026):** reset e seed rodados no banco remoto; seed duas vezes sem mudar as contagens; login do admin, de um cliente e de um profissional ok; um único admin (`dommos.new@gmail.com`).
 
 - **Demo mais completo (17/11/2026):** histórico de 17 pedidos concluídos com avaliações (Elisa 12 avaliações, Bruno 8), notas e contadores do perfil calculados das avaliações reais, 15 notificações (lidas e não lidas). Seed rodado duas vezes sem mudar as contagens.
+
+- **Fotos do demo (17/11/2026):** os 11 anúncios usam 2 fotos reais do Unsplash cada (licença Unsplash, uso livre), no lugar dos placeholders. O seed atualiza as URLs das fotos já existentes. Pendente: fotos de perfil das contas demo (hoje mostram a inicial).

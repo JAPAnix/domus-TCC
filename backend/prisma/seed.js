@@ -7,7 +7,14 @@ import { catalog } from './catalog.js';
 const today = new Date();
 const days = (offset) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset, 12);
 const slug = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const image = (label) => `https://placehold.co/1200x800/png?text=${encodeURIComponent(label)}`;
+// Fotos gratuitas do Unsplash (licença Unsplash, uso livre), duas por anúncio: capa e detalhe. Só a URL é gravada.
+const photo = (id) => `https://images.unsplash.com/photo-${id}?w=1200&q=80`;
+const listingPhotos = [
+  ['1621905251189-08b45d6a269e', '1682345262055-8f95f3c513ea'], ['1788855865596-6507bff9fa8b', '1764961576606-ffb05ace4062'], ['1544724569-5f546fd6f2b5', '1660330589693-99889d60181e'],
+  ['1765530950709-67e6af4ce3ad', '1760036120428-42742c16a23c'], ['1566753323558-f4e0952af115', '1609436132311-e4b0c9370469'], ['1663530761401-15eefb544889', '1676471926534-d5c9771909fa'],
+  ['1758810411905-04fb6f9396e1', '1524650448000-02d0a2aeb6cb'], ['1758518731296-20e24e58846f', '1780733063993-c22e40f1ee11'], ['1576503963299-fcd31822b523', '1758118680010-8dedc15a9542'],
+  ['1768776183829-45e5f7553629', '1780586382191-bef9c740798e'], ['1677938438599-a55528c41b2c', '1585569695919-db237e7cc455'],
+];
 
 const people = [
   { key: 'admin', email: 'dommos.new@gmail.com', firstName: 'Admin', lastName: 'Dommos', phone: '11999990001', roles: ['admin', 'client'], city: 'São Paulo', state: 'SP' }, { key: 'ana', email: 'ana.souza@dommos.demo', firstName: 'Ana', lastName: 'Souza', phone: '11999990002', roles: ['client'], city: 'São Paulo', state: 'SP' }, { key: 'carlos', email: 'carlos.lima@dommos.demo', firstName: 'Carlos', lastName: 'Lima', phone: '11999990003', roles: ['client'], city: 'Santo André', state: 'SP' },
@@ -57,7 +64,7 @@ async function seed() {
   for (const [owner, title, category, item, pricingModel, price, cancellationPolicy] of specs) {
     const data = { ownerId: users[owner].id, status: 'published', wizardStep: 6, categoryId: categories[category].id, catalogItemId: items[`${category}|${item}`].id, atClientPlace: true, atProPlace: false, isRemote: false, city: 'São Paulo', state: 'SP', radiusKm: 25, title, description: `${title}. Atendimento cuidadoso, combinado antes da visita e com comunicação clara.`, included: ['Atendimento profissional', 'Orientação após o serviço', 'Materiais básicos'], excluded: ['Materiais especiais'], requirements: 'Informe detalhes do local e do que precisa.', materials: 'Materiais especiais são combinados à parte.', pricingModel, price, travelFee: 25, packages: price ? [{ name: 'Essencial', price, description: 'Atendimento padrão' }] : null, availability: { weekdays: [{ day: 1 }, { day: 2 }, { day: 3 }, { day: 4 }, { day: 5 }], leadTimeHours: 24 }, cancellationPolicy, publishedAt: days(-20) };
     const listing = await firstOrCreate(prisma.listing, { ownerId: users[owner].id, title }, { uuid: generateUuid(), ...data }); listings.push(listing);
-    for (const [sortOrder, label] of ['Capa', 'Detalhe'].entries()) await firstOrCreate(prisma.listingImage, { listingId: listing.id, sortOrder }, { listingId: listing.id, url: image(`${title} - ${label}`), sortOrder });
+    for (const [sortOrder, id] of listingPhotos[listings.length - 1].entries()) { const url = photo(id), existing = await prisma.listingImage.findFirst({ where: { listingId: listing.id, sortOrder } }); if (existing) await prisma.listingImage.update({ where: { id: existing.id }, data: { url } }); else await prisma.listingImage.create({ data: { listingId: listing.id, url, sortOrder } }); }
   }
 
   const orderSpecs = [['requested', 0, 'ana', 'bruno'], ['proposed', 1, 'carlos', 'bruno'], ['accepted', 2, 'ana', 'elisa'], ['in_progress', 3, 'carlos', 'elisa'], ['completed', 4, 'ana', 'elisa'], ['cancelled', 5, 'carlos', 'bruno'], ['completed', 6, 'admin', 'elisa'], ['completed', 7, 'carlos', 'elisa'], ['declined', 8, 'ana', 'bruno'], ['expired', 9, 'carlos', 'elisa']];

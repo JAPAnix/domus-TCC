@@ -670,3 +670,5 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Correções sobre a primeira versão:** e-mail do admin (era `dommos.newnew@gmail.com`, e o seed renomeia a conta antiga); catálogo oficial restaurado (a versão anterior trocou por 10 categorias e criou categorias extras "X: Y").
 - **Riscos:** `db:reset` apaga tudo, inclusive admin; faça backup antes. O banco remoto já recebeu resets feitos antes desta correção; um novo `db:reset` limpa as categorias extras.
 - **Validado (17/11/2026):** reset e seed rodados no banco remoto; seed duas vezes sem mudar as contagens; login do admin, de um cliente e de um profissional ok; um único admin (`dommos.new@gmail.com`).
+
+- **Demo mais completo (17/11/2026):** histórico de 17 pedidos concluídos com avaliações (Elisa 12 avaliações, Bruno 8), notas e contadores do perfil calculados das avaliações reais, 15 notificações (lidas e não lidas). Seed rodado duas vezes sem mudar as contagens.

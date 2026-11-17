@@ -33,7 +33,7 @@ export default function BookingCard({ listing, selection, onSelect, onRequest, u
     <Card className="shadow-raised">
       <p className="text-2xl font-bold">{priceLabel(listing)}</p>
       <p className="text-sm text-ink-muted">{quote ? 'Combine o valor com o profissional.' : listing.pricingModel === 'fixed' ? 'Valor fechado pelo serviço.' : listing.pricingModel === 'hourly' ? 'Total = valor da hora x horas escolhidas.' : 'Total = valor da diária x dias escolhidos.'}</p>
-      {listing.owner.reviews > 0 && <p className="mt-1 text-sm"><span aria-hidden="true" className="text-rating">★</span> {Number(listing.owner.rating).toFixed(1)} <span className="text-ink-muted">· {listing.owner.reviews} {listing.owner.reviews === 1 ? 'avaliação' : 'avaliações'}</span></p>}
+      {listing.owner.reviews > 0 && <p className="mt-1 text-sm"><span aria-hidden="true" className="text-rating">★</span> {Number(listing.owner.rating).toFixed(1)} <span className="text-ink-muted">· {listing.owner.reviews} {listing.owner.reviews === 1 ? 'avaliação' : 'avaliações'} do profissional</span></p>}
 
       <div className="mt-5 space-y-4">
         <button type="button" onClick={() => document.getElementById('disponibilidade')?.scrollIntoView({ behavior: 'smooth' })} className="block w-full rounded-control border border-line-strong p-3 text-left hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary">

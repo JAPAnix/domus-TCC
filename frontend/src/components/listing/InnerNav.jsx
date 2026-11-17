@@ -39,7 +39,7 @@ export default function InnerNav({ price, rating, reviews, onRequest, disabled }
           </ul>
         </nav>
         <div className="flex items-center gap-4 py-2">
-          <div className="text-right text-sm"><p className="font-semibold">{price}</p>{reviews > 0 && <p className="text-xs text-ink-muted"><span aria-hidden="true" className="text-rating">★</span> {Number(rating).toFixed(1)} · {reviews}</p>}</div>
+          <div className="text-right text-sm"><p className="font-semibold">{price}</p>{reviews > 0 && <p className="text-xs text-ink-muted"><span aria-hidden="true" className="text-rating">★</span> {Number(rating).toFixed(1)} · {reviews} do profissional</p>}</div>
           <Button size="sm" onClick={onRequest} disabled={disabled}>Solicitar</Button>
         </div>
       </div>

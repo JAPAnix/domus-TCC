@@ -1,68 +1,84 @@
+import bcrypt from 'bcryptjs';
 import { prisma } from '../src/config/prisma.js';
+import { generateUuid } from '../src/utils/uuid.js';
+import { catalog } from './catalog.js';
 
-const catalog = {
-  'Limpeza e Serviços Domésticos': ['Diarista', 'Limpeza residencial', 'Limpeza pesada', 'Limpeza pós-obra', 'Limpeza de vidros', 'Limpeza de estofados', 'Limpeza de sofá', 'Limpeza de colchão', 'Limpeza de tapetes', 'Limpeza de piscina', 'Organização residencial', 'Passadeira', 'Cozinheira', 'Lavagem de roupas'],
-  'Reformas e Construção': ['Pedreiro', 'Pintor', 'Gesseiro', 'Drywall', 'Azulejista', 'Instalador de pisos', 'Instalador de porcelanato', 'Instalador de laminado', 'Instalador de papel de parede', 'Telhadista', 'Calheiro', 'Impermeabilização', 'Serralheiro', 'Vidraceiro', 'Marceneiro', 'Carpinteiro', 'Marmorista'],
-  'Elétrica': ['Eletricista residencial', 'Instalação de tomadas', 'Instalação de interruptores', 'Instalação de luminárias', 'Instalação de chuveiro', 'Instalação de ventilador de teto', 'Troca de disjuntor', 'Manutenção elétrica', 'Instalação de quadro elétrico'],
-  'Hidráulica': ['Encanador', 'Reparo de vazamento', 'Instalação de torneira', 'Instalação de chuveiro', 'Instalação de vaso sanitário', 'Troca de sifão', "Limpeza de caixa d'água", 'Instalação hidráulica', 'Desentupimento'],
-  'Ar-condicionado e Climatização': ['Instalação de ar-condicionado', 'Manutenção de ar-condicionado', 'Limpeza de ar-condicionado', 'Higienização de ar-condicionado', 'Recarga de gás', 'Instalação de ventilador', 'Manutenção de aquecedor'],
-  'Eletrodomésticos': ['Conserto de geladeira', 'Conserto de freezer', 'Conserto de máquina de lavar', 'Conserto de secadora', 'Conserto de lava-louças', 'Conserto de micro-ondas', 'Conserto de forno', 'Conserto de fogão', 'Conserto de cooktop', 'Conserto de televisão'],
-  'Informática e Tecnologia': ['Manutenção de computador', 'Manutenção de notebook', 'Formatação de computador', 'Instalação de Windows', 'Remoção de vírus', 'Upgrade de computador', 'Montagem de computador', 'Recuperação de dados', 'Instalação de impressora', 'Configuração de Wi-Fi', 'Instalação de roteador', 'Suporte técnico', 'Desenvolvimento de sites', 'Desenvolvimento Web', 'Desenvolvimento de sistemas', 'Desenvolvimento de aplicativos', 'Design gráfico', 'Criação de logotipo', 'Social media', 'Marketing digital'],
-  'Segurança': ['Instalação de câmeras', 'Manutenção de câmeras', 'Instalação de alarme', 'Instalação de cerca elétrica', 'Instalação de interfone', 'Instalação de fechadura eletrônica', 'Instalação de vídeo porteiro', 'Segurança eletrônica'],
-  'Jardinagem': ['Jardineiro', 'Manutenção de jardim', 'Corte de grama', 'Poda de árvores', 'Paisagismo', 'Limpeza de terreno', 'Plantio', 'Manutenção de plantas'],
-  'Móveis': ['Montador de móveis', 'Desmontagem de móveis', 'Montagem de guarda-roupa', 'Montagem de cozinha', 'Instalação de prateleiras', 'Instalação de armários', 'Reparação de móveis', 'Marceneiro'],
-  'Instalações': ['Instalação de TV', 'Instalação de suporte para TV', 'Instalação de cortinas', 'Instalação de persianas', 'Instalação de varal', 'Instalação de espelho', 'Instalação de quadros', 'Instalação de fechaduras', 'Instalação de telas de proteção', 'Instalação de redes de proteção'],
-  'Mudanças e Transporte': ['Frete', 'Carreto', 'Mudança residencial', 'Mudança comercial', 'Transporte de móveis', 'Ajudante de mudança', 'Embalagem de mudança', 'Montagem e desmontagem para mudança'],
-  'Automóveis': ['Mecânico', 'Eletricista automotivo', 'Troca de óleo', 'Troca de bateria', 'Funilaria', 'Pintura automotiva', 'Higienização automotiva', 'Lavagem automotiva', 'Instalação de som', 'Instalação de multimídia', 'Instalação de câmera de ré'],
-  'Pets': ['Passeador de cães', 'Cuidador de pets', 'Pet sitter', 'Adestrador', 'Banho e tosa', 'Transporte de animais'],
-  'Cuidados Pessoais': ['Cabeleireiro', 'Barbeiro', 'Manicure', 'Pedicure', 'Maquiador', 'Designer de sobrancelhas', 'Massagista'],
-  'Eventos': ['Fotógrafo', 'Filmagem', 'DJ', 'Decoração de festas', 'Buffet', 'Garçom', 'Bartender', 'Segurança para eventos'],
-  'Aulas': ['Professor particular', 'Reforço escolar', 'Professor de inglês', 'Professor de espanhol', 'Professor de matemática', 'Professor de português', 'Professor de informática', 'Professor de música', 'Personal trainer'],
-  'Serviços Gerais': ['Marido de aluguel', 'Chaveiro', 'Dedetizador', 'Desentupidor', 'Instalador', 'Faz-tudo', 'Pequenos reparos residenciais'],
-};
+// Dados exclusivamente demonstrativos. Não chama provedores externos nem cria cobranças reais.
+const today = new Date();
+const days = (offset) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset, 12);
+const slug = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const image = (label) => `https://placehold.co/1200x800/png?text=${encodeURIComponent(label)}`;
 
-function slugify(value) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+const people = [
+  { key: 'admin', email: 'dommos.new@gmail.com', firstName: 'Admin', lastName: 'Dommos', phone: '11999990001', roles: ['admin', 'client'], city: 'São Paulo', state: 'SP' }, { key: 'ana', email: 'ana.souza@dommos.demo', firstName: 'Ana', lastName: 'Souza', phone: '11999990002', roles: ['client'], city: 'São Paulo', state: 'SP' }, { key: 'carlos', email: 'carlos.lima@dommos.demo', firstName: 'Carlos', lastName: 'Lima', phone: '11999990003', roles: ['client'], city: 'Santo André', state: 'SP' },
+  { key: 'bruno', email: 'bruno.eletrica@dommos.demo', firstName: 'Bruno', lastName: 'Almeida', phone: '11999990004', roles: ['client', 'professional'], city: 'São Paulo', state: 'SP' }, { key: 'camila', email: 'camila.design@dommos.demo', firstName: 'Camila', lastName: 'Nunes', phone: '11999990005', roles: ['client', 'professional'], city: 'São Paulo', state: 'SP' }, { key: 'diego', email: 'diego.jardim@dommos.demo', firstName: 'Diego', lastName: 'Ramos', phone: '11999990006', roles: ['client', 'professional'], city: 'São Paulo', state: 'SP' }, { key: 'elisa', email: 'elisa.fotos@dommos.demo', firstName: 'Elisa', lastName: 'Moraes', phone: '11999990007', roles: ['client', 'professional'], city: 'São Paulo', state: 'SP' },
+];
+
+async function firstOrCreate(model, where, data) { return (await model.findFirst({ where })) ?? model.create({ data }); }
+async function upsertUser(person, passwordHash, roleIds) {
+  const fields = { passwordHash, firstName: person.firstName, lastName: person.lastName, phoneNumber: person.phone, isEmailVerified: true, isPhoneVerified: true, deletedAt: null, deactivatedAt: null, city: person.city, state: person.state, neighborhood: 'Vila Mariana', zipCode: '04001-000', postalSameAsHome: true, languages: ['Português (Brasil)'], interests: ['Serviços locais'], serviceAreas: [person.city] };
+  const user = await prisma.user.upsert({ where: { email: person.email }, update: fields, create: { uuid: generateUuid(), email: person.email, preferredName: person.firstName, birthDate: new Date('1990-01-15'), street: 'Rua das Flores', number: '120', ...fields } });
+  for (const role of person.roles) await prisma.userRole.upsert({ where: { userId_roleId: { userId: user.id, roleId: roleIds[role] } }, update: {}, create: { userId: user.id, roleId: roleIds[role] } });
+  await prisma.userSettings.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id, notificationPreferences: { email: true, push: true }, acceptedPaymentMethods: 'pix,credit_card' } });
+  return user;
 }
 
 async function seed() {
-  let total = 0;
+  const password = process.env.SEED_DEMO_PASSWORD;
+  if (!password || password.length < 8) throw new Error('Defina SEED_DEMO_PASSWORD (mínimo de 8 caracteres) no backend/.env antes de rodar o seed. Nenhuma alteração foi feita.');
+  const passwordHash = await bcrypt.hash(password, 10);
+  const roleIds = {};
+  for (const name of ['client', 'professional', 'admin']) roleIds[name] = (await prisma.role.upsert({ where: { name }, update: {}, create: { name } })).id;
+  // Corrige o e-mail do admin criado com a grafia errada em execuções anteriores (mantém as relações).
+  const legacyAdmin = await prisma.user.findUnique({ where: { email: 'dommos.newnew@gmail.com' } });
+  if (legacyAdmin && !(await prisma.user.findUnique({ where: { email: 'dommos.new@gmail.com' } }))) await prisma.user.update({ where: { id: legacyAdmin.id }, data: { email: 'dommos.new@gmail.com' } });
+  const users = {}; for (const person of people) users[person.key] = await upsertUser(person, passwordHash, roleIds);
 
-  const [clientRole, professionalRole] = await Promise.all(['client', 'professional'].map((name) => prisma.role.upsert({
-    where: { name }, update: {}, create: { name }
-  })));
-  const [users, profiles] = await Promise.all([
-    prisma.user.findMany({ where: { deletedAt: null }, select: { id: true } }),
-    prisma.professionalProfile.findMany({ select: { userId: true } })
-  ]);
-  await prisma.userRole.createMany({ data: users.map((user) => ({ userId: user.id, roleId: clientRole.id })), skipDuplicates: true });
-  await prisma.userRole.createMany({ data: profiles.map((profile) => ({ userId: profile.userId, roleId: professionalRole.id })), skipDuplicates: true });
-
-  for (const [categoryName, serviceNames] of Object.entries(catalog)) {
-    const category = await prisma.category.upsert({
-      where: { name: categoryName },
-      update: {},
-      create: { name: categoryName },
-    });
-
-    for (const name of serviceNames) {
-      await prisma.serviceCatalogItem.upsert({
-        where: { categoryId_slug: { categoryId: category.id, slug: slugify(name) } },
-        update: { active: true },
-        create: { categoryId: category.id, name, slug: slugify(name), active: true },
-      });
-      total += 1;
-    }
+  // Catálogo oficial: categorias e serviços (sem subcategorias extras), só cria ou atualiza.
+  const categories = {}, items = {};
+  for (const [name, children] of Object.entries(catalog)) {
+    categories[name] = await prisma.category.upsert({ where: { name }, update: {}, create: { name } });
+    for (const child of children) items[`${name}|${child}`] = await prisma.serviceCatalogItem.upsert({ where: { categoryId_slug: { categoryId: categories[name].id, slug: slug(child) } }, update: { active: true }, create: { categoryId: categories[name].id, name: child, slug: slug(child), active: true } });
   }
 
-  console.log(`Catálogo sincronizado: ${Object.keys(catalog).length} categorias e ${total} serviços.`);
-}
+  const profileData = {
+    bruno: { displayName: 'Bruno Elétrica', headline: 'Eletricista residencial com atendimento rápido', bio: 'Há 12 anos deixando instalações mais seguras em São Paulo.', serviceRegion: 'São Paulo e ABC', billingMode: 'hourly', hourlyRate: 120, dailyRate: 720, isPublished: true, isVerified: true, averageRating: 4.9, totalReviews: 18, availabilityStatus: 'available' },
+    camila: { displayName: 'Camila Nunes', headline: 'Designer em início de portfólio', bio: 'Perfil em preenchimento para demonstração.', serviceRegion: null, billingMode: 'quote', hourlyRate: 0, isPublished: false, isVerified: false, averageRating: 0, totalReviews: 0, availabilityStatus: 'offline' },
+    diego: { displayName: 'Diego Jardim', headline: 'Novo profissional de jardinagem', bio: 'Acabei de chegar à Dommos e estou preparando meus primeiros anúncios.', serviceRegion: 'Zona Sul de São Paulo', billingMode: 'daily', hourlyRate: 75, dailyRate: 420, isPublished: true, isVerified: false, averageRating: 0, totalReviews: 0, availabilityStatus: 'available' },
+    elisa: { displayName: 'Elisa Fotos', headline: 'Fotógrafa para momentos que ficam', bio: 'Fotógrafa profissional especializada em eventos, retratos e conteúdo para marcas.', serviceRegion: 'São Paulo, ABC e região', billingMode: 'daily', hourlyRate: 250, dailyRate: 1450, isPublished: true, isVerified: true, averageRating: 4.9, totalReviews: 27, availabilityStatus: 'available' },
+  };
+  for (const [key, data] of Object.entries(profileData)) await prisma.professionalProfile.upsert({ where: { userId: users[key].id }, update: data, create: { userId: users[key].id, ...data } });
+  for (const [key, legalName] of [['bruno', 'Bruno Almeida'], ['elisa', 'Elisa Moraes']]) await prisma.professionalVerification.upsert({ where: { userId: users[key].id }, update: { status: 'approved', reviewedAt: days(-40) }, create: { userId: users[key].id, legalName, documentType: 'CPF', status: 'approved', submittedAt: days(-45), reviewedAt: days(-40) } });
+  await prisma.payoutAccount.upsert({ where: { userId: users.bruno.id }, update: { status: 'approved', accountId: 'demo_bruno_approved', walletId: 'demo_wallet_bruno', statusDetail: { demo: true, sandbox: true } }, create: { userId: users.bruno.id, provider: 'asaas', status: 'approved', accountId: 'demo_bruno_approved', walletId: 'demo_wallet_bruno', statusDetail: { demo: true, sandbox: true } } });
+  for (const [key, names] of Object.entries({ bruno: ['Elétrica|Eletricista residencial', 'Elétrica|Instalação de luminárias'], elisa: ['Eventos|Fotógrafo'] })) for (const name of names) await prisma.professionalCatalogService.upsert({ where: { professionalId_catalogItemId: { professionalId: users[key].id, catalogItemId: items[name].id } }, update: {}, create: { professionalId: users[key].id, catalogItemId: items[name].id } });
 
-seed()
-  .catch((error) => { console.error(error); process.exitCode = 1; })
-  .finally(() => prisma.$disconnect());
+  const specs = [ ['bruno', 'Eletricista residencial de confiança', 'Elétrica', 'Eletricista residencial', 'hourly', 120, 'flexible'], ['bruno', 'Instalação de luminárias e pendentes', 'Elétrica', 'Instalação de luminárias', 'fixed', 180, 'moderate'], ['bruno', 'Revisão elétrica para apartamento', 'Elétrica', 'Eletricista residencial', 'quote', null, 'strict'], ['elisa', 'Fotografia para aniversários e eventos', 'Eventos', 'Fotógrafo', 'daily', 1450, 'moderate'], ['elisa', 'Ensaio profissional para LinkedIn', 'Eventos', 'Fotógrafo', 'fixed', 480, 'flexible'], ['elisa', 'Fotos para cardápio e redes sociais', 'Eventos', 'Fotógrafo', 'quote', null, 'moderate'], ['elisa', 'Cobertura fotográfica de casamento civil', 'Eventos', 'Fotógrafo', 'daily', 1800, 'strict'], ['elisa', 'Retratos para equipes e empresas', 'Eventos', 'Fotógrafo', 'fixed', 950, 'moderate'], ['bruno', 'Instalação de ventilador de teto', 'Elétrica', 'Eletricista residencial', 'fixed', 250, 'flexible'], ['elisa', 'Fotografia para chá de bebê', 'Eventos', 'Fotógrafo', 'fixed', 650, 'flexible'], ['bruno', 'Visita técnica elétrica', 'Elétrica', 'Eletricista residencial', 'hourly', 120, 'flexible'] ];
+  const listings = [];
+  for (const [owner, title, category, item, pricingModel, price, cancellationPolicy] of specs) {
+    const data = { ownerId: users[owner].id, status: 'published', wizardStep: 6, categoryId: categories[category].id, catalogItemId: items[`${category}|${item}`].id, atClientPlace: true, atProPlace: false, isRemote: false, city: 'São Paulo', state: 'SP', radiusKm: 25, title, description: `${title}. Atendimento cuidadoso, combinado antes da visita e com comunicação clara.`, included: ['Atendimento profissional', 'Orientação após o serviço', 'Materiais básicos'], excluded: ['Materiais especiais'], requirements: 'Informe detalhes do local e do que precisa.', materials: 'Materiais especiais são combinados à parte.', pricingModel, price, travelFee: 25, packages: price ? [{ name: 'Essencial', price, description: 'Atendimento padrão' }] : null, availability: { weekdays: [{ day: 1 }, { day: 2 }, { day: 3 }, { day: 4 }, { day: 5 }], leadTimeHours: 24 }, cancellationPolicy, publishedAt: days(-20) };
+    const listing = await firstOrCreate(prisma.listing, { ownerId: users[owner].id, title }, { uuid: generateUuid(), ...data }); listings.push(listing);
+    for (const [sortOrder, label] of ['Capa', 'Detalhe'].entries()) await firstOrCreate(prisma.listingImage, { listingId: listing.id, sortOrder }, { listingId: listing.id, url: image(`${title} - ${label}`), sortOrder });
+  }
+
+  const orderSpecs = [['requested', 0, 'ana', 'bruno'], ['proposed', 1, 'carlos', 'bruno'], ['accepted', 2, 'ana', 'elisa'], ['in_progress', 3, 'carlos', 'elisa'], ['completed', 4, 'ana', 'elisa'], ['cancelled', 5, 'carlos', 'bruno'], ['completed', 6, 'admin', 'elisa'], ['completed', 7, 'carlos', 'elisa']];
+  const orders = [];
+  for (const [status, index, client, professional] of orderSpecs) {
+    const listing = listings[index], marker = `[DEMO:ORDER-${index + 1}]`, finalAmount = listing.price ? Number(listing.price) + 25 : null;
+    const data = { listingId: listing.id, origin: 'anuncio', clientId: users[client].id, professionalId: users[professional].id, status, scheduledDate: days(index - 5), serviceMode: 'client_place', scheduledTime: '10:00', quantity: 1, serviceAddress: { street: 'Rua Exemplo', number: String(100 + index), neighborhood: 'Vila Mariana', city: 'São Paulo', state: 'SP', zipCode: '04001-000' }, titleSnapshot: listing.title, pricingModelSnapshot: listing.pricingModel, priceSnapshot: listing.price, travelFeeSnapshot: listing.travelFee, policySnapshot: listing.cancellationPolicy, platformFeePercent: 10, finalAmount, note: marker, expiresAt: status === 'requested' ? days(2) : null, proposalAmount: status === 'proposed' ? 390 : null, proposalDays: status === 'proposed' ? 3 : null, proposalIncluded: status === 'proposed' ? 'Mão de obra e orientação' : null, proposalValidUntil: status === 'proposed' ? days(2) : null, proposedAt: status === 'proposed' ? days(-1) : null, acceptedAt: ['accepted', 'in_progress', 'completed'].includes(status) ? days(-4) : null, startedAt: ['in_progress', 'completed'].includes(status) ? days(-3) : null, completedAt: status === 'completed' ? days(-1) : null, cancelledAt: status === 'cancelled' ? days(-2) : null, cancelledById: status === 'cancelled' ? users[client].id : null };
+    const order = await firstOrCreate(prisma.order, { note: marker }, { uuid: generateUuid(), ...data }); orders.push(order);
+    if (['accepted', 'in_progress', 'completed'].includes(status)) { const amount = Number(finalAmount ?? 650); const payment = await prisma.payment.upsert({ where: { externalId: `demo-payment-${index + 1}` }, update: {}, create: { uuid: generateUuid(), orderId: order.id, clientId: users[client].id, professionalId: users[professional].id, provider: 'asaas-demo', method: 'pix', status: 'confirmed', amount, externalId: `demo-payment-${index + 1}`, receiptNumber: `DEMO-${String(index + 1).padStart(5, '0')}`, note: 'Dados de demonstração — nenhuma cobrança foi criada.', amountCents: Math.round(amount * 100), clientFeeCents: 0, commissionCents: Math.round(amount * 10), proShareCents: Math.round(amount * 90), platformShareCents: Math.round(amount * 10), feeSnapshot: { demo: true, commissionPercent: 10 }, confirmedAt: days(-3), payoutStatus: status === 'completed' ? 'released' : 'pending' } }); await firstOrCreate(prisma.paymentEvent, { paymentId: payment.id, type: 'demo_confirmed' }, { paymentId: payment.id, actorId: users[client].id, type: 'demo_confirmed', toStatus: 'confirmed', detail: 'Pagamento demonstrativo gravado diretamente no banco.', createdAt: days(-3) }); if (index === 3) await firstOrCreate(prisma.paymentDispute, { paymentId: payment.id }, { paymentId: payment.id, openedById: users[client].id, reason: 'Demonstração: cliente aguarda ajuste no escopo.', status: 'open', createdAt: days(-1) }); if (index === 2) await firstOrCreate(prisma.paymentEvent, { paymentId: payment.id, type: 'alert:demo_review' }, { paymentId: payment.id, actorId: users.admin.id, type: 'alert:demo_review', toStatus: 'confirmed', detail: 'Alerta demonstrativo para análise administrativa.', createdAt: days(-1) }); }
+  }
+  for (const [orderIndex, reviewer, rating, comment] of [[4, 'ana', 5, 'A Elisa foi pontual e as fotos ficaram lindas.'], [6, 'admin', 5, 'Excelente direção e entrega muito organizada.'], [7, 'carlos', 4, 'Ótimo atendimento e fotos de qualidade.']]) { const order = orders[orderIndex]; await prisma.review.upsert({ where: { orderId_reviewerId_reviewedId: { orderId: order.id, reviewerId: users[reviewer].id, reviewedId: users.elisa.id } }, update: { rating, comment }, create: { orderId: order.id, reviewerId: users[reviewer].id, reviewedId: users.elisa.id, rating, comment, reply: 'Muito obrigada pela confiança!', repliedAt: days(-1) } }); }
+
+  const openService = await firstOrCreate(prisma.service, { title: 'Preciso de pintura para sala de apartamento', clientId: users.ana.id }, { uuid: generateUuid(), clientId: users.ana.id, categoryId: categories['Reformas e Construção'].id, title: 'Preciso de pintura para sala de apartamento', description: 'Sala de aproximadamente 25 m², com necessidade de pequenos reparos antes da pintura.', budgetMin: 800, budgetMax: 1400, status: 'open', deadline: days(10), expiresAt: days(5), maxProposals: 5, minRating: 4, modes: ['client_place'], city: 'São Paulo', state: 'SP', neighborhood: 'Vila Mariana' });
+  await firstOrCreate(prisma.proposal, { serviceId: openService.id, professionalId: users.bruno.id }, { uuid: generateUuid(), serviceId: openService.id, professionalId: users.bruno.id, proposedPrice: 1150, coverLetter: 'Posso visitar o local antes para confirmar os reparos necessários.', deliveryTimeDays: 2, included: 'Proteção do ambiente e mão de obra', validUntil: days(3), status: 'pending' });
+  await firstOrCreate(prisma.serviceReport, { serviceId: openService.id, reporterId: users.carlos.id }, { serviceId: openService.id, reporterId: users.carlos.id, reason: 'informacao_incompleta', details: 'Denúncia demonstrativa visível na moderação.', status: 'open' });
+  const conversation = await firstOrCreate(prisma.conversation, { listingId: listings[0].id, clientId: users.ana.id }, { uuid: generateUuid(), listingId: listings[0].id, clientId: users.ana.id, professionalId: users.bruno.id, title: 'Dúvida sobre visita elétrica', lastMessageAt: days(-1), lastMessagePreview: 'Consigo atender amanhã pela manhã.' });
+  for (const [sender, body] of [['ana', 'Olá, você consegue avaliar uma tomada que está aquecendo?'], ['bruno', 'Consigo sim. Posso atender amanhã pela manhã.'], ['ana', 'Perfeito, vou solicitar pelo anúncio.']]) await firstOrCreate(prisma.message, { conversationId: conversation.id, body }, { uuid: generateUuid(), conversationId: conversation.id, senderId: users[sender].id, body, createdAt: days(-1) });
+  await firstOrCreate(prisma.userReport, { reporterId: users.ana.id, reportedId: users.bruno.id, conversationId: conversation.id }, { reporterId: users.ana.id, reportedId: users.bruno.id, conversationId: conversation.id, reason: 'other', details: 'Denúncia demonstrativa para o painel administrativo.' });
+  await firstOrCreate(prisma.listingReport, { listingId: listings[10].id, reporterId: users.carlos.id }, { listingId: listings[10].id, reporterId: users.carlos.id, reason: 'informacao_incompleta', details: 'Denúncia demonstrativa de anúncio.' });
+  const favoriteList = await prisma.favoriteList.upsert({ where: { userId_name: { userId: users.ana.id, name: 'Profissionais para casa' } }, update: {}, create: { userId: users.ana.id, name: 'Profissionais para casa' } }); await prisma.favoriteItem.upsert({ where: { listId_listingId: { listId: favoriteList.id, listingId: listings[0].id } }, update: {}, create: { listId: favoriteList.id, listingId: listings[0].id } });
+  for (const [user, key, message, read] of [['ana', 'order-update', 'Seu pedido está aguardando resposta.', false], ['bruno', 'new-request', 'Você recebeu um novo pedido de demonstração.', true], ['elisa', 'review-received', 'Você recebeu uma nova avaliação.', false]]) await prisma.notification.upsert({ where: { eventKey: `demo:${key}:${user}` }, update: { readAt: read ? days(-1) : null }, create: { userId: users[user].id, eventKey: `demo:${key}:${user}`, message, href: '/notificacoes', readAt: read ? days(-1) : null } });
+  const counts = await Promise.all(['user', 'category', 'listing', 'order', 'payment', 'service', 'proposal', 'review', 'conversation', 'notification'].map(async (model) => [model, await prisma[model].count()])); console.log(`Seed de demonstração concluído: ${counts.map(([name, count]) => `${name}=${count}`).join(', ')}.`);
+}
+seed().catch((error) => { console.error('Falha no seed de demonstração. O banco pode estar sem admin; rode npm run db:seed novamente.'); console.error(error.message); process.exitCode = 1; }).finally(() => prisma.$disconnect());

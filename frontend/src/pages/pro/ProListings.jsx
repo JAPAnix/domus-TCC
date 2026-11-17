@@ -14,8 +14,8 @@ function ListingRow({ listing, busy, onAction }) {
   const editPath = `/pro/anuncio/${listing.uuid}/etapa/${listing.status === 'draft' ? listing.wizardStep : 10}`;
   return (
     <li className="flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card sm:flex-row">
-      <div className="aspect-[16/9] bg-primary-soft sm:aspect-auto sm:w-48 sm:shrink-0">
-        {listing.images[0] ? <img src={listing.images[0]} alt="" loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full min-h-28 items-center justify-center text-sm text-ink-muted">Sem foto</div>}
+      <div className="relative aspect-[16/9] overflow-hidden bg-primary-soft sm:aspect-auto sm:w-48 sm:shrink-0">
+        {listing.images[0] ? <img src={listing.images[0]} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /> : <div className="flex h-full min-h-28 items-center justify-center text-sm text-ink-muted">Sem foto</div>}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-5">
         <div className="flex flex-wrap items-center gap-2"><StatusBadge status={listing.status} map={listingStatus} />{listing.activeOrders > 0 && <span className="text-xs text-ink-muted">{listing.activeOrders} {listing.activeOrders === 1 ? 'pedido em aberto' : 'pedidos em aberto'}</span>}</div>

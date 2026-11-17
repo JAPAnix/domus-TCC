@@ -11,9 +11,9 @@ export default function ListingCard({ listing, saved, onSavedChange }) {
   return (
     <div className="group relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <Link to={`/anuncios/${listing.uuid}`} className="flex flex-1 flex-col">
-        <div className="aspect-[4/3] bg-primary-soft">
+        <div className="relative aspect-[4/3] overflow-hidden bg-primary-soft">
           {listing.cover
-            ? <Photo src={listing.cover} alt="" loading="lazy" className="h-full w-full object-cover" />
+            ? <Photo src={listing.cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
             : <div className="flex h-full items-center justify-center text-sm text-ink-muted">Sem foto</div>}
         </div>
         <div className="flex flex-1 flex-col p-4">

@@ -10,9 +10,9 @@ function ListCard({ list, onRename, onDelete }) {
   return (
     <div className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
       <Link to={`/favoritos/${list.id}`} className="block transition-colors hover:bg-surface-muted">
-        <div className="aspect-[4/3] bg-primary-soft">
+        <div className="relative aspect-[4/3] overflow-hidden bg-primary-soft">
           {list.cover
-            ? <img src={list.cover} alt="" loading="lazy" className="h-full w-full object-cover" />
+            ? <img src={list.cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
             : <div className="flex h-full items-center justify-center text-primary"><svg className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 6.6a4.5 4.5 0 0 1 8 2.9c0 6.1-8 11-8 11Z" /></svg></div>}
         </div>
         <div className="px-4 pt-3">

@@ -676,3 +676,5 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Fotos do demo (17/11/2026):** os 11 anúncios usam 2 fotos reais do Unsplash cada (licença Unsplash, uso livre), no lugar dos placeholders. O seed atualiza as URLs das fotos já existentes. Pendente: fotos de perfil das contas demo (hoje mostram a inicial).
 
 - **Painel de pagamentos do demo (17/11/2026):** o Resumo do admin só conta pagamentos com provedor `asaas` e alertas dos tipos conhecidos; o seed usava `asaas-demo` e um alerta de tipo próprio, então o painel mostrava zeros. Agora os pagamentos demo usam `asaas` (continuam marcados como demonstração na nota e em `feeSnapshot`, sem cobrança real) e o alerta é `split_problem`. Cuidado: reembolsar ou liberar um pagamento demo pelo admin tentaria falar com o Asaas com um id fictício.
+
+- **Cards de foto (17/11/2026):** fotos altas deixavam o cartão do anúncio maior que os vizinhos (grande espaço em branco). Agora a foto fica numa caixa de proporção fixa (4:3, `object-cover`) em Busca, Favoritos, perfil e lista do painel. `npm run db:seed:catalog` popula só o catálogo (usado pelo E2E); `db:seed` é o demo.

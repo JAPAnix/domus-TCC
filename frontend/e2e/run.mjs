@@ -85,7 +85,7 @@ ${deploy}`);
   // Catálogo de categorias e serviços (mesmo seed da instalação).
   const previous = currentDb;
   currentDb = name;
-  const seed = spawnSync('node', ['prisma/seed.js'], { cwd: backendDir, env: apiEnv({}, ''), encoding: 'utf8' });
+  const seed = spawnSync('node', ['prisma/seed-catalog.js'], { cwd: backendDir, env: apiEnv({}, ''), encoding: 'utf8' });
   currentDb = previous;
   if (seed.status !== 0) throw new Error(`seed do catálogo falhou:
 ${seed.stdout}

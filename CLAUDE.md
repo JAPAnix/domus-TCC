@@ -51,7 +51,7 @@ O app usa as variáveis `DATABASE_*`, mas a CLI do Prisma lê `DATABASE_URL` em 
 npm ci
 npx prisma generate        # gera o client em backend/generated/prisma (fora do git)
 npx prisma migrate deploy
-npm run db:seed            # catálogo de categorias e serviços
+npm run db:seed            # dados de demonstração (exige SEED_DEMO_PASSWORD); só o catálogo: npm run db:seed:catalog
 npm run dev
 
 # Frontend, em frontend/ (http://localhost:5173)

@@ -9,9 +9,9 @@ export default function ProfessionalMiniCard({ item, saved, onSavedChange }) {
   return (
     <div className="group relative overflow-hidden rounded-card border border-line bg-surface shadow-card transition-colors hover:border-primary">
       <Link to={isListing ? `/anuncios/${item.uuid}` : `/usuarios/${item.uuid}`} className="block">
-        <div className="relative aspect-[4/3] bg-primary-soft">
+        <div className="relative aspect-[4/3] overflow-hidden bg-primary-soft">
           {item.photo
-            ? <img src={item.photo} alt="" loading="lazy" className="h-full w-full object-cover" />
+            ? <img src={item.photo} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
             : <div className="flex h-full items-center justify-center"><Avatar name={item.name} size="xl" decorative /></div>}
         </div>
         <div className="p-4">

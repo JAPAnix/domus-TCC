@@ -40,8 +40,9 @@ try {
   if (isProductionHost) {
     console.warn('\nATENÇÃO: o host parece ser de produção. A exclusão é irreversível.');
     if (!productionYes) {
-      const answer = await rl.question('Digite APAGAR PRODUÇÃO para a segunda confirmação: ');
-      if (answer.trim() !== 'APAGAR PRODUÇÃO') throw new Error('Segunda confirmação não recebida. Nada foi apagado.');
+      const answer = await rl.question('Digite APAGAR PRODUCAO (sem acento) para a segunda confirmação: ');
+      const normalized = answer.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+      if (normalized !== 'APAGAR PRODUCAO') throw new Error('Segunda confirmação não recebida. Nada foi apagado.');
     }
   }
   await run(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'reset', '--force']);

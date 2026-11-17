@@ -662,3 +662,11 @@ Método: banco descartável com as migrations até `20261112`, API apontada para
 - **Pendente (manual):** Asaas sandbox real (Pix, cartão, boleto, webhook por túnel), login Google, e-mail/Cloudinary reais, outros navegadores. Veja `RELATORIO-TESTE.md`.
 
 - **Pedidos abertos no painel do profissional:** os links "pedidos abertos" do painel, de Propostas e de Meus serviços, e o botão da Landing, agora levam a Oportunidades (`/pro/oportunidades`) e não à lista pública antiga `/servicos` (mantida para clientes e visitantes).
+
+### Rodada 13: banco de demonstração (seed e reset) (17/11/2026)
+
+- **Feito:** `npm run db:seed` (só cria ou atualiza, idempotente, não apaga nada) e `npm run db:reset` (mostra host e banco sem senha, confirmação dupla em host de produção, apaga tudo, aplica migrations e roda o seed). Admin `dommos.new@gmail.com`, 2 clientes e 4 profissionais `@dommos.demo`, pedidos em vários estados, pedido aberto com proposta, pagamentos de demonstração (provedor `asaas-demo`, sem cobrança real), avaliações, favoritos, conversa, notificações, disputa, alerta e denúncias. Catálogo oficial em `backend/prisma/catalog.js`.
+- **Senha:** só de `SEED_DEMO_PASSWORD` (mínimo de 8 caracteres). Sem ela o seed não roda; nunca é impressa nem gravada.
+- **Correções sobre a primeira versão:** e-mail do admin (era `dommos.newnew@gmail.com`, e o seed renomeia a conta antiga); catálogo oficial restaurado (a versão anterior trocou por 10 categorias e criou categorias extras "X: Y").
+- **Riscos:** `db:reset` apaga tudo, inclusive admin; faça backup antes. O banco remoto já recebeu resets feitos antes desta correção; um novo `db:reset` limpa as categorias extras.
+- **Pendente:** rodar o reset e a validação (login, contagens, idempotência) depois que `SEED_DEMO_PASSWORD` estiver no `backend/.env` local.

@@ -44,6 +44,20 @@ cd frontend; npm run lint; npm run build
 
 > **Cuidado:** `DATABASE_URL` é usada pelas migrations. Nunca rode `migrate` ou testes de integração apontando para um banco com dados reais sem conferir o destino.
 
+## Banco de demonstração
+
+O backend inclui dados realistas para a apresentação: contas verificadas, catálogo, anúncios, pedidos em vários estados, pagamentos marcados como demonstração (sem cobrança externa), conversas, avaliações, notificações e itens para moderação.
+
+No `backend/.env`, defina `SEED_DEMO_PASSWORD` (mínimo de 8 caracteres): é a senha comum das contas de demonstração. Sem ela o seed não roda e nada é alterado. A senha nunca é gravada no código nem impressa.
+
+```powershell
+cd backend
+npm run db:seed       # acrescenta/atualiza os dados de demonstração sem duplicá-los
+npm run db:reset      # pede a confirmação, apaga tudo, aplica migrations e executa o seed
+```
+
+`db:reset` sempre mostra host e nome do banco, sem senha, antes de agir. Em um host que pareça produção (incluindo Render), exige uma segunda confirmação. Faça backup antes: no Render/serviço de banco, use o snapshot ou exporte um dump SQL; configure `DATABASE_*`, `DATABASE_URL` e `SEED_DEMO_PASSWORD` no ambiente do serviço e execute o comando em um shell com acesso a esse banco. Nunca use o reset contra dados que não possam ser descartados.
+
 ## Variáveis de ambiente (backend)
 
 O arquivo `backend/.env.example` lista todas, com comentários. As principais:
